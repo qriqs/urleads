@@ -14,8 +14,9 @@ Este checklist traduce el plan del curso de Desarrollo de Servicios Web II en
 - Informe editable, desarrollo, presentación y video demo estructurado de
   3–5 minutos. Confirmar con el docente formato técnico del video.
 
-Railway reemplaza la recomendación Heroku para hosting; PostgreSQL se conserva.
-Confirmar con el profesor que acepta el proveedor alternativo.
+Railway está registrado como proveedor propuesto en Linear, pero aún requiere
+confirmación del profesor y aprobación de costos antes de desplegar. PostgreSQL
+se conserva como recomendó el profesor.
 
 ## AP1 y demostración técnica
 
@@ -43,7 +44,8 @@ Actualizar el documento AP1 antes de reutilizarlo:
 - Usar nombre UrLeads consistentemente, incluido el proceso Bizagi.
 - Corregir nombre del coordinador si corresponde (Cristopher, no Christopher).
 - Actualizar equipo, responsabilidades y stack frontend.
-- Sustituir Heroku por Railway si el docente lo acepta.
+- El proyecto Linear UrLeads planifica Railway como proveedor propuesto. Confirmar
+  que el docente lo acepta y aprobar costos antes de desplegar.
 - Completar tablas/capturas con resultados reales.
 - Describir BCrypt como hash de contraseña, aunque el material académico diga
   “cifrada”.
