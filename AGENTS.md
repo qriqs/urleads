@@ -111,8 +111,8 @@ The initial responsibilities are recorded in `docs/plan-equipo.md` and
   integration.
 - **Sebas:** owns the full frontend, from visual design through API integration.
 - **Karlo:** lead CRUD backend, DTOs, validation, repositories, and tests.
-- **Sebastian 2:** authentication/security, then journal notes and dashboard,
-  with support on Spring Security.
+- **Alexander:** authentication/security, then journal API and dashboard API,
+  with support from Cristopher on Spring Security.
 - **Villa:** manual product QA, Postman API checks, reproducible defect reports,
   regression checks, report evidence, and presentation. The report is mostly
   complete; focus remaining document work on screenshots and actual results.
@@ -124,6 +124,13 @@ testing provide separate evidence and do not replace repository/data tests.
 Use these names as planning labels only. Do not assume which person is running
 an agent. Work on the task the user assigns, coordinate through the team's
 chosen GitHub process, and avoid silently moving another person's work.
+
+The Linear project is [UrLeads in DSW2](https://linear.app/enmanuelprojects/project/urleads-b3c2085df458).
+Karlo's Linear account was not returned by the workspace user lookup, so his
+issues remain unassigned with his intended ownership stated in each description.
+For defect-reserve tasks, use the canonical issues DSW-33 (frontend), DSW-29
+(lead data), and DSW-31 (security/integration); their duplicate copies are in
+Linear's Duplicate state.
 
 ## Working rules
 
