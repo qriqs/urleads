@@ -14,7 +14,7 @@ completos en el informe antes de asignar tareas a cuentas de Linear.
 | Cristopher | Plataforma, integración y coordinación técnica | Entorno local, CI, build integrado, despliegue Railway y apoyo a seguridad e integración. |
 | Sebas | Frontend completo | Diseño visual, componentes, pantallas, integración React/API y calidad responsive. |
 | Karlo | API y datos de leads | CRUD, validaciones, filtros, reglas de etapa/seguimiento y pruebas automatizadas de datos. |
-| Sebastian 2 | Seguridad y funciones de servidor | Login/sesión/CSRF, API de bitácora y dashboard; tests de autenticación y endpoints. |
+| Alexander | Seguridad y funciones de servidor | Login/sesión/CSRF, API de bitácora y dashboard; tests de autenticación y endpoints. |
 | Villa | QA manual, Postman y entrega académica | Colección y ejecución Postman, recorridos manuales, registro/reprueba de errores, capturas e informe/demo. |
 
 Sebas confirmó que quiere llevar el frontend por su cuenta, por lo que no se
@@ -73,12 +73,17 @@ esencial, no seguridad, persistencia, operaciones REST ni despliegue.
 ## Linear y GitHub
 
 Linear será el tablero único para tareas, responsables, prioridades, fechas,
-estimaciones y dependencias. GitHub se usará para ramas, código, pull requests
-y checks. No dupliquen Issues/tareas en ambos sitios.
+estimaciones y dependencias. El proyecto [UrLeads en DSW2](https://linear.app/enmanuelprojects/project/urleads-b3c2085df458)
+contiene los hitos y tareas publicadas. GitHub se usará para ramas, código,
+pull requests y checks. No dupliquen Issues/tareas en ambos sitios.
 
-Cada tarea en Linear debe incluir un resultado comprobable, responsable,
+Cada tarea en Linear incluye un resultado comprobable, responsable,
 revisor, prioridad, esfuerzo estimado en horas, fecha objetivo, dependencias y
-criterios de aceptación. Mantengan una tarea principal activa por persona y
+criterios de aceptación. Los tickets UL-22a/b/c duplicados durante la carga
+quedaron marcados como duplicados; usar como canónicos DSW-33 (frontend),
+DSW-29 (datos) y DSW-31 (seguridad/integración). La cuenta de Karlo no aparece
+en Linear, por lo que sus tickets están sin asignación con responsable previsto
+indicado en la descripción. Mantengan una tarea principal activa por persona y
 dividan trabajo que supere cuatro horas en entregas revisables.
 
 En GitHub, `main` se mantiene estable. Usen ramas cortas y pull requests pequeños
