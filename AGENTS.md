@@ -132,6 +132,23 @@ For defect-reserve tasks, use the canonical issues DSW-33 (frontend), DSW-29
 (lead data), and DSW-31 (security/integration); their duplicate copies are in
 Linear's Duplicate state.
 
+For task boundaries, DSW-8 owns the minimal Spring Boot scaffold and health
+endpoint; DSW-10 owns local PostgreSQL and schema migration; DSW-16 is only a
+local startup/connectivity smoke test. DSW-13 owns lead CRUD; DSW-28 owns
+backend stage/follow-up rules and filters. DSW-18 owns lead list/search/create
+UI; DSW-14 owns edit/delete UI and consumes backend filters. The dashboard API
+does not depend on the notes API. UL-16 is functional Postman API verification,
+not a unit-test substitute.
+
+The early Railway validation task DSW-26 depends only on the Spring scaffold
+(DSW-8) and PostgreSQL/migration (DSW-10); it does not wait for complete CRUD,
+authentication, or CI. Costs require approval before provisioning. DSW-16 is a
+local startup/connectivity check, while DSW-22 is the Postman API verification.
+
+Do not treat the early Railway task as a production release: it validates only
+the minimal scaffold and database connection, and requires instructor approval
+and explicit cost approval. UL-20b covers the integrated release.
+
 ## Working rules
 
 Before editing, inspect repository status, relevant files, and any more-specific
