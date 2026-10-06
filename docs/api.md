@@ -83,6 +83,20 @@ contenido. El listado se ordena del más antiguo al más reciente para facilitar
 la lectura del progreso; la interfaz puede desplazarse a la entrada más nueva
 al agregar una actualización. El contenido se trata siempre como texto plano.
 
+## Monitoreo y salud
+
+| Método | Ruta | Resultado |
+|---|---|---|
+| GET | `/api/health` | Estado del backend (público, no requiere sesión). |
+
+Respuesta exitosa:
+
+```json
+{
+  "status": "UP"
+}
+```
+
 ## Errores
 
 Se usará una forma estable, por ejemplo:
