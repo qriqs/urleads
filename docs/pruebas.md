@@ -6,7 +6,7 @@ ninguna sustituye por completo a las otras.
 
 ## Pruebas automatizadas de desarrolladores
 
-Karlo y Sebastian 2 implementan y mantienen las pruebas del backend en sus
+Karlo y Alexander implementan y mantienen las pruebas del backend en sus
 módulos. Sebas ejecuta los checks frontend que existan en el proyecto.
 
 ### Acceso a datos
