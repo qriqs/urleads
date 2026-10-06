@@ -26,7 +26,8 @@ escritorio como en celular.
 1. Iniciar sesión.
 2. Revisar el dashboard y los seguimientos de hoy o atrasados.
 3. Buscar un lead existente o registrar uno nuevo.
-4. Abrir su detalle y agregar una nota de conversación.
+4. Abrir su detalle y registrar en la bitácora lo que pidió, qué conversaron y
+   cómo avanza el trabajo.
 5. Actualizar su etapa y programar el próximo seguimiento.
 
 ## Alcance funcional
@@ -34,11 +35,17 @@ escritorio como en celular.
 - Login y logout para una cuenta preconfigurada.
 - Crear, listar, consultar, editar y eliminar leads.
 - Búsqueda por nombre y filtros por etapa y seguimiento.
-- Agregar y consultar notas cronológicas.
+- Agregar y consultar una bitácora cronológica de notas internas por lead, con
+  apariencia de conversación.
 - Cambiar etapa entre `NUEVO`, `EN_SEGUIMIENTO` y `CERRADO`.
 - Programar, cambiar o quitar la fecha del próximo seguimiento.
 - Mostrar cantidades por etapa, pendientes de hoy y atrasados.
 - Diseño responsive con estados de carga, error, vacío y confirmación.
+
+La bitácora la escribe únicamente el usuario autenticado. No es un chat con el
+cliente ni un canal de mensajería; cada entrada guarda texto y fecha de registro.
+La etapa comercial y la fecha del próximo seguimiento siguen siendo campos
+separados de la bitácora.
 
 ## Fuera del alcance
 

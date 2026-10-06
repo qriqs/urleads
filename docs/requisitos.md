@@ -11,10 +11,10 @@ comportamientos que el equipo puede implementar y comprobar.
 | RF02 | Cerrar sesión | La sesión se invalida y las rutas privadas vuelven a requerir login. |
 | RF03 | Registrar lead | Se guarda un lead válido con nombre, al menos un contacto y etapa inicial. |
 | RF04 | Consultar leads | El usuario ve sus leads, con búsqueda, filtros y paginación sencilla. |
-| RF05 | Consultar detalle | La pantalla muestra contacto, etapa, seguimiento y notas. |
+| RF05 | Consultar detalle | La pantalla muestra contacto, etapa, seguimiento y bitácora cronológica. |
 | RF06 | Editar lead | Los campos editables se actualizan y persisten tras recargar. |
 | RF07 | Eliminar lead | La interfaz pide confirmación; lead y notas se eliminan de forma consistente. |
-| RF08 | Agregar nota | Una nota de texto se guarda con fecha y aparece en el detalle. |
+| RF08 | Registrar actualización interna | El usuario agrega al lead una entrada de bitácora de texto, con fecha; aparece en orden cronológico. |
 | RF09 | Actualizar etapa | Se puede seleccionar una etapa permitida y ver el cambio persistido. |
 | RF10 | Programar seguimiento | Se puede crear, cambiar o limpiar una fecha y ver si está atrasada. |
 | RF11 | Ver dashboard | Los totales y pendientes corresponden a los datos reales del usuario. |
@@ -44,6 +44,10 @@ comportamientos que el equipo puede implementar y comprobar.
 - Al cerrar un lead se limpia su fecha de seguimiento. Al reabrirlo puede
   programarse otra fecha.
 - La nota tiene entre 1 y 2.000 caracteres y se trata como texto plano.
+- Las notas son entradas internas del usuario autenticado, no mensajes enviados
+  al cliente; se muestran como historial con apariencia de conversación.
+- La bitácora registra observaciones, solicitudes, avances y pendientes. No
+  modifica automáticamente la etapa comercial ni la fecha de seguimiento.
 - Cada lead pertenece al usuario autenticado; el servidor determina el dueño.
 - Eliminar un lead elimina sus notas en una sola transacción.
 
