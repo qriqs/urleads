@@ -25,12 +25,22 @@ funciones que no existen.
 | Login | Marca, usuario/contraseña, validación y error genérico. |
 | Resumen | Conteos por etapa, seguimientos de hoy y atrasados, acción de crear. |
 | Leads | Búsqueda, filtros, tabla/lista responsive, vacío y paginación sencilla. |
-| Detalle | Contacto, etapa, fecha, acciones y notas cronológicas. |
+| Detalle | Contacto, etapa, fecha, acciones y bitácora interna cronológica. |
 | Formulario | Crear/editar, errores por campo y confirmación de guardado. |
 
 Los pendientes del dashboard llevan a la lista ya filtrada. Al eliminar, se
 pide confirmación. Los botones de envío se deshabilitan mientras se guarda para
 evitar duplicados.
+
+## Bitácora del lead
+
+El detalle presenta las entradas como una conversación interna, con autor,
+fecha y hora de registro. Un campo con el texto **Escribe una actualización…**
+y el botón **Agregar nota** permiten registrar qué pidió el contacto, qué se
+conversó, cómo avanza el trabajo o qué queda pendiente. Las entradas son solo
+para el usuario de UrLeads: no se envían al cliente y no requieren chat en
+tiempo real. El texto se muestra sin interpretar HTML. La bitácora no sustituye
+la etapa ni el próximo seguimiento.
 
 ## Estados de experiencia
 
