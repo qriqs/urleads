@@ -31,6 +31,12 @@ target/
 .env.*
 *.env
 *.local
+!.env.example
+!**/.env.example
+
+# Local data directories (reserved for local database)
+infra/data/
+infra/postgres-data/
 
 # Logs and runtime dumps
 *.log
