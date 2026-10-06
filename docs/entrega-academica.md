@@ -1,9 +1,11 @@
 # Entrega académica
-
+Preparar evidencia de ambos tipos de prueba sin confundirlos:
 Este checklist traduce el plan del curso de Desarrollo de Servicios Web II en
-productos y evidencia verificable para AP1 y la entrega final.
+- Login válido e inválido probado con Postman por Villa; documentar códigos
+  HTTP y resultados sanitizados.
 
-## Requisitos del curso
+- Pruebas automatizadas del repositorio para insertar, actualizar, eliminar y
+  listar; responsabilidad de quienes desarrollan backend.
 
 - Backend Java con Spring Data, Lombok, Spring MVC y Spring Security.
 - Login REST con usuario en base de datos y contraseña hasheada con BCrypt.
@@ -47,8 +49,19 @@ Actualizar el documento AP1 antes de reutilizarlo:
   “cifrada”.
 - Revisar fuentes, notas al pie y vigencia antes de la entrega.
 
-Villa confirmará si el docente acepta `.docx`/`.pptx`, ya que el plan indica
-`.doc`/`.ppt` editable.
+Villa ya elaboró el informe y lo tiene casi terminado. Su alcance restante es
+completar fotos/capturas y resultados reales, actualizar secciones que hayan
+cambiado con la implementación y preparar la sustentación; no rehacer el
+documento. Villa confirmará si el docente acepta `.docx`/`.pptx`, ya que el plan
+indica `.doc`/`.ppt` editable.
+
+## Revisión manual y demo
+
+Villa probará recorridos de usuario desde el navegador, validará casos
+problemáticos y documentará defectos con pasos para reproducir, resultado
+esperado/observado y evidencia. Después de la corrección del responsable,
+repetirá los pasos. Esto es QA manual, no pruebas unitarias ni sustituto de los
+tests de acceso a datos.
 
 ## Presentación y video
 
@@ -56,6 +69,9 @@ Villa confirmará si el docente acepta `.docx`/`.pptx`, ya que el plan indica
 - El video debe durar 3–5 minutos; confirmar resolución, formato y plataforma.
 - Ensayar una demo pública con datos ficticios y conexión disponible.
 - Cada integrante explica su responsabilidad y al menos una decisión técnica.
+- Villa presenta su contribución de QA, Postman, evidencias e informe; Sebas
+  presenta el frontend; los responsables de backend explican API, datos y
+  seguridad.
 - No mostrar contraseñas, cookies ni información personal real.
 
 ## Guion sugerido para el video
