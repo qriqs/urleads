@@ -14,7 +14,7 @@ la aplicación ya esté implementada.
 - Inicio y cierre de sesión para una cuenta preconfigurada.
 - Alta, consulta, edición y eliminación de leads.
 - Búsqueda y filtros sencillos.
-- Notas asociadas a cada lead.
+- Bitácora privada de actualizaciones por lead, con apariencia de conversación.
 - Etapas y fecha del próximo seguimiento.
 - Dashboard con resumen y seguimientos pendientes.
 - API REST Java/Spring, PostgreSQL y despliegue en Railway.
@@ -23,6 +23,11 @@ El módulo de proyectos, los usuarios múltiples, los mensajes automáticos y la
 funciones de IA quedan fuera de esta primera versión.
 
 ## Documentación
+
+El preview HTML es una referencia visual local con datos ficticios. No es parte
+de la aplicación ni contiene backend o persistencia.
+
+- [Vista previa del dashboard y bitácora](docs/dashboard-preview.html)
 
 - [Producto y alcance](docs/producto.md)
 - [Requisitos y criterios de aceptación](docs/requisitos.md)
