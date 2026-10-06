@@ -1,65 +1,94 @@
 # Plan del equipo y calendario
 
-El equipo de cinco personas trabajará hacia un MVP listo el 16 de octubre de
-2026, con versión candidata el día 15 y margen antes de la exposición.
+El equipo organiza tareas en Linear y mantiene código, ramas y pull requests en
+GitHub. La fecha objetivo es tener una versión candidata el 15 de octubre de
+2026 y el MVP validado el 16, con días de margen antes de la exposición.
 
-## Integrantes y responsabilidad inicial
+## Responsabilidades
 
-Los apodos se usan para distinguir compañeros. Antes de copiar las tareas a
-GitHub, confirmen correspondencia con los nombres completos del informe AP1.
+Los apodos distinguen a los integrantes del grupo. Confirmen sus nombres
+completos en el informe antes de asignar tareas a cuentas de Linear.
 
-| Integrante | Responsabilidad | Entrega verificable |
+| Integrante | Responsabilidad principal | Entregables |
 |---|---|---|
-| Cristopher | Coordinación técnica, estructura, CI, despliegue e integración | Build integral y recorrido completo en nube. |
-| Sebas | Diseño y frontend | UI responsive conectada a API real. |
-| Karlo | Backend de leads | CRUD, DTO, validación, repositorio y pruebas. |
-| Sebastian 2 | Login/seguridad; luego notas y dashboard | Login, protección, logout, notas e indicadores. |
-| Villa | Informe, pruebas manuales y exposición | Informe coherente, evidencias, checklist y presentación. |
+| Cristopher | Plataforma, integración y coordinación técnica | Entorno local, CI, build integrado, despliegue Railway y apoyo a seguridad e integración. |
+| Sebas | Frontend completo | Diseño visual, componentes, pantallas, integración React/API y calidad responsive. |
+| Karlo | API y datos de leads | CRUD, validaciones, filtros, reglas de etapa/seguimiento y pruebas automatizadas de datos. |
+| Sebastian 2 | Seguridad y funciones de servidor | Login/sesión/CSRF, API de bitácora y dashboard; tests de autenticación y endpoints. |
+| Villa | QA manual, Postman y entrega académica | Colección y ejecución Postman, recorridos manuales, registro/reprueba de errores, capturas e informe/demo. |
 
-Villa tendrá menos código porque ya elaboró el informe, pero sí entregables
-concretos. Sebastian 2 recibirá acompañamiento en Spring Security: saber Git no
-implica conocer ese framework. Cristopher ayudará con integración, no asumirá
-por defecto toda la implementación.
+Sebas confirmó que quiere llevar el frontend por su cuenta, por lo que no se
+asignará a Villa implementación de UI. Villa no será responsable de pruebas
+unitarias ni tendrá que construir funcionalidades de producción. Su tarea
+técnica es probar el producto y API con una colección Postman, con apoyo de
+Cristopher para cookies de sesión y CSRF. El equipo de backend conserva las
+pruebas automatizadas.
 
-## Disponibilidad y riesgo
+El informe de Villa ya está casi terminado. Su trabajo documental se limita a
+completar fotografías/capturas y resultados reales, actualizar cualquier
+sección que cambie con la implementación y preparar la presentación, no
+rehacerlo desde cero.
 
-Estimación orientativa: 90–120 horas-persona, suponiendo que quienes programan
-puedan dedicar aproximadamente 2–3 horas diarias en los días de trabajo. No es
-garantía. El 6–7 de octubre se hará una comprobación breve de que Karlo y
-Sebastian 2 pueden ejecutar el backend, tests y su primera tarea. Si alguien se
-bloquea, se reduce complejidad visual y se redistribuyen tareas críticas sin
-quitar seguridad, CRUD o despliegue.
+## Pruebas y colaboración
 
-## Calendario
+El equipo distingue tres tipos de verificación:
 
-| Fecha | Hito | Resultado |
+- **Pruebas automatizadas:** quienes desarrollan backend comprueban repositorios,
+  reglas, autenticación, CSRF y endpoints. Sebas ejecuta los checks frontend que
+  existan en el proyecto.
+- **Pruebas de API en Postman:** Villa ejecuta la colección sobre el backend,
+  comprueba método, ruta, datos y estado HTTP, y adjunta evidencias ficticias.
+- **Pruebas manuales de producto:** Villa usa los recorridos del navegador,
+  busca problemas en formularios, sesiones y móvil, y registra cada hallazgo
+  con pasos, esperado, obtenido y evidencia. El dueño del módulo corrige; Villa
+  vuelve a probar.
+
+Postman no reemplaza las pruebas de repositorio que solicita el curso. Villa no
+debe afirmar que un error está corregido hasta repetir los pasos y verificarlos.
+
+## Estimación de disponibilidad
+
+Se planifica con una disponibilidad declarada de 2–3 horas diarias por persona
+hasta el 16 de octubre. Las estimaciones son horas de esfuerzo, no horas
+calendario. Cada integrante confirma en Linear su disponibilidad real y el
+responsable técnico revisa las tareas que excedan cuatro horas.
+
+## Fechas objetivo
+
+| Fecha | Hito | Resultado esperado |
 |---|---|---|
-| 6–7 oct. | Alcance, contrato, bocetos y entorno | Reglas acordadas y proyectos base. |
-| 8–9 oct. | Primer recorrido y primer deploy | Login, crear/listar, tests de repositorio. |
-| 10–11 oct. | CRUD y detalle | Editar, eliminar, notas e integración. |
-| 12–13 oct. | Seguimientos y resumen | Requisitos funcionales completos. |
-| 14 oct. | Prueba y revisión visual | Correcciones de seguridad y responsive. |
-| 15 oct. | Congelar funcionalidades | Candidata, evidencia, informe y guion. |
-| 16 oct. | MVP listo | URL validada, respaldo y ensayo. |
-| 17–18 oct. | Margen | Solo correcciones y exposición. |
+| 6–7 oct. | Alcance, contratos, bocetos y entorno | Acuerdos revisados, tareas asignables y base local. |
+| 8–9 oct. | Primer recorrido de extremo a extremo | Login, alta/listado inicial, pruebas de datos y primer despliegue de verificación. |
+| 10–11 oct. | CRUD y detalle | Edición, eliminación, bitácora integrada y pantalla detalle. |
+| 12–13 oct. | Seguimientos y dashboard | Etapas, filtros y resumen con datos reales. |
+| 14 oct. | Verificación y corrección | Seguridad, móvil, persistencia y errores importantes revisados. |
+| 15 oct. | Candidata | Congelar alcance, completar informe y preparar demo. |
+| 16 oct. | MVP validado | URL revisada, datos ficticios, respaldo y ensayo. |
+| 17–18 oct. | Margen | Corregir solo problemas importantes y practicar sustentación. |
 
-El día 9 es un punto de decisión. Si no existe un flujo conectado, se recortan
-adornos y no los requisitos evaluados por el curso.
+Las fechas dependen de disponibilidad y avance real; no son garantía. Si el 9
+de octubre no existe un recorrido funcional, se recortan adornos y trabajo no
+esencial, no seguridad, persistencia, operaciones REST ni despliegue.
 
-## GitHub
+## Linear y GitHub
 
-- Un repositorio con `frontend/`, `backend/`, `infra/` y `docs/`.
-- `main` se mantiene estable; ramas cortas por tarea, por ejemplo
-  `feat/leads-api` y `feat/dashboard-ui`.
-- Issues pequeños con responsable, revisor, criterio de aceptación y evidencia.
-- Pull request pequeño con al menos una revisión y checks verdes.
-- Tablero: Pendiente, En curso, En revisión y Terminado.
-- Una tarea principal activa por integrante para evitar trabajo invisible.
-- Nunca subir contraseñas, cookies, tokens, datos reales ni variables privadas.
-- La persona que entrega código debe poder explicarlo y probarlo.
+Linear será el tablero único para tareas, responsables, prioridades, fechas,
+estimaciones y dependencias. GitHub se usará para ramas, código, pull requests
+y checks. No dupliquen Issues/tareas en ambos sitios.
 
-## Reunión diaria breve
+Cada tarea en Linear debe incluir un resultado comprobable, responsable,
+revisor, prioridad, esfuerzo estimado en horas, fecha objetivo, dependencias y
+criterios de aceptación. Mantengan una tarea principal activa por persona y
+dividan trabajo que supere cuatro horas en entregas revisables.
 
-Cada integrante informa: qué terminó, qué hará a continuación y qué bloqueo
-necesita ayuda. Cristopher actualiza el tablero y resuelve dependencias entre
-API, UI y despliegue. Las decisiones que cambien alcance se anotan en un Issue.
+En GitHub, `main` se mantiene estable. Usen ramas cortas y pull requests pequeños
+con una revisión y checks verdes. No incluyan claves, cookies, tokens ni datos
+reales en código, Issues, capturas o logs. Cada integrante debe poder explicar
+lo que entrega.
+
+## Coordinación
+
+En una sincronización breve, cada integrante informa qué terminó, qué hará y
+qué bloqueo tiene. Cristopher revisa dependencias y ayuda con bloqueos de
+integración. Las decisiones que cambien alcance se acuerdan antes de editar el
+backlog de Linear.
