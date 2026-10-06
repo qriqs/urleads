@@ -6,3 +6,35 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Build and package outputs
+target/
+**/target/
+*.class
+
+# Maven wrapper (preserve wrapper scripts and properties)
+!**/mvnw
+!**/mvnw.cmd
+!**/.mvn/wrapper/maven-wrapper.properties
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# IDE and editors
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# Local environment variables and secrets
+.env
+.env.*
+*.env
+*.local
+
+# Logs and runtime dumps
+*.log
+logs/
+hs_err_pid*
+replay_pid*
+
