@@ -40,6 +40,64 @@ de la aplicación ni contiene backend o persistencia.
 - [Despliegue en Railway](docs/despliegue.md)
 - [Entrega académica](docs/entrega-academica.md)
 
+## Estructura del repositorio
+
+- `backend/`: API REST construida con Spring Boot 3 y Java 21, gestionada con Maven Wrapper (`./mvnw`).
+- `infra/`: Configuraciones de infraestructura y servicios locales (Docker Compose para PostgreSQL se incorpora en UL-03).
+- `docs/`: Documentación técnica, arquitectura, backlog de tareas y diseño visual del sistema.
+
+## Guía de desarrollo (Backend)
+
+### Requisitos previos
+
+- **Java Development Kit (JDK):** Versión 21 (LTS).
+- **Maven:** No es necesario instalar Maven globalmente; el repositorio incluye **Maven Wrapper** en `backend/mvnw`.
+
+### Comandos de desarrollo
+
+Todos los comandos del backend se ejecutan desde el directorio `backend/`:
+
+1. **Compilar y ejecutar pruebas automatizadas:**
+   ```bash
+   cd backend
+   ./mvnw clean test
+   ```
+
+2. **Empaquetar la aplicación (generar archivo JAR):**
+   ```bash
+   cd backend
+   ./mvnw clean package
+   ```
+
+3. **Iniciar el servidor en modo desarrollo:**
+   ```bash
+   cd backend
+   ./mvnw spring-boot:run
+   ```
+
+4. **Ejecutar el JAR compilado:**
+   ```bash
+   java -jar backend/target/urleads-backend-0.0.1-SNAPSHOT.jar
+   ```
+
+5. **Configuración de puerto:**
+   Por defecto la aplicación inicia en el puerto `8080`. Se puede configurar mediante la variable de entorno `PORT`:
+   ```bash
+   PORT=8085 java -jar backend/target/urleads-backend-0.0.1-SNAPSHOT.jar
+   ```
+
+6. **Comprobación de salud (Health Check):**
+   ```bash
+   curl http://localhost:8080/api/health
+   # Respuesta: {"status":"UP"}
+   ```
+
+## Convenciones de trabajo
+
+- **Gestión de tareas:** Se utiliza [Linear (UrLeads en DSW2)](https://linear.app/enmanuelprojects/project/urleads-b3c2085df458) como única fuente de verdad para el backlog, responsables, dependencias y estimaciones.
+- **Control de versiones y código:** Se utiliza GitHub con ramas cortas temáticas asociadas a cada tarea de Linear. Todo cambio se integra mediante Pull Requests revisados.
+- **Seguridad:** No versionar secretos, contraseñas, archivos `.env` ni credenciales reales en el repositorio.
+
 ## Fecha objetivo
 
 Tener una versión candidata del MVP el 15 de octubre de 2026 y el producto
