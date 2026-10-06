@@ -1,10 +1,18 @@
 # Contrato inicial de la API
 
-La API usa JSON y el prefijo `/api`. Las rutas de leads requieren sesión. Las
-rutas y ejemplos son un contrato inicial que el equipo confirmará antes de
-implementar.
+La API usa JSON y el prefijo `/api`.
+
+Actualmente, el único endpoint implementado en el backend es la comprobación
+pública de salud `GET /api/health` (responde HTTP 200 con `{"status":"UP"}`).
+Los endpoints de autenticación, gestión de leads, bitácora interna y dashboard
+descritos en este documento son un contrato inicial planificado; su
+implementación se realizará en tareas posteriores del backlog. Las rutas de
+leads, bitácora y dashboard requerirán sesión. La obtención inicial del token
+CSRF y el login no requieren una sesión autenticada previa.
 
 ## Autenticación
+
+Endpoints planificados para la autenticación y el control de sesiones:
 
 | Método | Ruta | Resultado |
 |---|---|---|
@@ -82,6 +90,28 @@ Cada entrada devuelve su identificador y fecha de registro, además del
 contenido. El listado se ordena del más antiguo al más reciente para facilitar
 la lectura del progreso; la interfaz puede desplazarse a la entrada más nueva
 al agregar una actualización. El contenido se trata siempre como texto plano.
+
+## Monitoreo y salud
+
+El endpoint de salud es público y no requiere sesión ni credenciales. Es el
+único endpoint implementado actualmente en el scaffold del backend.
+
+| Método | Ruta | Estado | Resultado |
+|---|---|---|---|
+| GET | `/api/health` | Implementado | Estado HTTP del backend (público, responde HTTP 200). |
+
+Respuesta exitosa:
+
+```json
+{
+  "status": "UP"
+}
+```
+
+> **Nota:** Este endpoint valida únicamente la capacidad de respuesta HTTP del
+> servidor de la aplicación en ejecución. No comprueba conectividad con la base
+> de datos (PostgreSQL se incorpora en UL-03) ni la disponibilidad de las
+> funciones completas del producto.
 
 ## Errores
 
