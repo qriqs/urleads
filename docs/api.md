@@ -35,8 +35,8 @@ credenciales reales no se incluirán en documentación, fixtures ni repositorio.
 | POST | `/api/leads` | Crear lead; responde 201 y representación. |
 | PUT | `/api/leads/{id}` | Reemplazar campos editables; responde 200. |
 | DELETE | `/api/leads/{id}` | Eliminar lead y notas; responde 204. |
-| GET | `/api/leads/{id}/notes` | Listar notas cronológicas. |
-| POST | `/api/leads/{id}/notes` | Crear nota; responde 201. |
+| GET | `/api/leads/{id}/notes` | Listar entradas internas de bitácora cronológicamente. |
+| POST | `/api/leads/{id}/notes` | Registrar entrada interna; responde 201. |
 | GET | `/api/dashboard` | Resumen y pendientes del usuario. |
 
 La lista acepta `search`, `stage`, `followUp` y `page`; el tamaño de página
@@ -70,13 +70,18 @@ Ejemplo de creación/actualización:
 }
 ```
 
-Ejemplo de nota:
+Ejemplo de entrada interna de bitácora (no se envía al cliente):
 
 ```json
 {
   "content": "Solicitó recibir la propuesta el viernes."
 }
 ```
+
+Cada entrada devuelve su identificador y fecha de registro, además del
+contenido. El listado se ordena del más antiguo al más reciente para facilitar
+la lectura del progreso; la interfaz puede desplazarse a la entrada más nueva
+al agregar una actualización. El contenido se trata siempre como texto plano.
 
 ## Errores
 
