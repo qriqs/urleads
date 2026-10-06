@@ -7,7 +7,8 @@ ninguna sustituye por completo a las otras.
 ## Pruebas automatizadas de desarrolladores
 
 Karlo y Alexander implementan y mantienen las pruebas del backend en sus
-módulos. Sebas ejecuta los checks frontend que existan en el proyecto.
+módulos. Sebas ejecuta los checks frontend que existan en el proyecto. El
+reparto exacto entre backend y UI está en Linear y en `docs/backlog.md`.
 
 ### Acceso a datos
 
@@ -40,7 +41,9 @@ una prueba del repositorio.
 
 Villa mantiene una colección alineada con `docs/api.md`. Cristopher acompaña la
 configuración de cookies y CSRF. Usar exclusivamente datos ficticios y no
-guardar credenciales reales en la colección.
+guardar credenciales reales en la colección. El smoke test temprano de Villa
+comprueba solo que el scaffold Spring y PostgreSQL arrancan; no repite estas
+pruebas funcionales.
 
 La colección debe incluir login válido e inválido, consulta de sesión,
 protección sin sesión y los métodos GET, POST, PUT y DELETE para leads. Cuando
