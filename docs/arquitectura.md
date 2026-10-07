@@ -43,6 +43,14 @@ flowchart LR
 
 ## Modelo de datos
 
+El esquema relacional inicial se encuentra implementado mediante la migración
+versionada de Flyway `V1__initial_schema.sql` (tarea UL-03 / DSW-10). Define
+las tablas `usuario`, `lead` y `nota`, sus claves foráneas, índices prácticos y
+restricciones de integridad (nombre de 2 a 120 caracteres, al menos un medio de
+contacto no vacío, etapas permitidas, invariante de lead cerrado sin fecha de
+seguimiento y eliminación de notas en cascada al suprimir un lead). Las entidades
+y repositorios JPA se implementarán en la siguiente tarea (UL-07).
+
 ```mermaid
 erDiagram
     USUARIO ||--o{ LEAD : registra
