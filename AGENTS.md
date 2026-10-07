@@ -125,12 +125,11 @@ Use these names as planning labels only. Do not assume which person is running
 an agent. Work on the task the user assigns, coordinate through the team's
 chosen GitHub process, and avoid silently moving another person's work.
 
-The Linear project is [UrLeads in DSW2](https://linear.app/enmanuelprojects/project/urleads-b3c2085df458).
-Karlo's Linear account was not returned by the workspace user lookup, so his
-issues remain unassigned with his intended ownership stated in each description.
-For defect-reserve tasks, use the canonical issues DSW-33 (frontend), DSW-29
-(lead data), and DSW-31 (security/integration); their duplicate copies are in
-Linear's Duplicate state.
+The Linear project is [UrLeads in DSW2](https://linear.app/enmanuelprojects/project/urleads-b3c2085df458)
+and is In Progress. Karlo's confirmed Linear account is
+`i202404879@cibertec.edu.pe`; his backend issues are assigned to that account.
+For defect-reserve tasks, use DSW-33 (frontend), DSW-29 (lead data), and DSW-31
+(security/integration). Duplicate issues were removed from the project.
 
 For task boundaries, DSW-8 owns the minimal Spring Boot scaffold and health
 endpoint; DSW-10 owns local PostgreSQL and schema migration; DSW-16 is only a
@@ -147,7 +146,9 @@ local startup/connectivity check, while DSW-22 is the Postman API verification.
 
 Do not treat the early Railway task as a production release: it validates only
 the minimal scaffold and database connection, and requires instructor approval
-and explicit cost approval. UL-20b covers the integrated release.
+and explicit cost approval. UL-20b covers the integrated release and depends on
+the connected editing/filter, notes, and dashboard screens. DSW-38 is the first
+QA pass; defect fixes and retests follow it before final validation.
 
 ## Working rules
 
