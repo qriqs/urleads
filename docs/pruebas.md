@@ -60,6 +60,11 @@ Villa usa el navegador para recorrer el producto como usuario y reporta
 problemas reproducibles. No se espera que Villa escriba pruebas unitarias ni
 corrija módulos de producción.
 
+La primera ronda de QA (DSW-38) registra resultados y defectos reproducibles
+antes de las tareas de corrección. Después, Villa vuelve a ejecutar los casos
+afectados y registra la re-prueba en los issues de corrección. La ronda inicial
+no espera a que esos issues estén terminados.
+
 Recorridos mínimos:
 
 1. Inicia sesión y cierra sesión; intenta entrar a una ruta privada sin sesión.
@@ -88,8 +93,9 @@ Cada defecto que Villa encuentre debe incluir:
 - Estado de re-prueba después de la corrección.
 
 Linear será el tablero de seguimiento. El responsable del módulo corrige el
-defecto en código; Villa repite los pasos y solo entonces marca la verificación
-manual como aprobada. Capturar un error sin reproducirlo no confirma su causa.
+defecto en código; Villa repite los pasos después de la corrección y registra
+el resultado. Capturar un error sin reproducirlo no confirma su causa. Si la
+ronda inicial no encuentra defectos relevantes, registra ese resultado en QA.
 
 ## Validación final
 
