@@ -13,7 +13,7 @@ completos en el informe antes de asignar tareas a cuentas de Linear.
 |---|---|---|
 | Cristopher | Plataforma, integración y coordinación técnica | Entorno local, CI, build integrado, despliegue Railway y apoyo a seguridad e integración. |
 | Sebas | Frontend completo | Diseño visual, componentes, pantallas, integración React/API y calidad responsive. |
-| Karlo | API y datos de leads | CRUD, validaciones, filtros, reglas de etapa/seguimiento y pruebas automatizadas de datos; cuenta Linear pendiente. |
+| Karlo | API y datos de leads | CRUD, validaciones, filtros, reglas de etapa/seguimiento y pruebas automatizadas de datos; asignado en Linear como `i202404879@cibertec.edu.pe`. |
 | Alexander | Seguridad y funciones de servidor | Login/sesión/CSRF, API de bitácora y dashboard; tests de autenticación y endpoints. |
 | Villa | QA manual, Postman y entrega académica | Colección y ejecución Postman, recorridos manuales, registro/reprueba de errores, capturas e informe/demo. |
 
@@ -51,12 +51,17 @@ PostgreSQL arrancan y se conectan. La colección Postman prueba luego las rutas
 funcionales; así el smoke test no duplica UL-16. El deploy temprano también
 usa solo el scaffold y la DB, no espera CRUD/login completos.
 
+La primera ronda de QA end-to-end (DSW-38) se cierra el 14 de octubre con
+resultados y defectos reproducibles; las tareas de corrección y re-prueba
+siguen el 15.
+
 ## Estimación de disponibilidad
 
-Se planifica con una disponibilidad declarada de 2–3 horas diarias por persona
-hasta el 16 de octubre. Las estimaciones son horas de esfuerzo, no horas
-calendario. Cada integrante confirma en Linear su disponibilidad real y el
-responsable técnico revisa las tareas que excedan cuatro horas.
+El equipo espera resolver las tareas rápidamente con el contexto del proyecto
+y las herramientas de agentes disponibles. La duración real depende del trabajo
+y de las comprobaciones requeridas; una tarea solo se marca terminada cuando
+cumple sus criterios de aceptación. Revisa la carga y ajusta fechas si una tarea
+se bloquea o requiere más tiempo.
 
 ## Fechas objetivo
 
@@ -64,19 +69,21 @@ responsable técnico revisa las tareas que excedan cuatro horas.
 |---|---|---|
 | 6–8 oct. | Alcance, contrato, scaffold y DB local | Contrato/boceto acordados, Spring health y PostgreSQL reproducible. |
 | 8–9 oct. | Smoke test y nube temprana | Arranque/conectividad local y deploy de scaffold autorizado; sin CRUD completo. |
-| 10–12 oct. | CRUD, UI de leads, detalle y bitácora | Operaciones API, lista/alta/edición y detalle integrados. |
-| 11–14 oct. | Reglas, dashboard y verificación | Etapas/fechas, dashboard real, Postman y QA móvil. |
-| 14 oct. | Verificación y corrección | Seguridad, móvil, persistencia y errores importantes revisados. |
+| 10–11 oct. | CRUD, login y lista de leads | Operaciones API y primera UI de leads conectadas. |
+| 11–13 oct. | Detalle, bitácora y reglas | Detalle de lead, notas internas y filtros integrados. |
+| 13–14 oct. | Dashboard, edición y release | Pantallas conectadas listas; después se publica la release integrada. |
+| 14 oct. | Primera ronda de QA | QA escritorio/móvil y defectos reproducibles registrados. |
 | 15 oct. | Candidata | Congelar alcance, completar informe y preparar demo. |
-| 16 oct. | MVP validado | URL revisada, datos ficticios, respaldo y ensayo. |
+| 15 oct. | Correcciones y re-pruebas | Corregir defectos priorizados y revisar seguridad/persistencia. |
+| 16 oct. | MVP validado | URL revisada, datos ficticios, respaldo, demo y decisión Go/No-Go. |
 | 17–18 oct. | Margen | Corregir solo problemas importantes y practicar sustentación. |
 
-Las fechas dependen de disponibilidad y avance real; no son garantía. El primer
-deploy del 9 de octubre prueba solo el scaffold y la conexión a PostgreSQL. El
-smoke test del 8 es solo local; Postman prueba la API funcional después de que
-sus endpoints estén listos. El primer recorrido CRUD queda para el 10 de
-octubre. Si el 9 no existe un recorrido funcional, se recortan adornos y trabajo
-no esencial, no seguridad, persistencia, operaciones REST ni despliegue.
+Las fechas dependen del avance real y no son garantía. El primer deploy del 9
+de octubre prueba solo el scaffold y la conexión a PostgreSQL. El smoke test
+del 8 es solo local; Postman prueba la API funcional después de que sus
+endpoints estén listos. El 14 se completan primero el dashboard y las pantallas
+conectadas, luego la release y finalmente la primera ronda de QA. El 15 se
+reservan correcciones y re-pruebas antes de cerrar revisión e informe.
 
 ## Linear y GitHub
 
@@ -89,11 +96,10 @@ Cada tarea en Linear incluye un resultado comprobable, responsable,
 revisor, prioridad, esfuerzo estimado en horas, fecha objetivo, dependencias y
 criterios de aceptación. Urgent queda reservado para DSW-9 (login académico)
 y DSW-13 (CRUD evaluado); High indica trabajo crítico y Medium apoyo/diseño.
-Los tickets UL-22a/b/c duplicados durante la carga
-quedaron marcados como duplicados; usar como canónicos DSW-33 (frontend),
-DSW-29 (datos) y DSW-31 (seguridad/integración). La cuenta de Karlo no aparece
-en Linear, por lo que sus tickets están sin asignación con responsable previsto
-indicado en la descripción. UL-02 ahora incluye scaffold Spring Boot y health;
+Los tickets UL-22a/b/c duplicados durante la carga se eliminaron; usa los
+canónicos DSW-33 (frontend), DSW-29 (datos) y DSW-31 (seguridad/integración).
+La cuenta de Karlo es `i202404879@cibertec.edu.pe` y sus tareas están asignadas.
+UL-02 ahora incluye scaffold Spring Boot y health;
 UL-10 es solo smoke test de arranque, mientras UL-16 cubre pruebas funcionales
 Postman. UL-08 implementa CRUD y UL-17 reglas/filtros backend; Sebas consume
 esos filtros en UL-13b. El dashboard API usa leads y reglas, no notas.
