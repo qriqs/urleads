@@ -4,11 +4,13 @@ La API usa JSON y el prefijo `/api`.
 
 Actualmente, el único endpoint implementado en el backend es la comprobación
 pública de salud `GET /api/health` (responde HTTP 200 con `{"status":"UP"}`).
-Los endpoints de autenticación, gestión de leads, bitácora interna y dashboard
-descritos en este documento son un contrato inicial planificado; su
-implementación se realizará en tareas posteriores del backlog. Las rutas de
-leads, bitácora y dashboard requerirán sesión. La obtención inicial del token
-CSRF y el login no requieren una sesión autenticada previa.
+El backend cuenta con la configuración de PostgreSQL 16 y el esquema inicial
+versionado mediante Flyway (`V1__initial_schema.sql`). Los endpoints de
+autenticación, gestión de leads, bitácora interna y dashboard descritos en este
+documento corresponden al contrato acordado del MVP y se implementarán en las
+siguientes tareas del backlog. Las rutas de leads, bitácora y dashboard
+requerirán sesión. La obtención inicial del token CSRF y el login no requieren
+una sesión autenticada previa.
 
 ## Autenticación
 
@@ -109,9 +111,9 @@ Respuesta exitosa:
 ```
 
 > **Nota:** Este endpoint valida únicamente la capacidad de respuesta HTTP del
-> servidor de la aplicación en ejecución. No comprueba conectividad con la base
-> de datos (PostgreSQL se incorpora en UL-03) ni la disponibilidad de las
-> funciones completas del producto.
+> servidor de la aplicación en ejecución. Se mantiene HTTP-only con
+> `{"status":"UP"}` sin realizar comprobaciones de conectividad ni de
+> disponibilidad de PostgreSQL ni del resto de funciones del producto.
 
 ## Errores
 

@@ -24,9 +24,10 @@ y mantener cada seguimiento a la vista.
 ---
 
 > [!NOTE]
-> 🚧 **En construcción.** El repositorio ya incluye un backend mínimo con
-> `GET /api/health`. El frontend, PostgreSQL, login, CRUD y despliegue siguen
-> planificados. La documentación describe el MVP, no una aplicación terminada.
+> 🚧 **En construcción.** El repositorio cuenta con el backend mínimo en Spring Boot,
+> PostgreSQL 16 con Docker Compose y migración inicial Flyway para el esquema de datos.
+> El frontend, login, CRUD de leads y despliegue en la nube siguen en desarrollo.
+> La documentación describe el MVP, no una aplicación terminada.
 
 ## 🧭 El producto
 
@@ -53,10 +54,10 @@ siguientes tareas del [backlog](docs/backlog.md).
 
 | Área | Disponible hoy | Trabajo pendiente |
 |---|---|---|
-| Backend | Spring Boot, Java 21, Maven Wrapper y health público. | Login, CRUD, filtros, bitácora y dashboard. |
-| Pruebas | Carga del contexto y contrato HTTP de health. | Pruebas de datos, seguridad y flujos de producto. |
+| Backend | Spring Boot, Java 21, Maven Wrapper, JDBC y health público. | Login, CRUD, filtros, bitácora y dashboard. |
+| Pruebas | Contexto básico, contrato de health, guard de pruebas y migración Flyway (`db-integration`). | Pruebas de repositorios (UL-07), seguridad y flujos de producto. |
 | Interfaz | Prototipo HTML con datos ficticios. | Aplicación React responsive conectada a la API. |
-| Datos | Modelo y estrategia documentados. | PostgreSQL, Flyway y entorno local. |
+| Datos | PostgreSQL 16 con Docker Compose y migración inicial Flyway (V1). | Entidades Spring Data JPA y repositorios CRUD (UL-07). |
 | Entrega | Guías técnicas y planificación del equipo. | CI, build integrado y despliegue autorizado. |
 
 ## 🎨 Diseño del MVP
@@ -80,9 +81,9 @@ acordadas para construir el MVP.
 | Build y tests | Maven Wrapper · JUnit · Spring Boot Test · MockMvc | Configurados |
 | Frontend | React · TypeScript · Vite · React Router | Planificado |
 | UI y datos remotos | Tailwind CSS · shadcn/ui · TanStack Query · `fetch` | Planificados |
-| Persistencia | PostgreSQL · Spring Data JPA · Flyway | Planificada |
+| Persistencia | PostgreSQL · Spring Data JPA (planificado) · Spring JDBC · Flyway | Esquema V1 y Flyway implementados; JPA planificado para UL-07 |
 | Seguridad y validación | Spring Security · BCrypt · Bean Validation | Planificadas |
-| Entorno y entrega | Docker Compose · GitHub Actions · Railway | Planificados |
+| Entorno y entrega | Docker Compose · GitHub Actions · Railway | PostgreSQL local configurado; CI y nube planificados |
 
 La arquitectura prevista usa **una aplicación Spring Boot** para servir la API
 y el frontend compilado, más **un servicio PostgreSQL**. Railway está sujeto a
@@ -90,23 +91,45 @@ aceptación del docente y aprobación explícita de costos.
 
 ## 💻 Desarrollo local
 
-Estos pasos arrancan el backend mínimo. Todavía no necesitas PostgreSQL ni
-dependencias frontend para ejecutarlo.
+Estos pasos describen cómo compilar el backend, ejecutar las pruebas y arrancar
+el servidor en desarrollo.
 
-**Requisitos:** JDK 21 instalado y conexión a internet en la primera ejecución.
-Maven Wrapper descarga Maven y las dependencias que falten; **no instala Java**
-ni requiere Maven global.
+**Requisitos:** JDK 21 instalado, Docker y Docker Compose para la base de datos
+local, y conexión a internet en la primera ejecución. Maven Wrapper descarga
+Maven y las dependencias que falten; **no instala Java** ni requiere Maven global.
 
-### 1. Prepara la terminal
+Para compilar y ejecutar las pruebas básicas del scaffold no requieres Docker;
+para iniciar el servidor con persistencia o ejecutar las pruebas de integración
+necesitas PostgreSQL activo (ver [infra/README.md](infra/README.md)).
 
-Desde la raíz del repositorio, entra una sola vez al backend:
+### 1. Inicia PostgreSQL local (para desarrollo)
+
+Si vas a ejecutar el servidor de desarrollo con persistencia, prepara el
+contenedor local desde la raíz del repositorio:
+
+```bash
+# Copia la plantilla si aún no existe (no sobreescribe una existente)
+[ ! -f infra/.env ] && cp infra/.env.example infra/.env
+
+# Edita infra/.env con tu editor para definir POSTGRES_PASSWORD
+nano infra/.env
+
+# Levanta el servicio desde infra/
+cd infra && docker compose up -d --wait && cd ..
+```
+
+Consulta [infra/README.md](infra/README.md) para más opciones de gestión,
+reanudación de contenedores y alternativas sin Docker.
+
+### 2. Prepara la terminal del backend
+
+Sitúate en el directorio `backend/`:
 
 ```bash
 cd backend
 ```
 
-Todos los comandos siguientes se ejecutan desde `backend/`. Si ya estás allí,
-no repitas `cd backend`.
+Todos los comandos siguientes se ejecutan desde `backend/`.
 
 <details>
 <summary><strong>☕ Seleccionar Java 21 si tu terminal usa otra versión</strong></summary>
@@ -154,9 +177,10 @@ java -version
 En Windows, sustituye `./mvnw` por `mvnw.cmd` en Command Prompt o
 `.\mvnw.cmd` en PowerShell.
 
-### 2. Compila y verifica
+### 3. Compila y verifica el scaffold
 
-Ejecuta las pruebas y genera el JAR del backend:
+Ejecuta las pruebas unitarias del scaffold (contexto y health, sin requerir
+Docker ni base de datos activa) y genera el JAR:
 
 ```bash
 ./mvnw clean verify
@@ -164,16 +188,38 @@ Ejecuta las pruebas y genera el JAR del backend:
 
 El artefacto se genera en `target/urleads-backend-0.0.1-SNAPSHOT.jar`.
 
-### 3. Arranca el servidor
+> **Pruebas de integración con base de datos:** El backend cuenta con una suite
+> de pruebas de migración e integridad (`DatabaseMigrationIT`) bajo el perfil
+> `db-integration`. Estas pruebas **nunca** se ejecutan contra la base de datos de
+> desarrollo, sino contra una instancia de pruebas aislada con nombre terminado
+> en `_test` y variables `TEST_DB_*` (ver guía detallada en
+> [infra/README.md](infra/README.md)).
 
-Para trabajar en desarrollo, inicia Spring Boot desde Maven:
+### 4. Arranca el servidor
+
+Para iniciar el servidor con conexión a tu base de datos de desarrollo:
+
+1. Exporta las variables de conexión en la terminal donde ejecutarás el backend:
+
+   ```bash
+   export DB_URL="jdbc:postgresql://localhost:5432/urleads"
+   export DB_USERNAME="urleads_app"
+   # Lee la contraseña de forma segura para no dejarla en el historial:
+   printf 'Introduce DB_PASSWORD: '
+   read -r -s DB_PASSWORD
+   printf '\n'
+   export DB_PASSWORD
+   ```
+
+2. Inicia Spring Boot desde Maven:
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
 El puerto predeterminado es **8080**. Elige una sola forma de arranque y detén
-el servidor antes de cambiar a otra.
+el servidor antes de cambiar a otra. Flyway aplicará automáticamente las
+migraciones pendientes al iniciar.
 
 <details>
 <summary><strong>⚙️ Ejecutar el JAR o usar otro puerto</strong></summary>
@@ -196,7 +242,7 @@ y luego ejecuta Java o Maven Wrapper.
 
 </details>
 
-### 4. Comprueba health
+### 5. Comprueba health
 
 Desde otra terminal, consulta el endpoint público:
 
@@ -231,7 +277,7 @@ urleads/
 │   ├── mvnw.cmd             # Wrapper para Windows
 │   └── pom.xml              # Dependencias y build
 ├── docs/                    # Producto, API, diseño y entrega académica
-├── infra/                   # Guía; PostgreSQL local se añade en UL-03
+├── infra/                   # Docker Compose y variables de entorno para PostgreSQL local
 ├── AGENTS.md                # Convenciones y límites para agentes
 └── README.md
 ```
