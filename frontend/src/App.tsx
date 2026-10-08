@@ -29,7 +29,10 @@ export default function App() {
       <Navbar />
 
       {/* Hero Section */}
-      <main className="relative z-10 flex-1 flex flex-col items-center w-full px-4 pt-2 md:pt-4 overflow-hidden">
+      <main 
+        className="relative z-10 flex-1 flex flex-col items-center w-full px-4 pt-2 md:pt-4 overflow-hidden"
+        style={{ zoom: 0.92 }}
+      >
         {/* 1. Badge (top) */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
