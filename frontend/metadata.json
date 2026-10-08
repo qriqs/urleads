@@ -1,0 +1,6 @@
+{
+  "name": "Nexora - The Future of Smarter Automation",
+  "description": "Automate your busywork with intelligent agents that learn, adapt, and execute—so your team can focus on what matters most.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
