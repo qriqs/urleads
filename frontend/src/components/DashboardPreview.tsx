@@ -117,7 +117,6 @@ export const DashboardPreview: React.FC = () => {
                     <span>Contactos</span>
                   </div>
                   <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground">
-                  <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground">
                     <Building2 className="h-3.5 w-3.5" />
                     <span>Empresas</span>
                   </div>
