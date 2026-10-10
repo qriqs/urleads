@@ -14,10 +14,13 @@ export default function MainLayout() {
       {/* Sidebar - Desktop (hidden on mobile <=760px based on UL-05) */}
       <aside className="hidden md:flex flex-col w-[246px] border-r border-border bg-card p-4 justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-8 px-2">
-            <div className="h-6 w-6 rounded bg-foreground text-background flex items-center justify-center font-bold text-xs">U</div>
-            <span className="font-semibold text-foreground text-sm tracking-tight">UrLeads</span>
-          </div>
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 mb-8 px-2 hover:opacity-90 transition-opacity"
+          >
+            <span className="text-base select-none text-foreground">✦</span>
+            <span className="font-semibold text-foreground tracking-tight">UrLeads</span>
+          </Link>
           
           <nav className="space-y-1">
             {navItems.map((item) => {
@@ -46,10 +49,13 @@ export default function MainLayout() {
       <main className="flex-1 flex flex-col h-screen overflow-y-auto pb-16 md:pb-0">
         {/* Mobile Top Bar */}
         <header className="md:hidden flex items-center justify-between p-4 border-b border-border bg-background sticky top-0 z-10">
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded bg-foreground text-background flex items-center justify-center font-bold text-xs">U</div>
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+          >
+            <span className="text-base select-none text-foreground">✦</span>
             <span className="font-semibold text-foreground text-sm tracking-tight">UrLeads</span>
-          </div>
+          </Link>
           <button className="text-muted-foreground">
             <LogOut className="h-5 w-5" />
           </button>

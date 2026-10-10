@@ -1,0 +1,6 @@
+{
+  "name": "Weather Forecast — Central Jakarta",
+  "description": "Aurora Weather Forecast — Central Jakarta liquid-glass dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

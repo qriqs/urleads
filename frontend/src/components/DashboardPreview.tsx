@@ -44,10 +44,8 @@ export const DashboardPreview: React.FC = () => {
           {/* Top Bar */}
           <div className="h-11 px-3.5 border-b border-border bg-background flex items-center justify-between gap-4">
             {/* Left: Logo & Org Switcher */}
-            <div className="flex items-center gap-2">
-              <div className="h-5 w-5 rounded bg-foreground text-background flex items-center justify-center font-bold text-[10px] shadow-xs">
-                U
-              </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-base select-none text-foreground">✦</span>
               <span className="font-semibold text-foreground text-xs tracking-tight">
                 UrLeads
               </span>

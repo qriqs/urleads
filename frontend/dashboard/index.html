@@ -1,0 +1,1206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Weather Forecast — Central Jakarta</title>
+    <meta name="description" content="Aurora Weather Forecast — Central Jakarta liquid-glass dashboard." />
+    <meta property="og:title" content="Weather Forecast — Central Jakarta" />
+    <meta property="og:description" content="Aurora Weather Forecast — Central Jakarta liquid-glass dashboard." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+      :root {
+        --u: min(100vw / 1357, 100dvh / 871);
+        --ink: #ffffff;
+        --glass: rgba(255, 255, 255, .155);
+        --glass-line: rgba(255, 255, 255, .20);
+        --e-out: cubic-bezier(.16, 1, .3, 1);
+        --e-soft: cubic-bezier(.22, .61, .36, 1);
+        --e-pen: cubic-bezier(.37, .01, .2, 1);
+      }
+
+      @supports not (height: 100dvh) {
+        :root {
+          --u: min(100vw / 1357, 100vh / 871);
+        }
+      }
+
+      *, *::before, *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #04121b;
+        color: var(--ink);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-feature-settings: "kern" 1;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* ── Stage & Background ── */
+      .stage {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        background-color: #04121b;
+        background-image: url("./assets/storm-background.jpg");
+        background-size: cover;
+        background-position: center 25%;
+        background-repeat: no-repeat;
+      }
+
+      .stage::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(105deg, rgba(4, 16, 24, .34) 0%, rgba(4, 16, 24, .20) 40%, rgba(4, 16, 24, .06) 78%, transparent 100%),
+          linear-gradient(180deg, rgba(4, 16, 24, .12) 0%, transparent 22%),
+          linear-gradient(0deg, rgba(4, 16, 24, .07), rgba(4, 16, 24, .07));
+      }
+
+      /* ── Keyframes Choreography ── */
+      @keyframes riseIn {
+        from {
+          opacity: 0;
+          transform: translateY(var(--ry, calc(14 * var(--u))));
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      @keyframes slideL {
+        from {
+          opacity: 0;
+          transform: translate3d(calc(-26 * var(--u)), 0, 0);
+        }
+        to {
+          opacity: 1;
+          transform: translate3d(0, 0, 0);
+        }
+      }
+
+      @keyframes slideR {
+        from {
+          opacity: 0;
+          transform: translate3d(calc(30 * var(--u)), 0, 0) scale(.985);
+        }
+        to {
+          opacity: 1;
+          transform: translate3d(0, 0, 0) scale(1);
+        }
+      }
+
+      @keyframes popIn {
+        from {
+          opacity: 0;
+          transform: scale(.7);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      @keyframes growY {
+        from {
+          transform: scaleY(0);
+        }
+        to {
+          transform: scaleY(1);
+        }
+      }
+
+      @keyframes lineUp {
+        from {
+          transform: translateY(115%);
+        }
+        to {
+          transform: translateY(0%);
+        }
+      }
+
+      @keyframes wipeRight {
+        from {
+          clip-path: inset(0 100% 0 0);
+        }
+        to {
+          clip-path: inset(0 0 0 0);
+        }
+      }
+
+      @keyframes wipeDown {
+        from {
+          clip-path: inset(0 0 100% 0);
+          opacity: 0;
+        }
+        to {
+          clip-path: inset(0 0 0 0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes drawLine {
+        from {
+          stroke-dashoffset: 1;
+        }
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+
+      @keyframes wipeX {
+        from {
+          transform: scaleX(0);
+        }
+        to {
+          transform: scaleX(1);
+        }
+      }
+
+      @keyframes sheen {
+        from {
+          transform: translate3d(-150%, 0, 0) skewX(-18deg);
+        }
+        to {
+          transform: translate3d(260%, 0, 0) skewX(-18deg);
+        }
+      }
+
+      /* ── Left Sidebar ── */
+      .sidebar {
+        position: absolute;
+        left: calc(16 * var(--u));
+        top: calc(14 * var(--u));
+        bottom: calc(7 * var(--u));
+        width: calc(72 * var(--u));
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: calc(22 * var(--u));
+        padding-bottom: calc(52 * var(--u));
+        background: linear-gradient(180deg,
+          rgba(255, 255, 255, .125) 0%,
+          rgba(255, 255, 255, .135) 13%,
+          rgba(255, 255, 255, .098) 34%,
+          rgba(255, 255, 255, .092) 100%);
+        backdrop-filter: blur(calc(18 * var(--u))) saturate(115%);
+        -webkit-backdrop-filter: blur(calc(18 * var(--u))) saturate(115%);
+        border-radius: calc(26 * var(--u));
+        border: 1px solid rgba(255, 255, 255, .16);
+        z-index: 10;
+        animation: slideL .92s var(--e-out) .05s both;
+      }
+
+      .sidebar .pip {
+        position: absolute;
+        left: calc(-2 * var(--u));
+        top: calc(131 * var(--u));
+        width: calc(5 * var(--u));
+        height: calc(29 * var(--u));
+        border-radius: calc(3 * var(--u));
+        background: #ffffff;
+        box-shadow: 0 0 calc(10 * var(--u)) rgba(255, 255, 255, .55);
+        transform-origin: top center;
+        animation: growY .50s var(--e-out) .68s both;
+      }
+
+      .logo-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: calc(40 * var(--u));
+        height: calc(40 * var(--u));
+        animation: popIn .70s var(--e-out) .26s both;
+      }
+
+      .logo-btn svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .nav {
+        margin-top: calc(57.5 * var(--u));
+        display: flex;
+        flex-direction: column;
+        gap: calc(43 * var(--u));
+        align-items: center;
+      }
+
+      .nav a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: calc(23 * var(--u));
+        height: calc(23 * var(--u));
+        color: #ffffff;
+        opacity: .78;
+        text-decoration: none;
+        transition: opacity .2s var(--e-out), transform .2s var(--e-out);
+      }
+
+      .nav a svg {
+        width: calc(23 * var(--u));
+        height: calc(23 * var(--u));
+      }
+
+      .nav a[aria-current="page"] {
+        opacity: 1;
+      }
+
+      .nav a:hover {
+        opacity: 1;
+        transform: translateY(calc(-1 * var(--u)));
+      }
+
+      .nav a:nth-child(1) { animation: riseIn .60s var(--e-out) .36s both; }
+      .nav a:nth-child(2) { animation: riseIn .60s var(--e-out) .41s both; }
+      .nav a:nth-child(3) { animation: riseIn .60s var(--e-out) .46s both; }
+      .nav a:nth-child(4) { animation: riseIn .60s var(--e-out) .51s both; }
+      .nav a:nth-child(5) { animation: riseIn .60s var(--e-out) .56s both; }
+
+      .logout {
+        margin-top: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: calc(23 * var(--u));
+        height: calc(23 * var(--u));
+        color: #ffffff;
+        opacity: .78;
+        text-decoration: none;
+        transition: opacity .2s var(--e-out), transform .2s var(--e-out);
+        animation: riseIn .60s var(--e-out) .70s both;
+      }
+
+      .logout svg {
+        width: calc(23 * var(--u));
+        height: calc(23 * var(--u));
+      }
+
+      .logout:hover {
+        opacity: 1;
+        transform: translateY(calc(-1 * var(--u)));
+      }
+
+      /* ── Top Header ── */
+      .header {
+        position: absolute;
+        top: calc(22 * var(--u));
+        left: calc(126 * var(--u));
+        right: calc(37 * var(--u));
+        height: calc(52 * var(--u));
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 10;
+      }
+
+      .header-user {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .header-user .welcome {
+        font-size: calc(16 * var(--u));
+        font-weight: 400;
+        line-height: 1;
+        color: rgba(255, 255, 255, .93);
+        animation: riseIn .70s var(--e-out) .14s both;
+      }
+
+      .header-user .who {
+        font-size: calc(19.5 * var(--u));
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: calc(-.35 * var(--u));
+        margin-top: calc(6 * var(--u));
+        color: #ffffff;
+        animation: riseIn .80s var(--e-out) .22s both;
+      }
+
+      .header-tools {
+        display: flex;
+        align-items: center;
+        gap: calc(16 * var(--u));
+      }
+
+      .tool {
+        width: calc(52 * var(--u));
+        height: calc(52 * var(--u));
+        border-radius: 50%;
+        background: rgba(255, 255, 255, .15);
+        backdrop-filter: blur(calc(16 * var(--u))) saturate(115%);
+        -webkit-backdrop-filter: blur(calc(16 * var(--u))) saturate(115%);
+        border: 1px solid rgba(255, 255, 255, .20);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        cursor: pointer;
+        outline: none;
+        transition: background .2s var(--e-out), transform .2s var(--e-out);
+      }
+
+      .tool:hover {
+        background: rgba(255, 255, 255, .24);
+      }
+
+      .tool svg {
+        width: calc(22 * var(--u));
+        height: calc(22 * var(--u));
+      }
+
+      .header-tools .tool:nth-child(1) { animation: popIn .58s var(--e-out) .30s both; }
+      .header-tools .tool:nth-child(2) { animation: popIn .58s var(--e-out) .365s both; }
+      .header-tools .tool:nth-child(3) { animation: popIn .58s var(--e-out) .43s both; }
+      .header-tools .tool-avatar       { animation: popIn .58s var(--e-out) .495s both; }
+
+      .tool-avatar {
+        padding: 0;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .tool-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .avatar-fallback {
+        width: calc(24 * var(--u));
+        height: calc(24 * var(--u));
+        position: absolute;
+      }
+
+      /* ── Hero Section ── */
+      .hero {
+        position: absolute;
+        left: calc(126 * var(--u));
+        top: calc(136 * var(--u));
+        max-width: calc(560 * var(--u));
+        z-index: 5;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        height: calc(36 * var(--u));
+        border-radius: calc(18 * var(--u));
+        padding: 0 calc(15 * var(--u));
+        background: rgba(255, 255, 255, .175);
+        backdrop-filter: blur(calc(16 * var(--u))) saturate(115%);
+        -webkit-backdrop-filter: blur(calc(16 * var(--u))) saturate(115%);
+        border: 1px solid rgba(255, 255, 255, .22);
+        font-size: calc(14 * var(--u));
+        font-weight: 500;
+        color: #ffffff;
+        position: relative;
+        overflow: hidden;
+        animation: wipeRight .80s var(--e-out) .44s both;
+      }
+
+      .hero h1 {
+        font-family: 'Inter Tight', 'Inter', sans-serif;
+        font-weight: 500;
+        font-size: calc(63 * var(--u));
+        line-height: calc(78 * var(--u));
+        letter-spacing: calc(.25 * var(--u));
+        color: #ffffff;
+        margin-top: calc(18 * var(--u));
+      }
+
+      .hero h1 .ln {
+        display: block;
+        overflow: hidden;
+      }
+
+      .hero h1 .ln span {
+        display: block;
+      }
+
+      .hero h1 .ln:nth-child(1) span {
+        animation: lineUp 1.05s var(--e-out) .56s both;
+      }
+
+      .hero h1 .ln:nth-child(2) span {
+        animation: lineUp 1.05s var(--e-out) .67s both;
+      }
+
+      .blurb {
+        width: calc(480 * var(--u));
+        font-size: calc(15.2 * var(--u));
+        line-height: calc(24 * var(--u));
+        font-weight: 500;
+        letter-spacing: calc(-.3 * var(--u));
+        color: rgba(255, 255, 255, .95);
+        margin-top: calc(18 * var(--u));
+        animation: wipeDown .90s var(--e-soft) .90s both;
+      }
+
+      /* ── Forecast Strip ── */
+      .forecast {
+        position: absolute;
+        left: calc(126 * var(--u));
+        right: calc(396 * var(--u));
+        bottom: calc(99 * var(--u));
+        z-index: 5;
+      }
+
+      .forecast-temps {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding: 0 calc(6 * var(--u));
+      }
+
+      .ft-item {
+        display: flex;
+        align-items: center;
+        gap: calc(8 * var(--u));
+      }
+
+      .ft-val {
+        font-size: calc(37 * var(--u));
+        font-weight: 400;
+        letter-spacing: calc(-.7 * var(--u));
+        line-height: 1;
+        color: #ffffff;
+      }
+
+      .ft-icon {
+        width: calc(28 * var(--u));
+        height: calc(28 * var(--u));
+        color: #ffffff;
+      }
+
+      .forecast-temps .ft-item:nth-child(1) { animation: riseIn .55s var(--e-out) 1.26s both; }
+      .forecast-temps .ft-item:nth-child(2) { animation: riseIn .55s var(--e-out) 1.33s both; }
+      .forecast-temps .ft-item:nth-child(3) { animation: riseIn .55s var(--e-out) 1.40s both; }
+      .forecast-temps .ft-item:nth-child(4) { animation: riseIn .55s var(--e-out) 1.47s both; }
+      .forecast-temps .ft-item:nth-child(5) { animation: riseIn .55s var(--e-out) 1.54s both; }
+      .forecast-temps .ft-item:nth-child(6) { animation: riseIn .55s var(--e-out) 1.61s both; }
+
+      .wave-chart {
+        display: block;
+        width: 100%;
+        height: calc(230 * var(--u));
+        margin-top: calc(43 * var(--u));
+        overflow: visible;
+      }
+
+      .wline {
+        stroke-dasharray: 1;
+        stroke-dashoffset: 1;
+        animation: drawLine 1.60s var(--e-pen) 1.50s both;
+      }
+
+      #wclipr {
+        transform-origin: left center;
+        animation: wipeX 1.42s var(--e-pen) 1.72s both;
+      }
+
+      .forecast-days {
+        display: flex;
+        justify-content: space-between;
+        margin-top: calc(-31 * var(--u));
+        padding: 0 calc(6 * var(--u));
+        position: relative;
+        z-index: 2;
+      }
+
+      .day {
+        font-size: calc(18 * var(--u));
+        font-weight: 500;
+        color: rgba(255, 255, 255, .88);
+        text-align: center;
+      }
+
+      .day.on {
+        color: #ffffff;
+        font-weight: 600;
+      }
+
+      .forecast-days .day:nth-child(1) { animation: riseIn .50s var(--e-out) 2.100s both; }
+      .forecast-days .day:nth-child(2) { animation: riseIn .50s var(--e-out) 2.155s both; }
+      .forecast-days .day:nth-child(3) { animation: riseIn .50s var(--e-out) 2.210s both; }
+      .forecast-days .day:nth-child(4) { animation: riseIn .50s var(--e-out) 2.265s both; }
+      .forecast-days .day:nth-child(5) { animation: riseIn .50s var(--e-out) 2.320s both; }
+      .forecast-days .day:nth-child(6) { animation: riseIn .50s var(--e-out) 2.375s both; }
+
+      /* ── Right Rail ── */
+      .rail {
+        position: absolute;
+        right: calc(38 * var(--u));
+        top: calc(134 * var(--u));
+        bottom: calc(95 * var(--u));
+        width: calc(310 * var(--u));
+        display: flex;
+        flex-direction: column;
+        gap: calc(20 * var(--u));
+        z-index: 10;
+      }
+
+      .card {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(180deg,
+          rgba(255, 255, 255, .20) 0%,
+          rgba(255, 255, 255, .258) 24%,
+          rgba(255, 255, 255, .252) 78%,
+          rgba(255, 255, 255, .232) 100%);
+        backdrop-filter: blur(calc(26 * var(--u))) saturate(118%);
+        -webkit-backdrop-filter: blur(calc(26 * var(--u))) saturate(118%);
+        border-radius: calc(24 * var(--u));
+        border: 1px solid rgba(255, 255, 255, .22);
+      }
+
+      /* Specular Sheen Coda */
+      .card::after, .chip::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 38%;
+        pointer-events: none;
+        background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, .17) 50%, transparent 100%);
+        transform: translate3d(-150%, 0, 0) skewX(-18deg);
+        animation: sheen 1.15s var(--e-soft) 2.55s 1 both;
+      }
+
+      .rail .card:nth-child(1) { animation: slideR .95s var(--e-out) .80s both; }
+      .rail .card:nth-child(2) { animation: slideR .95s var(--e-out) .92s both; }
+      .rail .card:nth-child(3) { animation: slideR .95s var(--e-out) 1.03s both; }
+      .rail .card:nth-child(4) { animation: slideR .95s var(--e-out) 1.14s both; }
+
+      /* Big Card */
+      .card.big {
+        flex: 1;
+        min-height: calc(210 * var(--u));
+        border-radius: calc(26 * var(--u));
+        padding: calc(24 * var(--u)) calc(24 * var(--u));
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .card-loc {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: calc(18 * var(--u));
+        font-weight: 600;
+        color: #ffffff;
+        animation: riseIn .55s var(--e-out) 1.04s both;
+      }
+
+      .loc-pin {
+        width: calc(20 * var(--u));
+        height: calc(20 * var(--u));
+        color: #ffffff;
+      }
+
+      .big-temp {
+        font-size: calc(92 * var(--u));
+        font-weight: 500;
+        letter-spacing: calc(-4.4 * var(--u));
+        line-height: 1;
+        color: #ffffff;
+        margin: calc(10 * var(--u)) 0;
+        animation: riseIn .65s var(--e-out) 1.12s both;
+      }
+
+      .big-temp i {
+        font-style: normal;
+        font-size: calc(38 * var(--u));
+        vertical-align: top;
+        margin-left: calc(4 * var(--u));
+        opacity: .9;
+      }
+
+      .card-metrics {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        animation: riseIn .55s var(--e-out) 1.22s both;
+      }
+
+      .metric {
+        display: flex;
+        align-items: center;
+        gap: calc(6 * var(--u));
+        font-size: calc(14 * var(--u));
+        font-weight: 500;
+        color: #ffffff;
+        opacity: .95;
+      }
+
+      .m-icon {
+        width: calc(18 * var(--u));
+        height: calc(18 * var(--u));
+        color: #ffffff;
+      }
+
+      /* Row Cards */
+      .card.card-row {
+        height: calc(120 * var(--u));
+        flex-shrink: 0;
+        padding: calc(18 * var(--u)) calc(22 * var(--u));
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .row-info {
+        display: flex;
+        flex-direction: column;
+        animation: riseIn .50s var(--e-out) 1.28s both;
+      }
+
+      .row-country {
+        font-size: calc(12.5 * var(--u));
+        font-weight: 400;
+        opacity: .72;
+        color: #ffffff;
+      }
+
+      .row-city {
+        font-size: calc(19 * var(--u));
+        font-weight: 600;
+        color: #ffffff;
+        margin-top: calc(2 * var(--u));
+      }
+
+      .row-cond {
+        font-size: calc(13 * var(--u));
+        font-weight: 400;
+        opacity: .85;
+        color: #ffffff;
+        margin-top: calc(4 * var(--u));
+      }
+
+      .row-temp-box {
+        display: flex;
+        align-items: center;
+        gap: calc(12 * var(--u));
+        animation: riseIn .50s var(--e-out) 1.36s both;
+      }
+
+      .row-temp {
+        font-size: calc(36 * var(--u));
+        font-weight: 500;
+        line-height: 1;
+        letter-spacing: calc(-.5 * var(--u));
+        color: #ffffff;
+      }
+
+      .row-icon {
+        width: calc(32 * var(--u));
+        height: calc(32 * var(--u));
+        color: #ffffff;
+      }
+
+      /* ── Focus States ── */
+      :focus-visible {
+        outline: calc(2 * var(--u)) solid #ffffff;
+        outline-offset: calc(2 * var(--u));
+      }
+
+      /* ── Reduced Motion ── */
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation: none !important;
+          transition: none !important;
+        }
+
+        .card::after, .chip::after {
+          display: none !important;
+        }
+
+        .wline {
+          stroke-dashoffset: 0 !important;
+        }
+
+        #wclipr {
+          transform: scaleX(1) !important;
+        }
+      }
+
+      /* ── Mobile Layout Reflow (≤860px) ── */
+      @media (max-width: 860px) {
+        html, body {
+          overflow-y: auto !important;
+          height: auto;
+        }
+
+        :root {
+          --u: min(100vw / 430, 1.22px);
+        }
+
+        .stage {
+          position: relative !important;
+          inset: auto !important;
+          min-height: 100vh;
+          overflow-y: auto;
+          padding-bottom: calc(90 * var(--u));
+        }
+
+        .sidebar {
+          position: fixed !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          top: auto !important;
+          width: 100% !important;
+          height: calc(64 * var(--u)) !important;
+          border-radius: calc(20 * var(--u)) calc(20 * var(--u)) 0 0 !important;
+          flex-direction: row !important;
+          justify-content: space-around !important;
+          padding: 0 calc(16 * var(--u)) !important;
+          animation: riseIn .6s var(--e-out) both !important;
+          z-index: 100;
+        }
+
+        .sidebar .pip,
+        .sidebar .logo-btn,
+        .sidebar .logout {
+          display: none !important;
+        }
+
+        .sidebar .nav {
+          margin: 0 !important;
+          flex-direction: row !important;
+          width: 100% !important;
+          justify-content: space-around !important;
+          gap: 0 !important;
+        }
+
+        .header {
+          position: relative !important;
+          top: auto !important;
+          left: auto !important;
+          right: auto !important;
+          padding: calc(20 * var(--u)) calc(20 * var(--u)) calc(10 * var(--u)) !important;
+        }
+
+        .hero {
+          position: relative !important;
+          top: auto !important;
+          left: auto !important;
+          max-width: 100% !important;
+          padding: 0 calc(20 * var(--u)) !important;
+          margin-top: calc(16 * var(--u));
+        }
+
+        .blurb {
+          width: 100% !important;
+        }
+
+        .rail {
+          position: relative !important;
+          top: auto !important;
+          left: auto !important;
+          right: auto !important;
+          bottom: auto !important;
+          width: auto !important;
+          padding: 0 calc(20 * var(--u)) !important;
+          margin-top: calc(26 * var(--u));
+        }
+
+        .rail .card {
+          animation: riseIn .7s var(--e-out) both !important;
+        }
+
+        .forecast {
+          position: relative !important;
+          top: auto !important;
+          left: auto !important;
+          right: auto !important;
+          bottom: auto !important;
+          padding: 0 calc(20 * var(--u)) !important;
+          margin-top: calc(30 * var(--u));
+        }
+      }
+
+      @media (max-width: 420px) {
+        :root {
+          --u: calc(100vw / 430);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ── Inline SVG Symbols Sprite ── -->
+    <svg style="display: none;" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- i-grid -->
+        <symbol id="i-grid" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="7.5" height="7.5" rx="2.2" fill="none" stroke="currentColor" stroke-width="2"/>
+          <rect x="13.5" y="3" width="7.5" height="7.5" rx="2.2" fill="none" stroke="currentColor" stroke-width="2"/>
+          <rect x="3" y="13.5" width="7.5" height="7.5" rx="2.2" fill="none" stroke="currentColor" stroke-width="2"/>
+          <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2.2" fill="none" stroke="currentColor" stroke-width="2"/>
+        </symbol>
+
+        <!-- i-chart -->
+        <symbol id="i-chart" viewBox="0 0 24 24">
+          <path d="M4 19h16 M7 15v-4 M12 15V7 M17 15v-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </symbol>
+
+        <!-- i-globe -->
+        <symbol id="i-globe" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+          <ellipse cx="12" cy="12" rx="4.5" ry="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+        </symbol>
+
+        <!-- i-cal -->
+        <symbol id="i-cal" viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="17" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+          <line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" stroke-width="2"/>
+          <line x1="8" y1="2" x2="8" y2="5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="16" y1="2" x2="16" y2="5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </symbol>
+
+        <!-- i-gear -->
+        <symbol id="i-gear" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 2v2.5m0 15V22m10-10h-2.5m-15 0H2m16.07-7.07l-1.77 1.77m-8.6 8.6l-1.77 1.77m12.14 0l-1.77-1.77m-8.6-8.6L3.93 4.93" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </symbol>
+
+        <!-- i-out -->
+        <symbol id="i-out" viewBox="0 0 24 24">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4m7 14l5-5-5-5m5 5H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
+
+        <!-- i-plus -->
+        <symbol id="i-plus" viewBox="0 0 24 24">
+          <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        </symbol>
+
+        <!-- i-search -->
+        <symbol id="i-search" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/>
+          <line x1="16" y1="16" x2="21" y2="21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        </symbol>
+
+        <!-- i-bell -->
+        <symbol id="i-bell" viewBox="0 0 24 24">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M13.73 21a2 2 0 01-3.46 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </symbol>
+
+        <!-- i-pin -->
+        <symbol id="i-pin" viewBox="0 0 24 24">
+          <path d="M12 2a7 7 0 00-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 00-7-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="9" r="2.5" fill="currentColor"/>
+        </symbol>
+
+        <!-- i-wind -->
+        <symbol id="i-wind" viewBox="0 0 24 24">
+          <path d="M4 8h11a2.5 2.5 0 000-5c-1.38 0-2.5 1.12-2.5 2.5 M2 12h16a3 3 0 000-6c-1.65 0-3 1.35-3 3 M4 16h8a2 2 0 000-4c-1.1 0-2 .9-2 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </symbol>
+
+        <!-- i-drop -->
+        <symbol id="i-drop" viewBox="0 0 24 24">
+          <path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
+
+        <!-- i-gust -->
+        <symbol id="i-gust" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </symbol>
+
+        <!-- i-cloud -->
+        <symbol id="i-cloud" viewBox="0 0 24 24">
+          <path d="M18 10h-.63A5.5 5.5 0 007 11.5a4 4 0 00.5 7.97H18a4.5 4.5 0 000-9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
+
+        <!-- i-cloud2 -->
+        <symbol id="i-cloud2" viewBox="0 0 24 24">
+          <circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M8 2.5v2M8 11.5v2M2.5 8h2M13.5 8h2M4.1 4.1l1.4 1.4M10.5 10.5l1.4 1.4M4.1 11.9l1.4-1.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M19 14h-.5A4.2 4.2 0 0011 15.2a3.2 3.2 0 00.4 6.38H19a3.6 3.6 0 000-7.2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </symbol>
+
+        <!-- i-hail -->
+        <symbol id="i-hail" viewBox="0 0 24 24">
+          <path d="M18 10h-.63A5.5 5.5 0 007 11.5a4 4 0 00.5 7.97H18a4.5 4.5 0 000-9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="8" y1="18" x2="8" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="12" y1="18" x2="12" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="16" y1="18" x2="16" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </symbol>
+
+        <!-- i-sun -->
+        <symbol id="i-sun" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </symbol>
+
+        <!-- i-avatar -->
+        <symbol id="i-avatar" viewBox="0 0 24 24">
+          <circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M4 20c0-4 4-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </symbol>
+      </defs>
+    </svg>
+
+    <!-- ── Main Stage ── -->
+    <div class="stage">
+      <!-- 1) Left Sidebar -->
+      <aside class="sidebar">
+        <div class="pip"></div>
+
+        <a href="#" class="logo-btn" aria-label="Aurora Weather">
+          <svg viewBox="0 0 40 40" width="40" height="40">
+            <defs>
+              <clipPath id="logo-clip">
+                <circle cx="20" cy="20" r="14" />
+              </clipPath>
+            </defs>
+            <rect width="40" height="40" rx="12" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.25)" stroke-width="1" />
+            <g clip-path="url(#logo-clip)" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" fill="none">
+              <path d="M4,10 Q12,7 20,10 T36,10" />
+              <path d="M4,13.5 Q12,10.5 20,13.5 T36,13.5" />
+              <path d="M4,17 Q12,14 20,17 T36,17" />
+              <path d="M4,20.5 Q12,17.5 20,20.5 T36,20.5" />
+              <path d="M4,24 Q12,21 20,24 T36,24" />
+              <path d="M4,27.5 Q12,24.5 20,27.5 T36,27.5" />
+              <path d="M4,31 Q12,28 20,31 T36,31" />
+            </g>
+          </svg>
+        </a>
+
+        <nav class="nav">
+          <a href="#" aria-label="Dashboard" aria-current="page"><svg><use href="#i-grid"></use></svg></a>
+          <a href="#" aria-label="Reports"><svg><use href="#i-chart"></use></svg></a>
+          <a href="#" aria-label="Explore regions"><svg><use href="#i-globe"></use></svg></a>
+          <a href="#" aria-label="Calendar"><svg><use href="#i-cal"></use></svg></a>
+          <a href="#" aria-label="Settings"><svg><use href="#i-gear"></use></svg></a>
+        </nav>
+
+        <a href="#" class="logout" aria-label="Sign out">
+          <svg><use href="#i-out"></use></svg>
+        </a>
+      </aside>
+
+      <!-- 2) Header -->
+      <header class="header">
+        <div class="header-user">
+          <span class="welcome">Welcome</span>
+          <span class="who">Calfin Danang</span>
+        </div>
+
+        <div class="header-tools">
+          <button type="button" class="tool" aria-label="Add location">
+            <svg><use href="#i-plus"></use></svg>
+          </button>
+          <button type="button" class="tool" aria-label="Search">
+            <svg><use href="#i-search"></use></svg>
+          </button>
+          <button type="button" class="tool" aria-label="Notifications">
+            <svg><use href="#i-bell"></use></svg>
+          </button>
+          <a href="#" class="tool tool-avatar" aria-label="Profile">
+            <svg class="avatar-fallback"><use href="#i-avatar"></use></svg>
+            <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=160&h=160&fit=crop&crop=faces&q=80&auto=format" alt="Calfin Danang" loading="eager" decoding="async" onerror="this.remove()">
+          </a>
+        </div>
+      </header>
+
+      <!-- 3) Hero -->
+      <section class="hero">
+        <div class="chip">Weather Forecast</div>
+        <h1>
+          <span class="ln"><span>Strom</span></span>
+          <span class="ln"><span>with Heavy Rain</span></span>
+        </h1>
+        <p class="blurb">
+          Partly cloudy with occasional snow showers. High around 50°F.<br>
+          Wind from the east 11 to 21 mph. Snow chance is 40%, with<br>
+          rainfall expected to be less than an inch.
+        </p>
+      </section>
+
+      <!-- 4) Forecast Strip -->
+      <section class="forecast">
+        <div class="forecast-temps">
+          <div class="ft-item">
+            <span class="ft-val">11°</span>
+            <svg class="ft-icon"><use href="#i-cloud"></use></svg>
+          </div>
+          <div class="ft-item">
+            <span class="ft-val">13°</span>
+            <svg class="ft-icon"><use href="#i-cloud2"></use></svg>
+          </div>
+          <div class="ft-item">
+            <span class="ft-val">14°</span>
+            <svg class="ft-icon"><use href="#i-cloud2"></use></svg>
+          </div>
+          <div class="ft-item">
+            <span class="ft-val">10°</span>
+            <svg class="ft-icon"><use href="#i-hail"></use></svg>
+          </div>
+          <div class="ft-item">
+            <span class="ft-val">19°</span>
+            <svg class="ft-icon"><use href="#i-sun"></use></svg>
+          </div>
+          <div class="ft-item">
+            <span class="ft-val">12°</span>
+            <svg class="ft-icon"><use href="#i-cloud"></use></svg>
+          </div>
+        </div>
+
+        <svg class="wave-chart" viewBox="0 0 835 230" preserveAspectRatio="none">
+          <defs>
+            <!-- Horizontal stroke gradient #wg -->
+            <linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3"/>
+              <stop offset="25%" stop-color="#ffffff" stop-opacity="0.85"/>
+              <stop offset="50%" stop-color="#ffffff" stop-opacity="1"/>
+              <stop offset="75%" stop-color="#ffffff" stop-opacity="0.9"/>
+              <stop offset="100%" stop-color="#ffffff" stop-opacity="0.4"/>
+            </linearGradient>
+
+            <!-- Fill gradient #wf -->
+            <linearGradient id="wf" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.32"/>
+              <stop offset="45%" stop-color="#ffffff" stop-opacity="0.14"/>
+              <stop offset="100%" stop-color="#ffffff" stop-opacity="0.0"/>
+            </linearGradient>
+
+            <!-- Vertical fade mask #wfade -->
+            <mask id="wfade">
+              <linearGradient id="wfade-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="70%" stop-color="#ffffff" stop-opacity="0.5"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+              </linearGradient>
+              <rect x="0" y="0" width="835" height="230" fill="url(#wfade-grad)"/>
+            </mask>
+
+            <!-- Wipe clip #wclip with animated #wclipr -->
+            <clipPath id="wclip">
+              <rect id="wclipr" x="0" y="0" width="835" height="230" />
+            </clipPath>
+          </defs>
+
+          <!-- Wave fill with clip and fade -->
+          <path class="wfill" clip-path="url(#wclip)" mask="url(#wfade)"
+                d="M0,79 C 80,75 110,68 170,68 C 240,68 280,60 340,60 C 410,60 440,98 505,98 C 570,98 610,22 675,22 C 740,22 780,80 835,86 L835,230 L0,230 Z"
+                fill="url(#wf)" />
+
+          <!-- 3 stroked paths with pathLength="1" -->
+          <path class="wline wline-outer"
+                d="M0,79 C 80,75 110,68 170,68 C 240,68 280,60 340,60 C 410,60 440,98 505,98 C 570,98 610,22 675,22 C 740,22 780,80 835,86"
+                fill="none" stroke="url(#wg)" stroke-width="6.2" opacity="0.17" stroke-linecap="round" pathLength="1" />
+          <path class="wline wline-mid"
+                d="M0,79 C 80,75 110,68 170,68 C 240,68 280,60 340,60 C 410,60 440,98 505,98 C 570,98 610,22 675,22 C 740,22 780,80 835,86"
+                fill="none" stroke="url(#wg)" stroke-width="4.6" opacity="0.26" stroke-linecap="round" pathLength="1" />
+          <path class="wline wline-core"
+                d="M0,79 C 80,75 110,68 170,68 C 240,68 280,60 340,60 C 410,60 440,98 505,98 C 570,98 610,22 675,22 C 740,22 780,80 835,86"
+                fill="none" stroke="url(#wg)" stroke-width="3.4" opacity="1" stroke-linecap="round" pathLength="1" />
+        </svg>
+
+        <div class="forecast-days">
+          <div class="day">Sunday</div>
+          <div class="day">Monday</div>
+          <div class="day">Tuesday</div>
+          <div class="day on">Wednesday</div>
+          <div class="day">Thursday</div>
+          <div class="day">Friday</div>
+        </div>
+      </section>
+
+      <!-- 5) Right Rail -->
+      <aside class="rail">
+        <!-- Card A (Big) -->
+        <div class="card big">
+          <div class="card-loc">
+            <span>Central Jakarta</span>
+            <svg class="loc-pin"><use href="#i-pin"></use></svg>
+          </div>
+
+          <div class="big-temp">10°<i>C</i></div>
+
+          <div class="card-metrics">
+            <div class="metric">
+              <svg class="m-icon"><use href="#i-wind"></use></svg>
+              <span>19 mph</span>
+            </div>
+            <div class="metric">
+              <svg class="m-icon"><use href="#i-drop"></use></svg>
+              <span>40%</span>
+            </div>
+            <div class="metric">
+              <svg class="m-icon"><use href="#i-gust"></use></svg>
+              <span>15km/h</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card B -->
+        <div class="card card-row">
+          <div class="row-info">
+            <span class="row-country">Indonesia</span>
+            <h3 class="row-city">North Jakarta</h3>
+            <span class="row-cond">Mostly Sunny</span>
+          </div>
+          <div class="row-temp-box">
+            <span class="row-temp">12°</span>
+            <svg class="row-icon"><use href="#i-cloud"></use></svg>
+          </div>
+        </div>
+
+        <!-- Card C -->
+        <div class="card card-row">
+          <div class="row-info">
+            <span class="row-country">Indonesia</span>
+            <h3 class="row-city">Bandung</h3>
+            <span class="row-cond">Cloudy</span>
+          </div>
+          <div class="row-temp-box">
+            <span class="row-temp">10°</span>
+            <svg class="row-icon"><use href="#i-cloud"></use></svg>
+          </div>
+        </div>
+
+        <!-- Card D -->
+        <div class="card card-row">
+          <div class="row-info">
+            <span class="row-country">Indonesia</span>
+            <h3 class="row-city">South Jakarta</h3>
+            <span class="row-cond">Sunny</span>
+          </div>
+          <div class="row-temp-box">
+            <span class="row-temp">14°</span>
+            <svg class="row-icon"><use href="#i-cloud2"></use></svg>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
