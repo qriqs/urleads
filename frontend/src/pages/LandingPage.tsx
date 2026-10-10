@@ -42,7 +42,7 @@ export default function LandingPage() {
           className="mb-5 md:mb-6"
         >
           <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/90 backdrop-blur-xs px-4 py-1.5 text-sm text-muted-foreground font-body shadow-2xs hover:border-border/80 transition-colors cursor-default">
-            <span>Now with GPT-5 support ✨</span>
+            <span>Gestión de leads inteligente ✨</span>
           </div>
         </motion.div>
 
@@ -53,7 +53,7 @@ export default function LandingPage() {
           transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           className="text-center font-display text-5xl md:text-6xl lg:text-[5rem] leading-[0.95] tracking-tight text-foreground max-w-xl"
         >
-          The Future of <span className="italic font-display font-normal">Smarter</span> Automation
+          Cierra más <span className="italic font-display font-normal">ventas</span> con UrLeads
         </motion.h1>
 
         {/* 3. Subheadline */}
@@ -63,7 +63,7 @@ export default function LandingPage() {
           transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className="mt-4 text-center text-base md:text-lg text-muted-foreground max-w-[650px] leading-relaxed font-body"
         >
-          Automate your busywork with intelligent agents that learn, adapt, and execute—so your team can focus on what matters most.
+          Centraliza tus contactos, haz seguimiento oportuno y convierte prospectos en clientes de manera rápida, limpia y profesional.
         </motion.p>
 
         {/* 4. CTA Buttons */}

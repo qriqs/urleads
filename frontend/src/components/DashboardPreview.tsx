@@ -46,10 +46,10 @@ export const DashboardPreview: React.FC = () => {
             {/* Left: Logo & Org Switcher */}
             <div className="flex items-center gap-2">
               <div className="h-5 w-5 rounded bg-foreground text-background flex items-center justify-center font-bold text-[10px] shadow-xs">
-                N
+                U
               </div>
               <span className="font-semibold text-foreground text-xs tracking-tight">
-                Nexora
+                UrLeads
               </span>
               <ChevronDown className="h-3 w-3 text-muted-foreground ml-0.5" />
             </div>
@@ -59,7 +59,7 @@ export const DashboardPreview: React.FC = () => {
               <div className="h-7 px-2.5 rounded-md bg-secondary/60 border border-border/60 flex items-center justify-between text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Search className="h-3 w-3" />
-                  <span className="text-[10px]">Search transactions, accounts...</span>
+                  <span className="text-[10px]">Buscar leads, notas...</span>
                 </div>
                 <kbd className="px-1.5 py-0.5 text-[9px] font-medium bg-background border border-border/80 rounded text-muted-foreground">
                   ⌘K
@@ -70,13 +70,13 @@ export const DashboardPreview: React.FC = () => {
             {/* Right: Actions & Profile */}
             <div className="flex items-center gap-2.5">
               <div className="h-6 px-2 rounded-md bg-primary text-primary-foreground font-medium text-[10px] flex items-center gap-1 shadow-xs">
-                <span>Move Money</span>
+                <span>Nuevo Lead</span>
               </div>
               <div className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground">
                 <Bell className="h-3.5 w-3.5" />
               </div>
               <div className="h-6 w-6 rounded-full bg-secondary border border-border text-foreground font-semibold text-[10px] flex items-center justify-center">
-                JB
+                SC
               </div>
             </div>
           </div>
@@ -90,40 +90,41 @@ export const DashboardPreview: React.FC = () => {
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-secondary text-foreground font-medium">
                     <Home className="h-3.5 w-3.5 text-accent" />
-                    <span>Home</span>
+                    <span>Resumen</span>
                   </div>
                   <div className="flex items-center justify-between px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground">
                     <div className="flex items-center gap-2">
                       <CheckSquare className="h-3.5 w-3.5" />
-                      <span>Tasks</span>
+                      <span>Tareas</span>
                     </div>
                     <span className="px-1.5 py-0.2 rounded-full text-[9px] font-semibold bg-accent/15 text-accent">
-                      10
+                      5
                     </span>
                   </div>
                   <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground">
                     <ArrowLeftRight className="h-3.5 w-3.5" />
-                    <span>Transactions</span>
+                    <span>Pipeline</span>
                   </div>
                   <div className="flex items-center justify-between px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground">
                     <div className="flex items-center gap-2">
                       <CreditCard className="h-3.5 w-3.5" />
-                      <span>Payments</span>
+                      <span>Leads</span>
                     </div>
                     <ChevronDown className="h-3 w-3" />
                   </div>
                   <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground">
                     <CreditCard className="h-3.5 w-3.5" />
-                    <span>Cards</span>
+                    <span>Contactos</span>
                   </div>
                   <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground">
+                  <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground">
                     <Building2 className="h-3.5 w-3.5" />
-                    <span>Capital</span>
+                    <span>Empresas</span>
                   </div>
                   <div className="flex items-center justify-between px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground">
                     <div className="flex items-center gap-2">
                       <PieChart className="h-3.5 w-3.5" />
-                      <span>Accounts</span>
+                      <span>Reportes</span>
                     </div>
                     <ChevronDown className="h-3 w-3" />
                   </div>
@@ -132,24 +133,24 @@ export const DashboardPreview: React.FC = () => {
                 {/* Section "Workflows" */}
                 <div>
                   <div className="px-2 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                    Workflows
+                    Operaciones
                   </div>
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground">
                       <SlidersHorizontal className="h-3.5 w-3.5" />
-                      <span>Trake rutes</span>
+                      <span>Embudo</span>
                     </div>
                     <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground">
                       <CreditCard className="h-3.5 w-3.5" />
-                      <span>Payments</span>
+                      <span>Campañas</span>
                     </div>
                     <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground">
                       <Bell className="h-3.5 w-3.5" />
-                      <span>Notifications</span>
+                      <span>Notificaciones</span>
                     </div>
                     <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground">
                       <Settings className="h-3.5 w-3.5" />
-                      <span>Settings</span>
+                      <span>Ajustes</span>
                     </div>
                   </div>
                 </div>
@@ -162,10 +163,10 @@ export const DashboardPreview: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-sm font-semibold text-foreground tracking-tight">
-                    Welcome, Jane
+                    Hola, Sebas
                   </h2>
                   <p className="text-[10px] text-muted-foreground">
-                    Your real-time automated financial overview
+                    Tu resumen de ventas y prospectos
                   </p>
                 </div>
               </div>
@@ -174,30 +175,30 @@ export const DashboardPreview: React.FC = () => {
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button className="h-6 px-3 rounded-full bg-accent text-accent-foreground font-medium text-[10px] flex items-center gap-1 shadow-xs">
                   <Send className="h-2.5 w-2.5" />
-                  <span>Send</span>
+                  <span>Llamada</span>
                 </button>
                 <button className="h-6 px-3 rounded-full bg-background border border-border text-foreground font-medium text-[10px] flex items-center gap-1 shadow-2xs">
                   <Download className="h-2.5 w-2.5 text-muted-foreground" />
-                  <span>Request</span>
+                  <span>Email</span>
                 </button>
                 <button className="h-6 px-3 rounded-full bg-background border border-border text-foreground font-medium text-[10px] flex items-center gap-1 shadow-2xs">
                   <ArrowLeftRight className="h-2.5 w-2.5 text-muted-foreground" />
-                  <span>Transfer</span>
+                  <span>Cita</span>
                 </button>
                 <button className="h-6 px-3 rounded-full bg-background border border-border text-foreground font-medium text-[10px] flex items-center gap-1 shadow-2xs">
                   <Upload className="h-2.5 w-2.5 text-muted-foreground" />
-                  <span>Deposit</span>
+                  <span>Nota</span>
                 </button>
                 <button className="h-6 px-3 rounded-full bg-background border border-border text-foreground font-medium text-[10px] flex items-center gap-1 shadow-2xs">
                   <Receipt className="h-2.5 w-2.5 text-muted-foreground" />
-                  <span>Pay Bill</span>
+                  <span>Tarea</span>
                 </button>
                 <button className="h-6 px-3 rounded-full bg-background border border-border text-foreground font-medium text-[10px] flex items-center gap-1 shadow-2xs">
                   <FileCheck className="h-2.5 w-2.5 text-muted-foreground" />
-                  <span>Create Invoice</span>
+                  <span>Propuesta</span>
                 </button>
                 <span className="text-[10px] text-muted-foreground hover:text-foreground ml-2 font-medium">
-                  + Customize
+                  + Más
                 </span>
               </div>
 
@@ -212,29 +213,29 @@ export const DashboardPreview: React.FC = () => {
                           <Check className="h-2 w-2 stroke-[3]" />
                         </div>
                         <span className="font-medium text-foreground text-[11px]">
-                          Mercury Balance
+                          Valor del Pipeline
                         </span>
                       </div>
-                      <span className="text-[10px]">Active</span>
+                      <span className="text-[10px]">Activo</span>
                     </div>
 
                     <div className="mt-1">
                       <span className="text-xl font-semibold tracking-tight text-foreground font-body">
-                        $8,450,190
+                        $120,450
                       </span>
                       <span className="text-xs text-muted-foreground font-medium">
-                        .32
+                        .00
                       </span>
                     </div>
 
                     {/* Stats */}
                     <div className="flex items-center gap-2 mt-1 text-[10px]">
-                      <span className="text-muted-foreground">Last 30 Days</span>
+                      <span className="text-muted-foreground">Últimos 30 Días</span>
                       <span className="text-emerald-600 font-semibold">
-                        +$1.8M
+                        +$12K Nuevos
                       </span>
                       <span className="text-rose-600 font-semibold">
-                        -$900K
+                        -$2K Perdidos
                       </span>
                     </div>
                   </div>
@@ -290,7 +291,7 @@ export const DashboardPreview: React.FC = () => {
                   {/* Header */}
                   <div className="flex items-center justify-between pb-1.5 border-b border-border/50">
                     <span className="font-semibold text-foreground text-xs">
-                      Accounts
+                      Conversión por Etapa
                     </span>
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <div className="p-0.5 hover:text-foreground">
@@ -307,30 +308,30 @@ export const DashboardPreview: React.FC = () => {
                     <div className="flex items-center justify-between py-3 text-xs">
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-2 rounded-full bg-accent" />
-                        <span className="text-foreground font-medium">Credit</span>
+                        <span className="text-foreground font-medium">Calificados</span>
                       </div>
                       <span className="font-semibold text-foreground font-body">
-                        $98,125.50
+                        45 Leads
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between py-3 text-xs">
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                        <span className="text-foreground font-medium">Treasury</span>
+                        <span className="text-foreground font-medium">Ganados</span>
                       </div>
                       <span className="font-semibold text-foreground font-body">
-                        $6,750,200.00
+                        12 Leads
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between py-3 text-xs">
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-2 rounded-full bg-blue-500" />
-                        <span className="text-foreground font-medium">Operations</span>
+                        <span className="text-foreground font-medium">En Seguimiento</span>
                       </div>
                       <span className="font-semibold text-foreground font-body">
-                        $1,592,864.82
+                        84 Leads
                       </span>
                     </div>
                   </div>
@@ -341,10 +342,10 @@ export const DashboardPreview: React.FC = () => {
               <div className="bg-background rounded-lg border border-border p-3 shadow-2xs">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xs font-semibold text-foreground">
-                    Recent Transactions
+                    Leads Recientes
                   </h3>
                   <span className="text-[10px] text-muted-foreground hover:text-foreground font-medium">
-                    View all
+                    Ver todos
                   </span>
                 </div>
 
@@ -352,23 +353,23 @@ export const DashboardPreview: React.FC = () => {
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-border/60 text-[10px] text-muted-foreground uppercase font-medium">
-                        <th className="pb-1.5 font-medium">Date</th>
-                        <th className="pb-1.5 font-medium">Description</th>
-                        <th className="pb-1.5 font-medium text-right">Amount</th>
-                        <th className="pb-1.5 font-medium text-right">Status</th>
+                        <th className="pb-1.5 font-medium">Fecha</th>
+                        <th className="pb-1.5 font-medium">Nombre</th>
+                        <th className="pb-1.5 font-medium text-right">Servicio</th>
+                        <th className="pb-1.5 font-medium text-right">Etapa</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40 text-[11px]">
                       {/* Row 1: AWS -$5,200 Pending (amber) */}
                       <tr>
                         <td className="py-2 text-muted-foreground">Oct 07</td>
-                        <td className="py-2 font-medium text-foreground">AWS</td>
+                        <td className="py-2 font-medium text-foreground">Carlos Torres</td>
                         <td className="py-2 text-right font-medium text-foreground">
-                          -$5,200.00
+                          Consultoría IT
                         </td>
                         <td className="py-2 text-right">
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-500/10 text-amber-700 border border-amber-500/20">
-                            Pending
+                            En seguimiento
                           </span>
                         </td>
                       </tr>
@@ -377,14 +378,14 @@ export const DashboardPreview: React.FC = () => {
                       <tr>
                         <td className="py-2 text-muted-foreground">Oct 06</td>
                         <td className="py-2 font-medium text-foreground">
-                          Client Payment
+                          Tech Solutions S.A.
                         </td>
-                        <td className="py-2 text-right font-medium text-emerald-600">
-                          +$125,000.00
+                        <td className="py-2 text-right font-medium text-foreground">
+                          Plan Enterprise
                         </td>
                         <td className="py-2 text-right">
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
-                            Completed
+                            Cerrado
                           </span>
                         </td>
                       </tr>
@@ -392,13 +393,13 @@ export const DashboardPreview: React.FC = () => {
                       {/* Row 3: Payroll -$85,450 Completed */}
                       <tr>
                         <td className="py-2 text-muted-foreground">Oct 04</td>
-                        <td className="py-2 font-medium text-foreground">Payroll</td>
+                        <td className="py-2 font-medium text-foreground">María López</td>
                         <td className="py-2 text-right font-medium text-foreground">
-                          -$85,450.00
+                          Marketing
                         </td>
                         <td className="py-2 text-right">
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
-                            Completed
+                            Cerrado
                           </span>
                         </td>
                       </tr>
@@ -407,14 +408,14 @@ export const DashboardPreview: React.FC = () => {
                       <tr>
                         <td className="py-2 text-muted-foreground">Oct 02</td>
                         <td className="py-2 font-medium text-foreground">
-                          Office Supplies
+                          Distribuidora Sur
                         </td>
                         <td className="py-2 text-right font-medium text-foreground">
-                          -$1,200.00
+                          Soporte
                         </td>
                         <td className="py-2 text-right">
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
-                            Completed
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-blue-500/10 text-blue-700 border border-blue-500/20">
+                            Nuevo
                           </span>
                         </td>
                       </tr>

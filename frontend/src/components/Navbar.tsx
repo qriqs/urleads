@@ -11,7 +11,7 @@ export const Navbar: React.FC = () => {
           className="text-xl font-semibold tracking-tight text-foreground hover:opacity-90 transition-opacity flex items-center gap-1.5"
         >
           <span className="text-base select-none text-foreground">✦</span>
-          <span>Nexora</span>
+          <span>UrLeads</span>
         </a>
       </div>
 
