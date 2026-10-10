@@ -1,0 +1,1 @@
+  hint: try running without --package to install and run html-to-jsx directly
