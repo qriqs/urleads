@@ -7,7 +7,7 @@ export default function LeadDetail() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center gap-4">
-        <Link to="/leads" className="p-2 -ml-2 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+        <Link to="/app/leads" className="p-2 -ml-2 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>

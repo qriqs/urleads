@@ -29,7 +29,7 @@ export default function LeadsList() {
       <div className="border border-border rounded-xl bg-card overflow-hidden">
         <div className="p-8 text-center">
           <p className="text-sm text-muted-foreground">Tabla de leads (Placeholder)</p>
-          <Link to="/leads/1" className="text-sm text-accent hover:underline mt-2 inline-block">Ver detalle del lead 1 (Demo)</Link>
+          <Link to="/app/leads/1" className="text-sm text-accent hover:underline mt-2 inline-block">Ver detalle del lead 1 (Demo)</Link>
         </div>
       </div>
     </div>

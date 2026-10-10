@@ -5,8 +5,8 @@ export default function MainLayout() {
   const location = useLocation();
 
   const navItems = [
-    { name: "Resumen", path: "/", icon: Home },
-    { name: "Leads", path: "/leads", icon: Users },
+    { name: "Resumen", path: "/app", icon: Home },
+    { name: "Leads", path: "/app/leads", icon: Users },
   ];
 
   return (
