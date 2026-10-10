@@ -1,10 +1,43 @@
+import { Link } from 'react-router-dom';
+import { Users, DollarSign, Activity, FileText, CheckCircle, Target, Grid, BarChart2, Calendar, Settings } from 'lucide-react';
 import React from 'react';
 import './AuroraDashboard.css';
 
+import { useLocation, Outlet } from 'react-router-dom';
 export default function AuroraDashboard() {
+  const location = useLocation();
+  const path = location.pathname;
+  
+  let activeIndex = 0;
+  if (path === '/app/reportes') activeIndex = 1;
+  else if (path.startsWith('/app/leads')) activeIndex = 2;
+  else if (path === '/app/tareas') activeIndex = 3;
+  else if (path === '/app/ajustes') activeIndex = 4;
+  
+  const pipTop = 131 + (activeIndex * 66);
+
   return (
     <div className="aurora-wrapper">
-      <div className="stage" />
+      <div className="stage">
+        <video 
+          autoPlay 
+          loop 
+          muted 
+          playsInline 
+          style={{
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            top: 0,
+            left: 0,
+            zIndex: -1,
+            opacity: 0.8
+          }}
+        >
+          <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260330_153826_e9005cf7-a1c7-4c7d-886f-fea22d644a9c.mp4" type="video/mp4" />
+        </video>
+      </div>
       
     
     <svg style={{ 'display': 'none' }} xmlns="http://www.w3.org/2000/svg">
@@ -126,9 +159,9 @@ export default function AuroraDashboard() {
     <div className="stage">
       
       <aside className="sidebar">
-        <div className="pip"></div>
+        <div className="pip" style={{ top: `calc(${pipTop} * var(--u))` }}></div>
 
-        <a href="#" className="logo-btn" aria-label="UrLeads CRM">
+        <Link to="/" className="logo-btn" aria-label="UrLeads CRM">
           <svg viewBox="0 0 40 40" width="40" height="40">
             <defs>
               <clipPath id="logo-clip">
@@ -146,19 +179,19 @@ export default function AuroraDashboard() {
               <path d="M4,31 Q12,28 20,31 T36,31" />
             </g>
           </svg>
-        </a>
+        </Link>
 
         <nav className="nav">
-          <a href="#" aria-label="Dashboard" aria-current="page"><svg><use href="#i-grid"></use></svg></a>
-          <a href="#" aria-label="Reportes"><svg><use href="#i-chart"></use></svg></a>
-          <a href="#" aria-label="Leads"><svg><use href="#i-globe"></use></svg></a>
-          <a href="#" aria-label="Tareas"><svg><use href="#i-cal"></use></svg></a>
-          <a href="#" aria-label="Ajustes"><svg><use href="#i-gear"></use></svg></a>
+          <Link to="/app" aria-label="Dashboard" aria-current={activeIndex === 0 ? "page" : undefined}><Grid strokeWidth={2} /></Link>
+          <Link to="/app/reportes" aria-label="Reportes" aria-current={activeIndex === 1 ? "page" : undefined}><BarChart2 strokeWidth={2} /></Link>
+          <Link to="/app/leads" aria-label="Leads"><Users strokeWidth={2} /></Link>
+          <Link to="/app/tareas" aria-label="Tareas" aria-current={activeIndex === 3 ? "page" : undefined}><Calendar strokeWidth={2} /></Link>
+          <Link to="/app/ajustes" aria-label="Ajustes" aria-current={activeIndex === 4 ? "page" : undefined}><Settings strokeWidth={2} /></Link>
         </nav>
 
-        <a href="#" className="logout" aria-label="Cerrar sesión">
+        <Link to="/" className="logout" aria-label="Cerrar sesión">
           <svg><use href="#i-out"></use></svg>
-        </a>
+        </Link>
       </aside>
 
       
@@ -178,53 +211,59 @@ export default function AuroraDashboard() {
           <button type="button" className="tool" aria-label="Notifications">
             <svg><use href="#i-bell"></use></svg>
           </button>
-          <a href="#" className="tool tool-avatar" aria-label="Profile">
+          <Link to="/" className="tool tool-avatar" aria-label="Profile">
             <svg className="avatar-fallback"><use href="#i-avatar"></use></svg>
-            <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=160&h=160&fit=crop&crop=faces&q=80&auto=format" alt="Sebas" loading="eager" decoding="async" onerror="this.remove()">
-          </a>
+          </Link>
         </div>
       </header>
 
       
-      <section className="hero">
+      
+
+      
+      
+
+      
+      
+      {activeIndex === 0 ? (
+        <>
+          <section className="hero">
         <div className="chip">Tu Pipeline</div>
         <h1>
           <span className="ln"><span>Cierra</span></span>
           <span className="ln"><span>más Ventas</span></span>
         </h1>
         <p className="blurb">
-          Partly cloudy with occasional snow showers. High around 50°F.<br>
-          Wind from the east 11 to 21 mph. Snow chance is 24%, with<br>
-          rainfall expected to be less than an inch.
+          Tu resumen de ventas, leads calificados y próximos seguimientos.<br />
+          Monitorea el valor de tu pipeline, tasas de conversión y<br />
+          tareas pendientes para hoy. Todo en tiempo real.
         </p>
       </section>
-
-      
-      <section className="forecast">
+          <section className="forecast">
         <div className="forecast-temps">
           <div className="ft-item">
-            <span className="ft-val">11°</span>
-            <svg className="ft-icon"><use href="#i-cloud"></use></svg>
+            <span className="ft-val">$12K</span>
+            <Target className="ft-icon" strokeWidth={2} />
           </div>
           <div className="ft-item">
-            <span className="ft-val">13°</span>
-            <svg className="ft-icon"><use href="#i-cloud2"></use></svg>
+            <span className="ft-val">$45K</span>
+            <CheckCircle className="ft-icon" strokeWidth={2} />
           </div>
           <div className="ft-item">
-            <span className="ft-val">Nuevo</span>
-            <svg className="ft-icon"><use href="#i-cloud2"></use></svg>
+            <span className="ft-val">$58K</span>
+            <CheckCircle className="ft-icon" strokeWidth={2} />
           </div>
           <div className="ft-item">
-            <span className="ft-val">Activo</span>
-            <svg className="ft-icon"><use href="#i-hail"></use></svg>
+            <span className="ft-val">$80K</span>
+            <Users className="ft-icon" strokeWidth={2} />
           </div>
           <div className="ft-item">
-            <span className="ft-val">19°</span>
-            <svg className="ft-icon"><use href="#i-sun"></use></svg>
+            <span className="ft-val">$84K</span>
+            <Activity className="ft-icon" strokeWidth={2} />
           </div>
           <div className="ft-item">
-            <span className="ft-val">Ganado</span>
-            <svg className="ft-icon"><use href="#i-cloud"></use></svg>
+            <span className="ft-val">$120K</span>
+            <Target className="ft-icon" strokeWidth={2} />
           </div>
         </div>
 
@@ -280,37 +319,35 @@ export default function AuroraDashboard() {
         </svg>
 
         <div className="forecast-days">
-          <div className="day">Lun</div>
+          <div className="day">Ene</div>
+          <div className="day">Feb</div>
           <div className="day">Mar</div>
-          <div className="day">Mié</div>
-          <div className="day on">Jue</div>
-          <div className="day">Vie</div>
-          <div className="day">Sáb</div>
+          <div className="day on">Abr</div>
+          <div className="day">May</div>
+          <div className="day">Jun</div>
         </div>
       </section>
-
-      
-      <aside className="rail">
+          <aside className="rail">
         
         <div className="card big">
           <div className="card-loc">
             <span>Leads Activos</span>
-            <svg className="loc-pin"><use href="#i-pin"></use></svg>
+            <Target className="loc-pin" strokeWidth={2} />
           </div>
 
-          <div className="big-temp">Activo<i>C</i></div>
+          <div className="big-temp">$120K</div>
 
           <div className="card-metrics">
             <div className="metric">
-              <svg className="m-icon"><use href="#i-wind"></use></svg>
+              <Activity className="m-icon" strokeWidth={2} />
               <span>45 Leads</span>
             </div>
             <div className="metric">
-              <svg className="m-icon"><use href="#i-drop"></use></svg>
+              <FileText className="m-icon" strokeWidth={2} />
               <span>24%</span>
             </div>
             <div className="metric">
-              <svg className="m-icon"><use href="#i-gust"></use></svg>
+              <DollarSign className="m-icon" strokeWidth={2} />
               <span>34K ARR</span>
             </div>
           </div>
@@ -319,45 +356,54 @@ export default function AuroraDashboard() {
         
         <div className="card card-row">
           <div className="row-info">
-            <span className="row-country">Indonesia</span>
-            <h3 className="row-city">North Jakarta</h3>
-            <span className="row-cond">Mostly Sunny</span>
+            <span className="row-country">Consultoría IT</span>
+<h3 className="row-city">Carlos Torres</h3>
+<span className="row-cond">Hace 2 horas</span>
           </div>
           <div className="row-temp-box">
             <span className="row-temp">Ganado</span>
-            <svg className="row-icon"><use href="#i-cloud"></use></svg>
+            <CheckCircle className="row-icon" color="#10b981" strokeWidth={2} />
           </div>
         </div>
 
         
         <div className="card card-row">
           <div className="row-info">
-            <span className="row-country">Indonesia</span>
-            <h3 className="row-city">Bandung</h3>
-            <span className="row-cond">Cloudy</span>
+            <span className="row-country">Plan Enterprise</span>
+<h3 className="row-city">Tech Solutions</h3>
+<span className="row-cond">Hace 5 horas</span>
           </div>
           <div className="row-temp-box">
             <span className="row-temp">Activo</span>
-            <svg className="row-icon"><use href="#i-cloud"></use></svg>
+            <CheckCircle className="row-icon" color="#10b981" strokeWidth={2} />
           </div>
         </div>
 
         
         <div className="card card-row">
           <div className="row-info">
-            <span className="row-country">Indonesia</span>
-            <h3 className="row-city">South Jakarta</h3>
-            <span className="row-cond">Sunny</span>
+            <span className="row-country">Marketing</span>
+<h3 className="row-city">María López</h3>
+<span className="row-cond">Ayer</span>
           </div>
           <div className="row-temp-box">
             <span className="row-temp">Nuevo</span>
-            <svg className="row-icon"><use href="#i-cloud2"></use></svg>
+            <Target className="row-icon" color="#3b82f6" strokeWidth={2} />
           </div>
         </div>
       </aside>
+        </>
+      ) : (
+        <div style={{ position: 'absolute', top: 'calc(136 * var(--u))', left: 'calc(126 * var(--u))', right: 'calc(38 * var(--u))', bottom: 'calc(38 * var(--u))', zIndex: 5, overflow: 'auto' }}>
+          <div style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(16px)', borderRadius: '24px', padding: '32px', minHeight: '100%', border: '1px solid rgba(255,255,255,0.1)' }}>
+             <Outlet />
+          </div>
+        </div>
+      )}
+
     </div>
 
-    <script type="module" src="/src/main.tsx"></script>
+    
   
     </div>
   );

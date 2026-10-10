@@ -27,27 +27,27 @@ export default function Dashboard() {
 
       {/* Action Buttons Row */}
       <div className="flex items-center gap-2 flex-wrap">
-        <button className="h-9 px-4 rounded-full bg-accent text-accent-foreground font-medium text-xs flex items-center gap-2 shadow-xs hover:bg-accent/90 transition-colors">
+        <button className="h-10 px-4 rounded-full bg-[#2a3c39] text-white font-medium text-xs flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity">
           <Send className="h-3.5 w-3.5" />
           <span>Llamada</span>
         </button>
-        <button className="h-9 px-4 rounded-full bg-background border border-border text-foreground font-medium text-xs flex items-center gap-2 shadow-sm hover:bg-secondary transition-colors">
+        <button className="h-10 px-4 rounded-full bg-background border border-border text-foreground font-medium text-xs flex items-center gap-2 shadow-sm hover:bg-secondary transition-colors">
           <Download className="h-3.5 w-3.5 text-muted-foreground" />
           <span>Email</span>
         </button>
-        <button className="h-9 px-4 rounded-full bg-background border border-border text-foreground font-medium text-xs flex items-center gap-2 shadow-sm hover:bg-secondary transition-colors">
+        <button className="h-10 px-4 rounded-full bg-background border border-border text-foreground font-medium text-xs flex items-center gap-2 shadow-sm hover:bg-secondary transition-colors">
           <ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
           <span>Cita</span>
         </button>
-        <button className="h-9 px-4 rounded-full bg-background border border-border text-foreground font-medium text-xs flex items-center gap-2 shadow-sm hover:bg-secondary transition-colors">
+        <button className="h-10 px-4 rounded-full bg-background border border-border text-foreground font-medium text-xs flex items-center gap-2 shadow-sm hover:bg-secondary transition-colors">
           <Upload className="h-3.5 w-3.5 text-muted-foreground" />
           <span>Nota</span>
         </button>
-        <button className="h-9 px-4 rounded-full bg-background border border-border text-foreground font-medium text-xs flex items-center gap-2 shadow-sm hover:bg-secondary transition-colors">
+        <button className="h-10 px-4 rounded-full bg-background border border-border text-foreground font-medium text-xs flex items-center gap-2 shadow-sm hover:bg-secondary transition-colors">
           <Receipt className="h-3.5 w-3.5 text-muted-foreground" />
           <span>Tarea</span>
         </button>
-        <button className="h-9 px-4 rounded-full bg-background border border-border text-foreground font-medium text-xs flex items-center gap-2 shadow-sm hover:bg-secondary transition-colors">
+        <button className="h-10 px-4 rounded-full bg-background border border-border text-foreground font-medium text-xs flex items-center gap-2 shadow-sm hover:bg-secondary transition-colors">
           <FileCheck className="h-3.5 w-3.5 text-muted-foreground" />
           <span>Propuesta</span>
         </button>
@@ -109,16 +109,8 @@ export default function Dashboard() {
                   x2="0"
                   y2="1"
                 >
-                  <stop
-                    offset="0%"
-                    stopColor="hsl(var(--accent))"
-                    stopOpacity="0.15"
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor="hsl(var(--accent))"
-                    stopOpacity="0"
-                  />
+                  <stop offset="0%" stopColor="rgba(42,60,57,0.15)" />
+                  <stop offset="100%" stopColor="rgba(42,60,57,0)" />
                 </linearGradient>
               </defs>
 
@@ -129,8 +121,8 @@ export default function Dashboard() {
               <path
                 d="M 0 58 C 45 62, 85 42, 125 45 C 165 48, 195 24, 235 28 C 275 32, 310 10, 360 14"
                 fill="none"
-                stroke="hsl(var(--accent))"
-                strokeWidth="2"
+                stroke="#2a3c39"
+                strokeWidth="2.5"
                 strokeLinecap="round"
               />
             </svg>
