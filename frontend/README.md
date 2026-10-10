@@ -1,20 +1,26 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# UrLeads - Frontend
 
-# Run and deploy your AI Studio app
+Sistema CRM para gestión de Leads, construido con React 19, Vite, Tailwind CSS v4 y Bun.
 
-This contains everything you need to run your app locally.
+## Requisitos
 
-View your app in AI Studio: https://ai.studio/apps/d2421dbe-861b-4898-a36d-b1d915fce007
+- [Bun](https://bun.sh/) (v1.0+)
 
-## Run Locally
+## Scripts disponibles
 
-**Prerequisites:**  Node.js
+Para instalar y correr el proyecto en desarrollo:
+```bash
+bun install
+bun run dev
+```
 
+Para construir para producción:
+```bash
+bun run build
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Tecnologías principales
+- React Router DOM
+- TanStack Query
+- Lucide React (Iconos)
+- Framer Motion (Animaciones)
