@@ -1,20 +1,33 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Frontend
 
-# Run and deploy your AI Studio app
+El frontend usa Bun y el lockfile versionado `bun.lock` para instalar
+dependencias de forma reproducible. No requiere una clave de Gemini.
 
-This contains everything you need to run your app locally.
+## Requisitos
 
-View your app in AI Studio: https://ai.studio/apps/d2421dbe-861b-4898-a36d-b1d915fce007
+Instala las siguientes herramientas para ejecutar y verificar el frontend:
 
-## Run Locally
+- Node.js 22.12 o posterior dentro de la versión 22.x.
+- Bun 1.3.10, la versión usada por CI.
 
-**Prerequisites:**  Node.js
+## Instalar y ejecutar
 
+Desde `frontend/`, instala las dependencias y arranca Vite:
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+bun install --frozen-lockfile
+bun run dev
+```
+
+## Checks locales
+
+Ejecuta los mismos checks frontend que corre GitHub Actions:
+
+```bash
+bun install --frozen-lockfile
+bun run lint
+bun run build
+```
+
+El script `lint` ejecuta `tsc --noEmit` para revisar tipos. El proyecto no
+configura actualmente un script de tests frontend.
