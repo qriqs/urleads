@@ -59,6 +59,7 @@ será limitado por el servidor. Los valores de `followUp` serán `today`,
 {
   "id": 42,
   "name": "María Torres",
+  "service": "Consultoría",
   "phone": "+51 900 000 000",
   "email": "maria@example.test",
   "stage": "EN_SEGUIMIENTO",
@@ -73,12 +74,14 @@ Ejemplo de creación/actualización:
 ```json
 {
   "name": "María Torres",
+  "service": "Consultoría",
   "phone": "+51 900 000 000",
   "email": "maria@example.test",
   "stage": "NUEVO",
   "nextFollowUp": null
 }
 ```
+> Nota: Cada lead inclyye el campo srvice, que representa el servicio o interes asociado a la oportunidad comercial.
 
 Ejemplo de entrada interna de bitácora (no se envía al cliente):
 
