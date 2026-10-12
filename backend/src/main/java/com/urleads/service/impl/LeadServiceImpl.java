@@ -12,155 +12,155 @@ import com.urleads.dto.LeadResponse;
 import com.urleads.dto.CreateLeadRequest;
 import com.urleads.dto.UpdateLeadRequest;
 import com.urleads.entity.Lead;
+import com.urleads.entity.LeadStage;
 import com.urleads.entity.Usuario;
 
 import com.urleads.exception.LeadNotFoundException;
+import java.time.LocalDate;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
 public class LeadServiceImpl implements LeadService {
 
-    private final LeadRepository leadRepository;
-    private final UsuarioRepository usuarioRepository;
-    
-    @Override
-    public List<LeadResponse> listar(Long usuarioId) {
+	private final LeadRepository leadRepository;
+	private final UsuarioRepository usuarioRepository;
 
-        return leadRepository
-                .findByUsuarioId(usuarioId)
-                .stream()
-                .map(this::toResponse)
-                .toList();
-    }
-    @Override
-    public LeadResponse obtener(
-            Long leadId,
-            Long usuarioId) {
+	@Override
+	public List<LeadResponse> listar(Long usuarioId) {
 
-    	Lead lead = leadRepository
-    	        .findByIdAndUsuarioId(
-    	                leadId,
-    	                usuarioId)
-    	        .orElseThrow(() ->
-    	                new LeadNotFoundException(
-    	                        "Lead no encontrado"));
+		return leadRepository.findByUsuarioId(usuarioId).stream().map(this::toResponse).toList();
+	}
 
-        return toResponse(lead);
-    }
-    @Override
-    public LeadResponse crear(
-            Long usuarioId,
-            CreateLeadRequest request) {
+	@Override
+	public List<LeadResponse> listarFiltrado(Long usuarioId, String followUp, String stage) {
 
-        if ((request.getTelefono() == null
-                || request.getTelefono().isBlank())
-            &&
-            (request.getCorreo() == null
-                || request.getCorreo().isBlank())) {
+		LocalDate hoy = LocalDate.now(ZoneId.of("America/Lima"));
 
-            throw new IllegalArgumentException(
-                    "Debe registrar teléfono o correo");
-        }
+		List<Lead> leads = leadRepository.findByUsuarioId(usuarioId);
 
-        Usuario usuario = usuarioRepository
-                .findById(usuarioId)
-                .orElseThrow();
+		if (stage != null && !stage.isBlank()) {
 
-        Lead lead = new Lead();
+			leads = leads.stream().filter(lead -> stage.equals(lead.getEtapa())).toList();
+		}
 
-        lead.setUsuario(usuario);
-        lead.setNombre(request.getNombre());
-        lead.setTelefono(request.getTelefono());
-        lead.setCorreo(request.getCorreo());
-        lead.setEtapa(request.getEtapa());
-        lead.setProximoSeguimiento(
-                request.getProximoSeguimiento());
+		if ("today".equalsIgnoreCase(followUp)) {
 
-        Lead leadGuardado =
-                leadRepository.save(lead);
+			leads = leads.stream().filter(lead -> hoy.equals(lead.getProximoSeguimiento())).toList();
 
-        return toResponse(leadGuardado);
-    }
+		} else if ("overdue".equalsIgnoreCase(followUp)) {
 
+			leads = leads.stream()
+					.filter(lead -> lead.getProximoSeguimiento() != null && lead.getProximoSeguimiento().isBefore(hoy))
+					.toList();
+		}
 
-    @Override
-    public LeadResponse actualizar(
-            Long leadId,
-            Long usuarioId,
-            UpdateLeadRequest request) {
+		return leads.stream().map(this::toResponse).toList();
+	}
 
-        if ((request.getTelefono() == null
-                || request.getTelefono().isBlank())
-            &&
-            (request.getCorreo() == null
-                || request.getCorreo().isBlank())) {
+	@Override
+	public LeadResponse obtener(Long leadId, Long usuarioId) {
 
-            throw new IllegalArgumentException(
-                    "Debe registrar teléfono o correo");
-        }
+		Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
+				.orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
 
-        Lead lead = leadRepository
-                .findByIdAndUsuarioId(
-                        leadId,
-                        usuarioId)
-                .orElseThrow(() ->
-                        new LeadNotFoundException(
-                                "Lead no encontrado"));
+		return toResponse(lead);
+	}
 
-        lead.setNombre(
-                request.getNombre());
+	@Override
+	public LeadResponse crear(Long usuarioId, CreateLeadRequest request) {
 
-        lead.setTelefono(
-                request.getTelefono());
+		if ((request.getTelefono() == null || request.getTelefono().isBlank())
+				&& (request.getCorreo() == null || request.getCorreo().isBlank())) {
 
-        lead.setCorreo(
-                request.getCorreo());
+			throw new IllegalArgumentException("Debe registrar teléfono o correo");
+		}
 
-        lead.setEtapa(
-                request.getEtapa());
+		Usuario usuario = usuarioRepository.findById(usuarioId).orElseThrow();
 
-        lead.setProximoSeguimiento(
-                request.getProximoSeguimiento());
+		Lead lead = new Lead();
 
-        Lead leadActualizado =
-                leadRepository.save(lead);
+		lead.setUsuario(usuario);
+		lead.setNombre(request.getNombre());
+		lead.setTelefono(request.getTelefono());
+		lead.setCorreo(request.getCorreo());
+		lead.setEtapa(request.getEtapa());
 
-        return toResponse(leadActualizado);
-    }
-    @Override
-    public void eliminar(
-            Long leadId,
-            Long usuarioId) {
+		lead.setEtapa(request.getEtapa());
 
-    	Lead lead = leadRepository
-    	        .findByIdAndUsuarioId(
-    	                leadId,
-    	                usuarioId)
-    	        .orElseThrow(() ->
-    	                new LeadNotFoundException(
-    	                        "Lead no encontrado"));
+		if ("CERRADO".equals(request.getEtapa())) {
 
-        leadRepository.delete(lead);
-    }
-    private LeadResponse toResponse(Lead lead) {
+			lead.setProximoSeguimiento(null);
 
-        LeadResponse response = new LeadResponse();
+		} else {
 
-        response.setId(lead.getId());
-        response.setNombre(lead.getNombre());
-        response.setTelefono(lead.getTelefono());
-        response.setCorreo(lead.getCorreo());
-        response.setEtapa(lead.getEtapa());
-        response.setProximoSeguimiento(
-                lead.getProximoSeguimiento());
+			lead.setProximoSeguimiento(request.getProximoSeguimiento());
+		}
 
-        response.setCreadoEn(
-                lead.getCreadoEn());
+		Lead leadGuardado = leadRepository.save(lead);
 
-        response.setActualizadoEn(
-                lead.getActualizadoEn());
+		return toResponse(leadGuardado);
+	}
 
-        return response;
-    }
+	@Override
+	public LeadResponse actualizar(Long leadId, Long usuarioId, UpdateLeadRequest request) {
+
+		if ((request.getTelefono() == null || request.getTelefono().isBlank())
+				&& (request.getCorreo() == null || request.getCorreo().isBlank())) {
+
+			throw new IllegalArgumentException("Debe registrar teléfono o correo");
+		}
+
+		Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
+				.orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
+
+		lead.setNombre(request.getNombre());
+
+		lead.setTelefono(request.getTelefono());
+
+		lead.setCorreo(request.getCorreo());
+
+		lead.setEtapa(request.getEtapa());
+
+		if ("CERRADO".equals(request.getEtapa())) {
+
+			lead.setProximoSeguimiento(null);
+
+		} else {
+
+			lead.setProximoSeguimiento(request.getProximoSeguimiento());
+		}
+
+		Lead leadActualizado = leadRepository.save(lead);
+
+		return toResponse(leadActualizado);
+	}
+
+	@Override
+	public void eliminar(Long leadId, Long usuarioId) {
+
+		Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
+				.orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
+
+		leadRepository.delete(lead);
+	}
+
+	private LeadResponse toResponse(Lead lead) {
+
+		LeadResponse response = new LeadResponse();
+
+		response.setId(lead.getId());
+		response.setNombre(lead.getNombre());
+		response.setTelefono(lead.getTelefono());
+		response.setCorreo(lead.getCorreo());
+		response.setEtapa(lead.getEtapa());
+		response.setProximoSeguimiento(lead.getProximoSeguimiento());
+
+		response.setCreadoEn(lead.getCreadoEn());
+
+		response.setActualizadoEn(lead.getActualizadoEn());
+
+		return response;
+	}
 
 }

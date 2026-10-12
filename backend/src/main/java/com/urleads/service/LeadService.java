@@ -24,4 +24,9 @@ public interface LeadService {
     void eliminar(
             Long leadId,
             Long usuarioId);
+    
+    List<LeadResponse> listarFiltrado(
+            Long usuarioId,
+            String followUp,
+            String stage);
 }

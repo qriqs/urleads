@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.urleads.entity.Lead;
+import java.time.LocalDate;
 //Paginado
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,4 +24,16 @@ public interface LeadRepository
     Page<Lead> findByUsuarioId(
             Long usuarioId,
             Pageable pageable);
+    List<Lead> findByUsuarioIdAndEtapa(
+            Long usuarioId,
+            String etapa);
+
+    List<Lead> findByUsuarioIdAndProximoSeguimiento(
+            Long usuarioId,
+            LocalDate fecha);
+
+    List<Lead> findByUsuarioIdAndProximoSeguimientoBefore(
+            Long usuarioId,
+            LocalDate fecha);
+
 }

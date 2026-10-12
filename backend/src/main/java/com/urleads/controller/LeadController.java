@@ -30,9 +30,21 @@ public class LeadController {
     
     @GetMapping
     public List<LeadResponse> listar(
-            @RequestParam Long usuarioId) {
+            @RequestParam Long usuarioId,
 
-        return leadService.listar(usuarioId);
+            @RequestParam(
+                    required = false,
+                    defaultValue = "all")
+            String followUp,
+
+            @RequestParam(
+                    required = false)
+            String stage) {
+
+        return leadService.listarFiltrado(
+                usuarioId,
+                followUp,
+                stage);
     }
     
     //Obtener
