@@ -81,7 +81,32 @@ Ejemplo de creación/actualización:
   "nextFollowUp": null
 }
 ```
-> Nota: Cada lead inclyye el campo srvice, que representa el servicio o interes asociado a la oportunidad comercial.
+### Campo `service`
+
+Representa el servicio o interés comercial asociado a la oportunidad.
+
+| Propiedad | Valor |
+|------------|--------|
+| Tipo | string |
+| Obligatorio | No |
+| Permite `null` | Sí |
+| Descripción | Servicio o interés comercial asociado al lead |
+
+Ejemplos válidos:
+
+```json
+{
+  "service": "Consultoría"
+}
+```
+
+```json
+{
+  "service": null
+}
+```
+
+Cuando el valor sea distinto de `null`, el backend devolverá el mismo valor asociado al lead en las respuestas correspondientes.
 
 Ejemplo de entrada interna de bitácora (no se envía al cliente):
 
