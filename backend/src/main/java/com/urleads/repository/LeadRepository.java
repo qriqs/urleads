@@ -6,6 +6,9 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.urleads.entity.Lead;
+//Paginado
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface LeadRepository
         extends JpaRepository<Lead, Long> {
@@ -15,4 +18,9 @@ public interface LeadRepository
     Optional<Lead> findByIdAndUsuarioId(
             Long leadId,
             Long usuarioId);
+    
+    //Paginado
+    Page<Lead> findByUsuarioId(
+            Long usuarioId,
+            Pageable pageable);
 }

@@ -11,12 +11,12 @@ import org.springframework.boot.test.context.SpringBootTest;
  * en ejecucion. Esta prueba no constituye prueba de conectividad con la base de datos
  * (dicha verificacion corresponde a las pruebas de integracion en DatabaseMigrationIT).
  */
-@SpringBootTest(properties = {
+/*@SpringBootTest(properties = {
     "spring.autoconfigure.exclude=" +
         "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration," +
         "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration," +
         "org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration"
-})
+})*/
 class UrLeadsApplicationTests {
 
     @Test
