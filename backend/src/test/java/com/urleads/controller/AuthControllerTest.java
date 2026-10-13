@@ -18,6 +18,8 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.NestedTestConfiguration;
+import org.springframework.test.context.NestedTestConfiguration.EnclosingConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -33,12 +35,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
 @Tag("db-integration")
 @ActiveProfiles("db-integration")
 @ContextConfiguration(initializers = TestDatabaseGuardInitializer.class)
-class AuthControllerTest {
+@NestedTestConfiguration(EnclosingConfiguration.INHERIT)
+class AuthControllerIT {
 
     @Autowired
     private MockMvc mockMvc;
@@ -60,7 +63,11 @@ class AuthControllerTest {
     void setUp() {
         usuarioRepository.deleteAll();
         hashGuardado = passwordEncoder.encode(PASSWORD_TEST);
-        usuarioRepository.save(new Usuario(USUARIO_TEST, hashGuardado));
+
+        Usuario usuario = new Usuario();
+        usuario.setUsername(USUARIO_TEST);
+        usuario.setPasswordHash(hashGuardado);
+        usuarioRepository.save(usuario);
     }
 
     // =========================================================================
