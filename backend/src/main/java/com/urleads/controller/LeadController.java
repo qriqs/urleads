@@ -20,66 +20,56 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 @RestController
 @RequestMapping("/api/leads")
 @RequiredArgsConstructor
 public class LeadController {
 
-    private final LeadService leadService;
-    
-    @GetMapping
-    public List<LeadResponse> listar(
-            @RequestParam Long usuarioId) {
+	private final LeadService leadService;
 
-        return leadService.listar(usuarioId);
-    }
-    
-    //Obtener
-    @GetMapping("/{id}")
-    public LeadResponse obtener(
-            @PathVariable Long id,
-            @RequestParam Long usuarioId) {
+	@GetMapping
+	public List<LeadResponse> listar(@RequestParam Long usuarioId) {
+		/*
+		 * Bloqueado por integración con módulo de autenticación. El controlador
+		 * continúa usando usuarioId temporalmente hasta disponer de identidad
+		 * autenticada provista por Spring Security.
+		 */
 
-        return leadService.obtener(
-                id,
-                usuarioId);
-    }
-    
-    //Crear
-    @PostMapping
-    public LeadResponse crear(
-            @RequestParam Long usuarioId,
-            @Valid @RequestBody
-            CreateLeadRequest request) {
+		return leadService.listar(usuarioId);
+	}
 
-        return leadService.crear(
-                usuarioId,
-                request);
-    }
-    
-    //Actualizar
-    @PutMapping("/{id}")
-    public LeadResponse actualizar(
-            @PathVariable Long id,
-            @RequestParam Long usuarioId,
-            @Valid @RequestBody
-            UpdateLeadRequest request) {
+	// Obtener
+	@GetMapping("/{id}")
+	public LeadResponse obtener(@PathVariable Long id, @RequestParam Long usuarioId) {
 
-        return leadService.actualizar(
-                id,
-                usuarioId,
-                request);
-    }
-    //Eliminar
-    @DeleteMapping("/{id}")
-    public void eliminar(
-            @PathVariable Long id,
-            @RequestParam Long usuarioId) {
+		return leadService.obtener(id, usuarioId);
+	}
 
-        leadService.eliminar(
-                id,
-                usuarioId);
-    }
+	// Crear
+	@PostMapping
+	@ResponseStatus(HttpStatus.CREATED)
+	public LeadResponse crear(@RequestParam Long usuarioId, @Valid @RequestBody CreateLeadRequest request) {
+
+		return leadService.crear(usuarioId, request);
+	}
+
+	// Actualizar
+	@PutMapping("/{id}")
+	public LeadResponse actualizar(@PathVariable Long id, @RequestParam Long usuarioId,
+			@Valid @RequestBody UpdateLeadRequest request) {
+
+		return leadService.actualizar(id, usuarioId, request);
+	}
+
+	// Eliminar
+	@DeleteMapping("/{id}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void eliminar(@PathVariable Long id, @RequestParam Long usuarioId) {
+
+		leadService.eliminar(id, usuarioId);
+	}
 
 }

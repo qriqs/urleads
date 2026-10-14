@@ -73,8 +73,11 @@ public class LeadServiceImpl implements LeadService {
         lead.setTelefono(request.getTelefono());
         lead.setCorreo(request.getCorreo());
         lead.setEtapa(request.getEtapa());
+        lead.setService(
+                request.getService());
         lead.setProximoSeguimiento(
                 request.getProximoSeguimiento());
+        
 
         Lead leadGuardado =
                 leadRepository.save(lead);
@@ -118,6 +121,8 @@ public class LeadServiceImpl implements LeadService {
 
         lead.setEtapa(
                 request.getEtapa());
+        lead.setService(
+                request.getService());
 
         lead.setProximoSeguimiento(
                 request.getProximoSeguimiento());
@@ -159,6 +164,8 @@ public class LeadServiceImpl implements LeadService {
 
         response.setActualizadoEn(
                 lead.getActualizadoEn());
+        response.setService(
+                lead.getService());
 
         return response;
     }
