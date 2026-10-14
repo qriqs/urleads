@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 
+import com.urleads.repository.LeadRepository;
+import com.urleads.repository.NotaRepository;
 import com.urleads.repository.UsuarioRepository;
 
 /**
@@ -21,9 +23,15 @@ import com.urleads.repository.UsuarioRepository;
         "org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration"
 })
 class UrLeadsApplicationTests {
-	
-	@MockBean
+
+    @MockBean
     private UsuarioRepository usuarioRepository;
+
+    @MockBean
+    private LeadRepository leadRepository;
+
+    @MockBean
+    private NotaRepository notaRepository;
 
     @Test
     void contextLoads() {

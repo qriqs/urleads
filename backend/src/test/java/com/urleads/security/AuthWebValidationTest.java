@@ -2,6 +2,8 @@ package com.urleads.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.urleads.dto.LoginRequest;
+import com.urleads.repository.LeadRepository;
+import com.urleads.repository.NotaRepository;
 import com.urleads.repository.UsuarioRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,6 +36,12 @@ class AuthWebSecurityTest {
 
     @MockBean
     private UsuarioRepository usuarioRepository;
+
+    @MockBean
+    private LeadRepository leadRepository;
+
+    @MockBean
+    private NotaRepository notaRepository;
 
     @Test
     @DisplayName("Punto 1: Login sin CSRF devuelve 403 Forbidden")
