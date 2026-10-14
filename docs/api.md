@@ -2,15 +2,15 @@
 
 La API usa JSON y el prefijo `/api`.
 
-Actualmente, el único endpoint implementado en el backend es la comprobación
-pública de salud `GET /api/health` (responde HTTP 200 con `{"status":"UP"}`).
-El backend cuenta con la configuración de PostgreSQL 16 y el esquema inicial
-versionado mediante Flyway (`V1__initial_schema.sql`). Los endpoints de
-autenticación, gestión de leads, bitácora interna y dashboard descritos en este
-documento corresponden al contrato acordado del MVP y se implementarán en las
-siguientes tareas del backlog. Las rutas de leads, bitácora y dashboard
-requerirán sesión. La obtención inicial del token CSRF y el login no requieren
-una sesión autenticada previa.
+Actualmente están implementados `GET /api/health` y los endpoints CRUD de leads
+(`/api/leads`). El backend cuenta con PostgreSQL 16 y el esquema versionado con
+Flyway (`V1__initial_schema.sql`, `V2__add_service_column.sql`). Los endpoints de
+autenticación, bitácora interna y dashboard corresponden al contrato acordado del
+MVP y se implementarán en las siguientes tareas del backlog. Las rutas de leads,
+bitácora y dashboard requerirán sesión; mientras la autenticación no esté
+integrada, el propietario del lead lo resuelve el servidor y nunca el cliente. La
+obtención inicial del token CSRF y el login no requieren una sesión autenticada
+previa.
 
 ## Autenticación
 
@@ -52,6 +52,42 @@ credenciales reales no se incluirán en documentación, fixtures ni repositorio.
 La lista acepta `search`, `stage`, `followUp` y `page`; el tamaño de página
 será limitado por el servidor. Los valores de `followUp` serán `today`,
 `overdue` o `all`.
+
+### Formato de la lista paginada
+
+`GET /api/leads` acepta (todos opcionales):
+
+- `search`: texto parcial, sin distinguir mayúsculas, sobre `name`, `phone` y `email`.
+- `stage`: `NUEVO`, `EN_SEGUIMIENTO` o `CERRADO`.
+- `followUp`: `today`, `overdue` o `all` (por defecto `all`).
+- `page`: índice base 0 (por defecto 0).
+
+El tamaño de página es fijo en el servidor (20); un parámetro `size` enviado por
+el cliente se ignora. Orden: `createdAt` descendente.
+
+Respuesta 200:
+
+```json
+{
+  "content": [
+    {
+      "id": 42,
+      "name": "María Torres",
+      "service": "Consultoría",
+      "phone": "+51 900 000 000",
+      "email": "maria@example.test",
+      "stage": "NUEVO",
+      "nextFollowUp": null,
+      "createdAt": "2026-10-06T15:30:00Z",
+      "updatedAt": "2026-10-06T15:30:00Z"
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 1,
+  "totalPages": 1
+}
+```
 
 ## Ejemplo de lead
 
@@ -123,8 +159,7 @@ al agregar una actualización. El contenido se trata siempre como texto plano.
 
 ## Monitoreo y salud
 
-El endpoint de salud es público y no requiere sesión ni credenciales. Es el
-único endpoint implementado actualmente en el scaffold del backend.
+El endpoint de salud es público y no requiere sesión ni credenciales.Es público y no requiere sesión ni credenciales.
 
 | Método | Ruta | Estado | Resultado |
 |---|---|---|---|
@@ -164,6 +199,9 @@ Se usará una forma estable, por ejemplo:
 - 404: recurso inexistente o que no pertenece al usuario.
 - 409: conflicto de estado cuando aplique.
 - 500: error interno sin detalles sensibles.
+
+- `fieldErrors` usa siempre los nombres públicos del contrato (`name`, `phone`,
+`email`, `stage`, `nextFollowUp`, `service`).
 
 ## Método PUT
 
