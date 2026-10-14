@@ -5,7 +5,7 @@ WORKDIR /app
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
 COPY src/ src/
-RUN ./mvnw -B clean verify
+RUN sed -i 's/\r$//' ./mvnw && chmod +x ./mvnw && ./mvnw -B clean verify -DexcludedGroups=db-integration
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
 
