@@ -10,8 +10,10 @@ import { Link } from "react-router-dom";
 import { Navbar } from "../components/Navbar";
 import { DashboardPreview } from "../components/DashboardPreview";
 import { Button } from "../components/ui/button";
+import { useAuth } from "../context/AuthContext";
 
 export default function LandingPage() {
+  const { isAuthenticated } = useAuth();
   const [showVideoModal, setShowVideoModal] = useState(false);
 
   return (
@@ -74,11 +76,11 @@ export default function LandingPage() {
           className="mt-5 flex items-center gap-3"
         >
           {/* Primary button */}
-          <Link to="/app">
+          <Link to={isAuthenticated ? "/app" : "/login"}>
             <Button
-              className="rounded-full px-6 py-5 text-sm font-medium font-body bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 shadow-sm active:scale-98"
+              className="rounded-full px-6 py-5 text-sm font-medium font-body bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 shadow-sm active:scale-98 cursor-pointer"
             >
-              Go to CRM
+              {isAuthenticated ? "Ir al CRM" : "Iniciar Sesión"}
             </Button>
           </Link>
 

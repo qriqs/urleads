@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from "react-router-dom"
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom"
 import {
   ChevronDown,
   Search,
@@ -12,11 +12,16 @@ import {
   Settings,
   Filter,
   Megaphone,
-  BellRing
+  BellRing,
+  LogOut
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export default function MainLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const userInitials = user?.username ? user.username.slice(0, 2).toUpperCase() : "US";
 
   const mainNav = [
     { name: "Resumen", path: "/app", icon: Home },
@@ -72,9 +77,17 @@ export default function MainLayout() {
           <div className="h-9 w-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground border border-transparent cursor-pointer">
             <Bell className="h-4 w-4" />
           </div>
-          <div className="h-9 w-9 rounded-full bg-secondary border border-border text-foreground font-semibold text-xs flex items-center justify-center cursor-pointer">
-            SC
-          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              await logout();
+              navigate('/login');
+            }}
+            title={`Usuario: ${user?.username || 'Usuario'} (Clic para cerrar sesión)`}
+            className="h-9 w-9 rounded-full bg-secondary border border-border text-foreground font-semibold text-xs flex items-center justify-center cursor-pointer hover:bg-red-500/10 hover:text-red-500 transition-colors"
+          >
+            {userInitials}
+          </button>
         </div>
       </header>
 
@@ -136,6 +149,30 @@ export default function MainLayout() {
                 })}
               </nav>
             </div>
+          </div>
+
+          {/* User Profile & Logout section at sidebar bottom */}
+          <div className="pt-4 border-t border-border mt-auto">
+            <div className="flex items-center gap-3 px-3 py-2 mb-2">
+              <div className="h-8 w-8 rounded-full bg-secondary border border-border text-foreground font-semibold text-xs flex items-center justify-center shrink-0">
+                {userInitials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-foreground truncate">{user?.username || 'Usuario'}</p>
+                <p className="text-[10px] text-muted-foreground truncate">Sesión activa</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                await logout();
+                navigate('/login');
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Cerrar sesión</span>
+            </button>
           </div>
         </aside>
 

@@ -1,10 +1,12 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { Users, DollarSign, Activity, FileText, CheckCircle, Target, Grid, BarChart2, Calendar, Settings } from 'lucide-react';
 import React from 'react';
 import './AuroraDashboard.css';
+import { useAuth } from '../context/AuthContext';
 
-import { useLocation, Outlet } from 'react-router-dom';
 export default function AuroraDashboard() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
   const path = location.pathname;
   
@@ -189,16 +191,25 @@ export default function AuroraDashboard() {
           <Link to="/app/ajustes" aria-label="Ajustes" aria-current={activeIndex === 4 ? "page" : undefined}><Settings strokeWidth={2} /></Link>
         </nav>
 
-        <Link to="/" className="logout" aria-label="Cerrar sesión">
+        <button
+          type="button"
+          onClick={async () => {
+            await logout();
+            navigate('/login');
+          }}
+          className="logout"
+          aria-label="Cerrar sesión"
+          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+        >
           <svg><use href="#i-out"></use></svg>
-        </Link>
+        </button>
       </aside>
 
       
       <header className="header">
         <div className="header-user">
           <span className="welcome">Hola,</span>
-          <span className="who">Sebas</span>
+          <span className="who">{user?.username || "Sebas"}</span>
         </div>
 
         <div className="header-tools">
@@ -211,9 +222,19 @@ export default function AuroraDashboard() {
           <button type="button" className="tool" aria-label="Notifications">
             <svg><use href="#i-bell"></use></svg>
           </button>
-          <Link to="/" className="tool tool-avatar" aria-label="Profile">
+          <button 
+            type="button" 
+            onClick={async () => {
+              await logout();
+              navigate('/login');
+            }}
+            className="tool tool-avatar" 
+            aria-label="Perfil / Cerrar sesión"
+            title="Cerrar sesión"
+            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+          >
             <svg className="avatar-fallback"><use href="#i-avatar"></use></svg>
-          </Link>
+          </button>
         </div>
       </header>
 

@@ -1,8 +1,11 @@
 import React from "react";
 import { Button } from "./ui/button";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export const Navbar: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+
   return (
     <header className="relative z-20 flex items-center justify-between px-6 md:px-12 lg:px-20 py-5 font-body shrink-0 bg-transparent">
       {/* Left: Brand Logo */}
@@ -48,12 +51,12 @@ export const Navbar: React.FC = () => {
           </a>
         </nav>
 
-        <Link to="/app">
+        <Link to={isAuthenticated ? "/app" : "/login"}>
           <Button
-            className="rounded-full px-5 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 shadow-sm"
+            className="rounded-full px-5 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 shadow-sm cursor-pointer"
             size="default"
           >
-            Empezar
+            {isAuthenticated ? "Ir al CRM" : "Iniciar Sesión"}
           </Button>
         </Link>
       </div>
