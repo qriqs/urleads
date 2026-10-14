@@ -1,75 +1,84 @@
 package com.urleads.controller;
 
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import com.urleads.service.LeadService;
-
-import lombok.RequiredArgsConstructor;
-import java.util.List;
-
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.urleads.dto.CreateLeadRequest;
 import com.urleads.dto.LeadResponse;
+import com.urleads.dto.PageResponse;
 import com.urleads.dto.UpdateLeadRequest;
+import com.urleads.security.CurrentUserProvider;
+import com.urleads.service.LeadService;
 
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/leads")
 @RequiredArgsConstructor
 public class LeadController {
 
-	private final LeadService leadService;
+    private final LeadService leadService;
+    private final CurrentUserProvider currentUserProvider;
 
-	@GetMapping
-	public List<LeadResponse> listar(@RequestParam Long usuarioId) {
-		/*
-		 * Bloqueado por integración con módulo de autenticación. El controlador
-		 * continúa usando usuarioId temporalmente hasta disponer de identidad
-		 * autenticada provista por Spring Security.
-		 */
+    @GetMapping
+    public PageResponse<LeadResponse> listar(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "all") String followUp,
+            @RequestParam(required = false) String stage,
+            @RequestParam(required = false, defaultValue = "0") int page) {
 
-		return leadService.listar(usuarioId);
-	}
+        return leadService.listarPaginado(
+                currentUserProvider.getCurrentUserId(),
+                search,
+                followUp,
+                stage,
+                page);
+    }
 
-	// Obtener
-	@GetMapping("/{id}")
-	public LeadResponse obtener(@PathVariable Long id, @RequestParam Long usuarioId) {
+    @GetMapping("/{id}")
+    public LeadResponse obtener(@PathVariable Long id) {
 
-		return leadService.obtener(id, usuarioId);
-	}
+        return leadService.obtener(
+                id,
+                currentUserProvider.getCurrentUserId());
+    }
 
-	// Crear
-	@PostMapping
-	@ResponseStatus(HttpStatus.CREATED)
-	public LeadResponse crear(@RequestParam Long usuarioId, @Valid @RequestBody CreateLeadRequest request) {
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public LeadResponse crear(@Valid @RequestBody CreateLeadRequest request) {
 
-		return leadService.crear(usuarioId, request);
-	}
+        return leadService.crear(
+                currentUserProvider.getCurrentUserId(),
+                request);
+    }
 
-	// Actualizar
-	@PutMapping("/{id}")
-	public LeadResponse actualizar(@PathVariable Long id, @RequestParam Long usuarioId,
-			@Valid @RequestBody UpdateLeadRequest request) {
+    @PutMapping("/{id}")
+    public LeadResponse actualizar(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateLeadRequest request) {
 
-		return leadService.actualizar(id, usuarioId, request);
-	}
+        return leadService.actualizar(
+                id,
+                currentUserProvider.getCurrentUserId(),
+                request);
+    }
 
-	// Eliminar
-	@DeleteMapping("/{id}")
-	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void eliminar(@PathVariable Long id, @RequestParam Long usuarioId) {
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eliminar(@PathVariable Long id) {
 
-		leadService.eliminar(id, usuarioId);
-	}
-
+        leadService.eliminar(
+                id,
+                currentUserProvider.getCurrentUserId());
+    }
 }
