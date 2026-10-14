@@ -148,7 +148,6 @@
 							<includes>
 								<include>**/*IT.java</include>
 							</includes>
-							<groups>db-integration</groups>
 							<systemPropertyVariables>
 								<spring.profiles.active>db-integration</spring.profiles.active>
 								<TEST_DB_URL>${env.TEST_DB_URL}</TEST_DB_URL>
