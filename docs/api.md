@@ -59,6 +59,7 @@ será limitado por el servidor. Los valores de `followUp` serán `today`,
 {
   "id": 42,
   "name": "María Torres",
+  "service": "Consultoría",
   "phone": "+51 900 000 000",
   "email": "maria@example.test",
   "stage": "EN_SEGUIMIENTO",
@@ -73,12 +74,39 @@ Ejemplo de creación/actualización:
 ```json
 {
   "name": "María Torres",
+  "service": "Consultoría",
   "phone": "+51 900 000 000",
   "email": "maria@example.test",
   "stage": "NUEVO",
   "nextFollowUp": null
 }
 ```
+### Campo `service`
+
+Representa el servicio o interés comercial asociado a la oportunidad.
+
+| Propiedad | Valor |
+|------------|--------|
+| Tipo | string |
+| Obligatorio | No |
+| Permite `null` | Sí |
+| Descripción | Servicio o interés comercial asociado al lead |
+
+Ejemplos válidos:
+
+```json
+{
+  "service": "Consultoría"
+}
+```
+
+```json
+{
+  "service": null
+}
+```
+
+Cuando el valor sea distinto de `null`, el backend devolverá el mismo valor asociado al lead en las respuestas correspondientes.
 
 Ejemplo de entrada interna de bitácora (no se envía al cliente):
 
