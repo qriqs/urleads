@@ -4,6 +4,39 @@ Este plan distingue pruebas automatizadas de desarrollo, pruebas de API con
 Postman y pruebas manuales de producto. Las tres aportan evidencia distinta y
 ninguna sustituye por completo a las otras.
 
+## Checks en pull request
+
+GitHub Actions ejecuta checks en pull requests hacia `main`, pushes a `main` y
+ejecuciones manuales. Los jobs de backend y frontend son independientes. Un
+comando fallido hace fallar su job.
+
+- **Backend:** Java 21, Maven Wrapper y un servicio efímero PostgreSQL 16.
+  Ejecuta desde `backend/`:
+
+  ```bash
+  ./mvnw --batch-mode --no-transfer-progress clean verify -Pdb-integration
+  ```
+
+  El job configura `TEST_DB_URL` hacia `127.0.0.1` y la base aislada
+  `urleads_test`, junto con credenciales ficticias desechables. No usa la base
+  de desarrollo ni requiere secretos del repositorio.
+- **Frontend:** Node.js 22 y Bun 1.3.10. Ejecuta desde `frontend/`:
+
+  ```bash
+  bun install --frozen-lockfile
+  bun run lint
+  bun run build
+  ```
+
+  `lint` ejecuta TypeScript con `tsc --noEmit`. No hay un script de pruebas
+  frontend configurado, por lo que CI no inventa uno ni requiere una clave
+  Gemini.
+
+Puedes reproducir localmente los checks frontend con los comandos anteriores.
+Para backend, sigue el procedimiento de base de datos aislada de
+[`infra/README.md`](../infra/README.md), usando `urleads_test` y variables
+`TEST_DB_*`, antes de ejecutar el comando del job.
+
 ## Pruebas automatizadas de desarrolladores
 
 Karlo y Alexander implementan y mantienen las pruebas del backend en sus

@@ -2,6 +2,9 @@ package com.urleads;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+
+import com.urleads.repository.UsuarioRepository;
 
 /**
  * Prueba de carga del contexto basico de la aplicacion (scaffold).
@@ -18,6 +21,9 @@ import org.springframework.boot.test.context.SpringBootTest;
         "org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration"
 })
 class UrLeadsApplicationTests {
+	
+	@MockBean
+    private UsuarioRepository usuarioRepository;
 
     @Test
     void contextLoads() {

@@ -1,0 +1,32 @@
+# Exclude everything unless it is an explicit backend build input.
+**
+!mvnw
+!pom.xml
+!.mvn/
+!.mvn/wrapper/
+!.mvn/wrapper/**
+!src/
+!src/**
+
+# Re-apply exclusions recursively so nested build inputs cannot include secrets,
+# local environment files, logs, generated output, or IDE metadata.
+**/.git/
+**/.git/**
+**/.idea/
+**/.idea/**
+**/.vscode/
+**/.vscode/**
+**/target/
+**/target/**
+**/build/
+**/build/**
+**/dist/
+**/dist/**
+**/node_modules/
+**/node_modules/**
+**/.env
+**/.env.*
+**/*.env
+**/*.env.*
+**/*.log
+**/*.iml

@@ -58,7 +58,7 @@ siguientes tareas del [backlog](docs/backlog.md).
 | Pruebas | Contexto básico, contrato de health, guard de pruebas y migración Flyway (`db-integration`). | Pruebas de repositorios (UL-07), seguridad y flujos de producto. |
 | Interfaz | Prototipo HTML con datos ficticios. | Aplicación React responsive conectada a la API. |
 | Datos | PostgreSQL 16 con Docker Compose y migración inicial Flyway (V1). | Entidades Spring Data JPA y repositorios CRUD (UL-07). |
-| Entrega | Guías técnicas y planificación del equipo. | CI, build integrado y despliegue autorizado. |
+| Entrega | Guías técnicas y planificación del equipo; CI en GitHub Actions para backend y frontend. | Build integrado y despliegue autorizado. |
 
 ## 🎨 Diseño del MVP
 
@@ -83,11 +83,24 @@ acordadas para construir el MVP.
 | UI y datos remotos | Tailwind CSS · shadcn/ui · TanStack Query · `fetch` | Planificados |
 | Persistencia | PostgreSQL · Spring Data JPA (planificado) · Spring JDBC · Flyway | Esquema V1 y Flyway implementados; JPA planificado para UL-07 |
 | Seguridad y validación | Spring Security · BCrypt · Bean Validation | Planificadas |
-| Entorno y entrega | Docker Compose · GitHub Actions · Railway | PostgreSQL local configurado; CI y nube planificados |
+| Entorno y entrega | Docker Compose · GitHub Actions · Railway | PostgreSQL local configurado; CI para backend y frontend configurado; nube planificada |
 
 La arquitectura prevista usa **una aplicación Spring Boot** para servir la API
 y el frontend compilado, más **un servicio PostgreSQL**. Railway está sujeto a
 aceptación del docente y aprobación explícita de costos.
+
+## Checks de integración continua
+
+GitHub Actions ejecuta los checks en cada pull request hacia `main`, cada push
+a `main` y cuando se inicia el workflow manualmente. El backend ejecuta
+`./mvnw --batch-mode --no-transfer-progress clean verify -Pdb-integration` con
+Java 21 y un PostgreSQL 16 efímero aislado. El frontend instala las dependencias
+con `bun install --frozen-lockfile`, ejecuta `bun run lint` (TypeScript sin
+emisión) y genera el build con `bun run build`, usando Node.js 22 y Bun 1.3.10.
+No hay un script de tests frontend configurado actualmente. Para reproducir los
+checks localmente, sigue las instrucciones de la
+[guía del frontend](frontend/README.md) y las
+[pruebas del backend](docs/pruebas.md).
 
 ## 💻 Desarrollo local
 
