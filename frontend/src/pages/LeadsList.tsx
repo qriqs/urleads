@@ -15,8 +15,6 @@ import {
   User,
   Trash2,
   Sparkles,
-  ShieldCheck,
-  TrendingUp,
 } from "lucide-react";
 import {
   getLeadsApi,
@@ -373,70 +371,46 @@ export default function LeadsList() {
             </p>
           </div>
         ) : leads.length === 0 ? (
-          /* Empty State (Liquid Glass Hero Card) */
-          <div className="liquid-glass-card rounded-3xl p-10 sm:p-16 text-center flex flex-col items-center justify-center space-y-5">
-            {/* Ambient Sphere Icon */}
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-cyan-400/20 via-white/10 to-transparent border border-white/25 backdrop-blur-md flex items-center justify-center text-cyan-300 shadow-[0_0_35px_rgba(34,211,238,0.25)]">
-              <User className="h-9 w-9" />
+          /* Empty State */
+          <div className="p-8 sm:p-14 text-center rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/10 flex items-center justify-center text-white/60 border border-white/15">
+              <User className="h-8 w-8" />
             </div>
 
             {debouncedSearch ? (
-              <div className="space-y-3 max-w-md mx-auto">
-                <h3 className="text-xl font-bold text-white tracking-tight">
+              <>
+                <h3 className="text-lg font-semibold text-white">
                   No se encontraron resultados
                 </h3>
-                <p className="text-sm text-white/65 leading-relaxed">
-                  No encontramos contactos que coincidan con &ldquo;
-                  <span className="text-cyan-300 font-medium">{debouncedSearch}</span>
-                  &rdquo;. Revisa la ortografía o limpia el filtro.
+                <p className="text-sm text-white/60 mt-1 max-w-md mx-auto">
+                  No hay ningún lead que coincida con &ldquo;{debouncedSearch}&rdquo;.
                 </p>
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setSearchInput("")}
-                    className="liquid-glass-btn-secondary px-5 py-2.5 rounded-full text-xs font-semibold inline-flex items-center gap-2 cursor-pointer"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    Limpiar búsqueda
-                  </button>
-                </div>
-              </div>
+                <button
+                  type="button"
+                  onClick={() => setSearchInput("")}
+                  className="mt-4 px-4 py-2 text-sm text-white border border-white/20 bg-white/10 hover:bg-white/20 rounded-xl inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  <span>Limpiar búsqueda</span>
+                </button>
+              </>
             ) : (
-              <div className="space-y-4 max-w-lg mx-auto">
-                <h3 className="text-2xl font-bold text-white tracking-tight">
+              <>
+                <h3 className="text-lg font-semibold text-white">
                   No tienes leads registrados aún
                 </h3>
-                <p className="text-sm text-white/70 leading-relaxed">
-                  Registra tu primer lead para comenzar a gestionar tu pipeline comercial, programar fechas de seguimiento y cerrar más ventas a máxima velocidad.
+                <p className="text-sm text-white/60 mt-1 max-w-md mx-auto">
+                  Registra tu primer lead para comenzar a gestionar tu pipeline comercial y hacer seguimiento a tus ventas.
                 </p>
-
-                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handleOpenModal}
-                    className="liquid-glass-btn-primary px-6 py-3 rounded-full text-sm font-semibold flex items-center gap-2 cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Crear mi primer lead</span>
-                  </button>
-                </div>
-
-                {/* Feature highlight pills below button */}
-                <div className="pt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-white/60 border-t border-white/10">
-                  <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl liquid-glass-pill">
-                    <Sparkles className="h-3.5 w-3.5 text-cyan-300" />
-                    <span>Pipeline ágil</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl liquid-glass-pill">
-                    <TrendingUp className="h-3.5 w-3.5 text-emerald-300" />
-                    <span>Seguimiento real</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl liquid-glass-pill">
-                    <ShieldCheck className="h-3.5 w-3.5 text-sky-300" />
-                    <span>Privacidad total</span>
-                  </div>
-                </div>
-              </div>
+                <button
+                  type="button"
+                  onClick={handleOpenModal}
+                  className="mt-5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-500/20 inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Crear mi primer lead</span>
+                </button>
+              </>
             )}
           </div>
         ) : (
