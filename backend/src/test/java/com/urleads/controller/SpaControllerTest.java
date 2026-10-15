@@ -1,5 +1,6 @@
 package com.urleads.controller;
 
+import com.urleads.repository.NotaRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -32,6 +33,9 @@ class SpaControllerTest {
 
     @MockBean
     private UsuarioRepository usuarioRepository;
+
+    @MockBean
+    private NotaRepository notaRepository;
 
     @MockBean
     private com.urleads.repository.LeadRepository leadRepository;
