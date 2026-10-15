@@ -15,6 +15,8 @@ interface GlassSelectProps {
   options: GlassSelectOption[];
   disabled?: boolean;
   placeholder?: string;
+  size?: "default" | "sm";
+  className?: string;
   onOpenChange?: (isOpen: boolean) => void;
 }
 
@@ -25,6 +27,8 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
   options,
   disabled = false,
   placeholder = "Seleccionar...",
+  size = "default",
+  className = "",
   onOpenChange,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -76,8 +80,10 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
     updateOpenState(false);
   };
 
+  const isSmall = size === "sm";
+
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className={`relative w-full ${className}`}>
       {/* Trigger Button */}
       <button
         type="button"
@@ -86,23 +92,31 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
         onClick={() => updateOpenState(!isOpen)}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        className={`w-full h-[52px] px-5 rounded-2xl liquid-glass-input flex items-center justify-between text-left transition-all cursor-pointer ${
+        className={`w-full ${
+          isSmall
+            ? "h-10 px-3.5 rounded-xl text-xs sm:text-sm"
+            : "h-[52px] px-5 rounded-2xl text-[15px]"
+        } liquid-glass-input flex items-center justify-between text-left transition-all cursor-pointer ${
           disabled ? "opacity-40 cursor-not-allowed" : "hover:border-white/40"
         } ${isOpen ? "border-white/60 ring-2 ring-white/20" : ""}`}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           {selectedOption?.colorDot && (
             <span
-              className={`w-2.5 h-2.5 rounded-full shrink-0 ${selectedOption.colorDot}`}
+              className={`w-2 h-2 rounded-full shrink-0 ${selectedOption.colorDot}`}
             />
           )}
-          <span className="text-[15px] font-medium text-white truncate">
+          <span
+            className={`font-medium truncate ${
+              isSmall ? "text-xs sm:text-sm" : "text-[15px]"
+            } ${selectedOption ? "text-white" : "text-white/60"}`}
+          >
             {selectedOption ? selectedOption.label : placeholder}
           </span>
         </div>
 
         <ChevronDown
-          className={`h-4 w-4 text-white/70 shrink-0 transition-transform duration-200 ${
+          className={`h-3.5 w-3.5 text-white/70 shrink-0 transition-transform duration-200 ml-1.5 ${
             isOpen ? "rotate-180 text-white" : ""
           }`}
         />
@@ -113,7 +127,11 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
         <div
           role="listbox"
           tabIndex={-1}
-          className="glass-dropdown-menu absolute top-[calc(100%+8px)] left-0 right-0 z-50 rounded-2xl p-2 space-y-1"
+          className={`glass-dropdown-menu absolute left-0 right-0 z-50 rounded-2xl p-1.5 space-y-1 ${
+            isSmall
+              ? "top-[calc(100%+6px)] min-w-[210px]"
+              : "top-[calc(100%+8px)] p-2"
+          }`}
           style={{
             background:
               "linear-gradient(135deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.08) 100%)",
@@ -132,24 +150,34 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
                 role="option"
                 aria-selected={isSelected}
                 onClick={() => handleSelect(option.value)}
-                className={`w-full px-4 py-3 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
+                className={`w-full ${
+                  isSmall ? "px-3 py-2 rounded-lg" : "px-4 py-3 rounded-xl"
+                } flex items-center justify-between transition-all cursor-pointer ${
                   isSelected
                     ? "bg-white/25 border border-white/35 text-white font-semibold shadow-sm"
                     : "text-white/85 hover:bg-white/15 hover:text-white"
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   {option.colorDot && (
                     <span
-                      className={`w-2.5 h-2.5 rounded-full shrink-0 ${option.colorDot}`}
+                      className={`w-2 h-2 rounded-full shrink-0 ${option.colorDot}`}
                     />
                   )}
                   <div className="min-w-0">
-                    <div className="text-[14px] leading-tight text-white font-medium">
+                    <div
+                      className={`leading-tight text-white font-medium ${
+                        isSmall ? "text-xs sm:text-sm" : "text-[14px]"
+                      }`}
+                    >
                       {option.label}
                     </div>
                     {option.description && (
-                      <div className="text-[11px] text-white/60 mt-0.5 truncate">
+                      <div
+                        className={`text-white/60 mt-0.5 truncate ${
+                          isSmall ? "text-[10px]" : "text-[11px]"
+                        }`}
+                      >
                         {option.description}
                       </div>
                     )}
@@ -157,7 +185,7 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
                 </div>
 
                 {isSelected && (
-                  <Check className="h-4 w-4 text-white shrink-0 ml-2" />
+                  <Check className="h-3.5 w-3.5 text-white shrink-0 ml-2" />
                 )}
               </div>
             );

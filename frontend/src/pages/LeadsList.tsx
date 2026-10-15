@@ -14,15 +14,22 @@ import {
   User,
   Trash2,
   Sparkles,
+  Pencil,
+  Filter,
+  FilterX,
+  Check,
 } from "lucide-react";
 import { sileo } from "sileo";
 import {
   getLeadsApi,
   createLeadApi,
+  updateLeadApi,
   deleteLeadApi,
   Lead,
   LeadStage,
   CreateLeadPayload,
+  UpdateLeadPayload,
+  FollowUpFilter,
   LeadApiError,
 } from "../services/leads";
 import { GlassSelect, GlassSelectOption } from "../components/ui/GlassSelect";
@@ -49,6 +56,52 @@ const STAGE_OPTIONS: GlassSelectOption[] = [
   },
 ];
 
+const FILTER_STAGE_OPTIONS: GlassSelectOption[] = [
+  {
+    value: "",
+    label: "Todas las etapas",
+    description: "Ver todos los estados",
+  },
+  {
+    value: "NUEVO",
+    label: "Nuevo",
+    description: "Prospectos recién registrados",
+    colorDot: "bg-sky-400",
+  },
+  {
+    value: "EN_SEGUIMIENTO",
+    label: "En seguimiento",
+    description: "Contacto activo y negociación",
+    colorDot: "bg-amber-400",
+  },
+  {
+    value: "CERRADO",
+    label: "Cerrado",
+    description: "Tratos comerciales concretados",
+    colorDot: "bg-emerald-400",
+  },
+];
+
+const FILTER_FOLLOWUP_OPTIONS: GlassSelectOption[] = [
+  {
+    value: "all",
+    label: "Todos los seguimientos",
+    description: "Cualquier fecha programada",
+  },
+  {
+    value: "today",
+    label: "Para hoy",
+    description: "Seguimiento programado hoy",
+    colorDot: "bg-cyan-400",
+  },
+  {
+    value: "overdue",
+    label: "Atrasados",
+    description: "Seguimiento con fecha vencida",
+    colorDot: "bg-rose-400",
+  },
+];
+
 export default function LeadsList() {
   // Data states
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -59,6 +112,8 @@ export default function LeadsList() {
   // Search & filter states
   const [searchInput, setSearchInput] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+  const [selectedStage, setSelectedStage] = useState<LeadStage | "">("");
+  const [selectedFollowUp, setSelectedFollowUp] = useState<FollowUpFilter>("all");
 
   // Loading & error states
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -66,6 +121,7 @@ export default function LeadsList() {
 
   // Modal & form states
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [formData, setFormData] = useState<CreateLeadPayload>({
     name: "",
     phone: "",
@@ -93,49 +149,99 @@ export default function LeadsList() {
   }, [searchInput]);
 
   // Fetch leads callback
-  const fetchLeads = useCallback(async (searchQuery: string, pageNumber: number) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await getLeadsApi(searchQuery, pageNumber);
-      setLeads(response.content || []);
-      setTotalElements(response.totalElements ?? 0);
-      setTotalPages(response.totalPages ?? 1);
-    } catch (err: any) {
-      const errorObj: LeadApiError = err.message
-        ? (err as LeadApiError)
-        : {
-            status: 500,
-            message: "Error al comunicarse con el servidor.",
-          };
-      setError(errorObj);
-      sileo.error({
-        title: "Error de sincronización",
-        description: errorObj.message,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const fetchLeads = useCallback(
+    async (
+      searchQuery: string,
+      pageNumber: number,
+      stageFilter: LeadStage | "",
+      followUpFilter: FollowUpFilter
+    ) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await getLeadsApi({
+          search: searchQuery,
+          page: pageNumber,
+          stage: stageFilter || undefined,
+          followUp: followUpFilter !== "all" ? followUpFilter : undefined,
+        });
+        setLeads(response.content || []);
+        setTotalElements(response.totalElements ?? 0);
+        setTotalPages(response.totalPages ?? 1);
+      } catch (err: any) {
+        const errorObj: LeadApiError = err.message
+          ? (err as LeadApiError)
+          : {
+              status: 500,
+              message: "Error al comunicarse con el servidor.",
+            };
+        setError(errorObj);
+        sileo.error({
+          title: "Error de sincronización",
+          description: errorObj.message,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
-  // Fetch leads on mount or when debouncedSearch/page change
+  // Fetch leads on mount or when search/page/filters change
   useEffect(() => {
-    fetchLeads(debouncedSearch, page);
-  }, [debouncedSearch, page, fetchLeads]);
+    fetchLeads(debouncedSearch, page, selectedStage, selectedFollowUp);
+  }, [debouncedSearch, page, selectedStage, selectedFollowUp, fetchLeads]);
 
   // Handle ESC key to close modals
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (leadToDelete) setLeadToDelete(null);
-        else if (isModalOpen) setIsModalOpen(false);
+        else if (isModalOpen) handleCloseModal();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isModalOpen, leadToDelete]);
 
-  const handleOpenModal = () => {
+  const hasActiveFilters = Boolean(
+    debouncedSearch || selectedStage || selectedFollowUp !== "all"
+  );
+
+  const handleClearFilters = () => {
+    setSearchInput("");
+    setDebouncedSearch("");
+    setSelectedStage("");
+    setSelectedFollowUp("all");
+    setPage(0);
+  };
+
+  const handleOpenCreateModal = () => {
+    setEditingLead(null);
+    setFormData({
+      name: "",
+      phone: "",
+      email: "",
+      stage: "NUEVO",
+      nextFollowUp: "",
+      service: "",
+    });
+    setFormErrors({});
+    setIsStageSelectOpen(false);
+    setIsDatePickerOpen(false);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (lead: Lead) => {
+    setEditingLead(lead);
+    setFormData({
+      name: lead.name,
+      phone: lead.phone || "",
+      email: lead.email || "",
+      stage: lead.stage,
+      nextFollowUp: lead.nextFollowUp || "",
+      service: lead.service || "",
+    });
     setFormErrors({});
     setIsStageSelectOpen(false);
     setIsDatePickerOpen(false);
@@ -144,6 +250,7 @@ export default function LeadsList() {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setEditingLead(null);
     setIsStageSelectOpen(false);
     setIsDatePickerOpen(false);
     setFormErrors({});
@@ -200,38 +307,51 @@ export default function LeadsList() {
 
     setIsSubmitting(true);
     try {
-      await createLeadApi({
+      const payload: UpdateLeadPayload = {
         name: trimmedName,
         phone: trimmedPhone || null,
         email: trimmedEmail || null,
         stage: formData.stage,
-        nextFollowUp: formData.nextFollowUp || null,
+        nextFollowUp: formData.stage === "CERRADO" ? null : (formData.nextFollowUp || null),
         service: formData.service?.trim() || null,
-      });
+      };
 
-      setIsModalOpen(false);
-      setFormData({
-        name: "",
-        phone: "",
-        email: "",
-        stage: "NUEVO",
-        nextFollowUp: "",
-        service: "",
-      });
-      sileo.success({
-        title: "¡Lead registrado exitosamente!",
-        description: `${trimmedName} ahora forma parte de tu pipeline comercial.`,
-      });
-      fetchLeads(debouncedSearch, 0);
-      setPage(0);
+      if (editingLead) {
+        await updateLeadApi(editingLead.id, payload);
+        setIsModalOpen(false);
+        setEditingLead(null);
+        sileo.success({
+          title: "¡Lead actualizado exitosamente!",
+          description: `Los cambios para "${trimmedName}" han sido guardados.`,
+        });
+        fetchLeads(debouncedSearch, page, selectedStage, selectedFollowUp);
+      } else {
+        await createLeadApi(payload);
+        setIsModalOpen(false);
+        setFormData({
+          name: "",
+          phone: "",
+          email: "",
+          stage: "NUEVO",
+          nextFollowUp: "",
+          service: "",
+        });
+        sileo.success({
+          title: "¡Lead registrado exitosamente!",
+          description: `${trimmedName} ahora forma parte de tu pipeline comercial.`,
+        });
+        setPage(0);
+        fetchLeads(debouncedSearch, 0, selectedStage, selectedFollowUp);
+      }
     } catch (err: any) {
       const apiErr = err as LeadApiError;
       if (apiErr.fieldErrors && Object.keys(apiErr.fieldErrors).length > 0) {
         setFormErrors(apiErr.fieldErrors);
       }
-      const errorMsg = apiErr.message || "Error al registrar el lead. Revisa los datos.";
+      const actionText = editingLead ? "actualizar" : "registrar";
+      const errorMsg = apiErr.message || `Error al ${actionText} el lead. Revisa los datos.`;
       sileo.error({
-        title: "Error al registrar lead",
+        title: `Error al ${actionText} lead`,
         description: errorMsg,
       });
     } finally {
@@ -241,7 +361,7 @@ export default function LeadsList() {
 
   // Delete lead handler
   const handleConfirmDelete = async () => {
-    if (!leadToDelete) return;
+    if (!leadToDelete || isDeleting) return;
     const deletedName = leadToDelete.name;
     setIsDeleting(true);
     try {
@@ -251,7 +371,13 @@ export default function LeadsList() {
         description: `El lead "${deletedName}" fue eliminado del pipeline.`,
       });
       setLeadToDelete(null);
-      fetchLeads(debouncedSearch, page);
+
+      const targetPage = leads.length === 1 && page > 0 ? page - 1 : page;
+      if (targetPage !== page) {
+        setPage(targetPage);
+      } else {
+        fetchLeads(debouncedSearch, targetPage, selectedStage, selectedFollowUp);
+      }
     } catch (err: any) {
       const errorMsg = err.message || "No se pudo descartar el lead.";
       setError({
@@ -348,12 +474,77 @@ export default function LeadsList() {
           {/* New Lead Aurora Chip Button */}
           <button
             type="button"
-            onClick={handleOpenModal}
+            onClick={handleOpenCreateModal}
             className="aurora-chip-btn lead-btn-new shrink-0 h-10 text-sm font-medium"
           >
             <Plus className="h-4 w-4" />
             <span>Nuevo Lead</span>
           </button>
+        </div>
+      </div>
+
+      {/* ── Filter Bar ── */}
+      <div className="relative z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 sm:py-3 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-md">
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          <div className="flex items-center gap-2 text-xs font-semibold text-white/70 uppercase tracking-wider shrink-0 mr-1">
+            <Filter className="h-3.5 w-3.5 text-cyan-300" />
+            <span>Filtros:</span>
+          </div>
+
+          {/* Stage Select Filter */}
+          <div className="w-full xs:w-44 sm:w-48">
+            <GlassSelect
+              id="filter-stage"
+              size="sm"
+              value={selectedStage}
+              onChange={(val) => {
+                setSelectedStage(val as LeadStage | "");
+                setPage(0);
+              }}
+              options={FILTER_STAGE_OPTIONS}
+              placeholder="Etapa: Todas"
+            />
+          </div>
+
+          {/* Follow-up Select Filter */}
+          <div className="w-full xs:w-48 sm:w-52">
+            <GlassSelect
+              id="filter-followup"
+              size="sm"
+              value={selectedFollowUp}
+              onChange={(val) => {
+                setSelectedFollowUp(val as FollowUpFilter);
+                setPage(0);
+              }}
+              options={FILTER_FOLLOWUP_OPTIONS}
+              placeholder="Seguimiento: Todos"
+            />
+          </div>
+
+          {/* Clear filters button if any filter is active */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/15 text-white/80 hover:text-white border border-white/15 transition-all cursor-pointer active:scale-95 shrink-0"
+              title="Restablecer todos los filtros"
+            >
+              <FilterX className="h-3.5 w-3.5 text-cyan-300" />
+              <span>Limpiar filtros</span>
+            </button>
+          )}
+        </div>
+
+        {/* Active Filters Summary */}
+        <div className="flex items-center gap-2 text-xs text-white/60">
+          {hasActiveFilters ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-400/10 text-cyan-200 border border-cyan-400/25">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              Filtros activos
+            </span>
+          ) : (
+            <span className="text-white/40 hidden md:inline">Mostrando todos los registros</span>
+          )}
         </div>
       </div>
 
@@ -384,7 +575,7 @@ export default function LeadsList() {
             </p>
             <button
               type="button"
-              onClick={() => fetchLeads(debouncedSearch, page)}
+              onClick={() => fetchLeads(debouncedSearch, page, selectedStage, selectedFollowUp)}
               className="aurora-chip-btn h-10 px-6 text-sm font-medium"
             >
               <RefreshCw className="h-4 w-4" />
@@ -394,37 +585,41 @@ export default function LeadsList() {
         ) : leads.length === 0 ? (
           /* Empty State */
           <div className="leads-empty-state w-full min-h-[440px] p-10 sm:p-16 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-            {/* User Icon: enlarged and centered */}
-            <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center text-white/90 border border-white/20 shadow-lg shadow-black/10 shrink-0">
-              <User className="h-12 w-12 text-white/90" />
-            </div>
-
-            {debouncedSearch ? (
+            {hasActiveFilters ? (
               <div className="flex flex-col items-center justify-center text-center max-w-lg mx-auto gap-4">
+                <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center text-white/90 border border-white/20 shadow-lg shadow-black/10 shrink-0">
+                  <FilterX className="h-10 w-10 text-cyan-300" />
+                </div>
                 <h3 className="text-xl font-semibold text-white">
                   No se encontraron resultados
                 </h3>
                 <p className="text-base text-white/70 text-center leading-relaxed">
-                  No hay ningún lead que coincida con &ldquo;{debouncedSearch}&rdquo;.
+                  {debouncedSearch
+                    ? `No hay ningún lead que coincida con "${debouncedSearch}" con los filtros seleccionados.`
+                    : "No hay ningún lead que coincida con los filtros seleccionados."}
                 </p>
                 <button
                   type="button"
-                  onClick={() => setSearchInput("")}
+                  onClick={handleClearFilters}
                   className="aurora-chip-btn h-10 px-5 text-sm"
                 >
-                  <X className="h-4 w-4" />
-                  <span>Limpiar búsqueda</span>
+                  <FilterX className="h-4 w-4" />
+                  <span>Restablecer filtros</span>
                 </button>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto gap-6">
+                {/* User Icon: enlarged and centered */}
+                <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center text-white/90 border border-white/20 shadow-lg shadow-black/10 shrink-0">
+                  <User className="h-12 w-12 text-white/90" />
+                </div>
                 <p className="text-lg sm:text-xl text-white/90 font-normal text-center leading-relaxed">
                   Registra tu primer lead para comenzar a gestionar tu pipeline
                   <br className="hidden sm:inline" /> comercial y hacer seguimiento a tus ventas.
                 </p>
                 <button
                   type="button"
-                  onClick={handleOpenModal}
+                  onClick={handleOpenCreateModal}
                   className="aurora-chip-btn h-12 px-8 text-base font-medium"
                 >
                   <Plus className="h-5 w-5" />
@@ -526,7 +721,7 @@ export default function LeadsList() {
                           )}
                         </td>
 
-                        {/* Actions (Ver Detalle + Descartar / Eliminar) */}
+                        {/* Actions (Ver Detalle + Editar + Descartar) */}
                         <td className="py-5 px-6 text-right whitespace-nowrap">
                           <div className="inline-flex items-center gap-2">
                             <Link
@@ -537,6 +732,17 @@ export default function LeadsList() {
                               <span>Ver detalle</span>
                               <ChevronRight className="h-3.5 w-3.5 text-white/60" />
                             </Link>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(lead)}
+                              className="liquid-glass-btn-secondary px-2.5 py-1.5 rounded-xl text-xs font-medium inline-flex items-center gap-1.5 active:scale-95 cursor-pointer text-white/90 hover:text-white"
+                              title="Editar este lead"
+                              aria-label={`Editar lead ${lead.name}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5 text-cyan-300" />
+                              <span>Editar</span>
+                            </button>
 
                             <button
                               type="button"
@@ -605,7 +811,7 @@ export default function LeadsList() {
                     )}
                   </div>
 
-                  {/* Mobile Actions: Ver Detalle + Descartar */}
+                  {/* Mobile Actions: Ver Detalle + Editar + Descartar */}
                   <div className="pt-2 flex items-center gap-2">
                     <Link
                       to={`/app/leads/${lead.id}`}
@@ -614,6 +820,16 @@ export default function LeadsList() {
                       <span>Ver detalle</span>
                       <ChevronRight className="h-3.5 w-3.5" />
                     </Link>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditModal(lead)}
+                      className="liquid-glass-btn-secondary py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer text-white/90"
+                      aria-label={`Editar lead ${lead.name}`}
+                    >
+                      <Pencil className="h-3.5 w-3.5 text-cyan-300" />
+                      <span>Editar</span>
+                    </button>
 
                     <button
                       type="button"
@@ -659,12 +875,12 @@ export default function LeadsList() {
         )}
       </div>
 
-      {/* ── Liquid Glass Modal: Registrar Nuevo Lead ── */}
+      {/* ── Liquid Glass Modal: Registrar / Editar Lead ── */}
       {isModalOpen && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-labelledby="new-lead-title"
+          aria-labelledby="lead-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-md animate-in fade-in duration-300"
           onClick={handleCloseModal}
         >
@@ -676,14 +892,25 @@ export default function LeadsList() {
             <div className="lead-modal-header relative z-10">
               <div>
                 <div className="lead-modal-badge shadow-sm">
-                  <Sparkles className="h-3.5 w-3.5 text-white/90" />
-                  <span>Nuevo Prospecto</span>
+                  {editingLead ? (
+                    <>
+                      <Pencil className="h-3.5 w-3.5 text-cyan-300" />
+                      <span>Editar Prospecto</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5 text-white/90" />
+                      <span>Nuevo Prospecto</span>
+                    </>
+                  )}
                 </div>
-                <h2 id="new-lead-title" className="lead-modal-title">
-                  Registrar Lead
+                <h2 id="lead-modal-title" className="lead-modal-title">
+                  {editingLead ? "Editar Lead" : "Registrar Lead"}
                 </h2>
                 <p className="lead-modal-subtitle">
-                  Ingresa los datos para incorporarlo a tu embudo comercial.
+                  {editingLead
+                    ? `Actualiza la información comercial y seguimiento de "${editingLead.name}".`
+                    : "Ingresa los datos para incorporarlo a tu embudo comercial."}
                 </p>
               </div>
 
@@ -860,7 +1087,12 @@ export default function LeadsList() {
                   {isSubmitting ? (
                     <>
                       <RefreshCw className="h-4 w-4 animate-spin" />
-                      <span>Guardando...</span>
+                      <span>{editingLead ? "Actualizando..." : "Guardando..."}</span>
+                    </>
+                  ) : editingLead ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      <span>Guardar Cambios</span>
                     </>
                   ) : (
                     <>
