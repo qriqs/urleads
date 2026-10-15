@@ -300,11 +300,11 @@ export default function LeadsList() {
             )}
           </div>
 
-          {/* New Lead Pill Button */}
+          {/* New Lead Aurora Chip Button */}
           <button
             type="button"
             onClick={handleOpenModal}
-            className="shrink-0 h-10 px-5 rounded-full bg-[#00c988] hover:bg-[#00b57a] text-white font-medium text-sm flex items-center gap-2 cursor-pointer shadow-lg shadow-[#00c988]/20 active:scale-95 transition-all"
+            className="aurora-chip-btn shrink-0 h-10 px-5 text-sm font-medium"
           >
             <Plus className="h-4 w-4" />
             <span>Nuevo Lead</span>
@@ -372,39 +372,39 @@ export default function LeadsList() {
           </div>
         ) : leads.length === 0 ? (
           /* Empty State */
-          <div className="leads-empty-state w-full min-h-[420px] p-10 sm:p-16 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md flex flex-col items-center justify-center text-center">
+          <div className="leads-empty-state w-full min-h-[440px] p-10 sm:p-16 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
             {/* User Icon: enlarged and centered */}
-            <div className="w-20 h-20 mb-6 rounded-full bg-white/10 flex items-center justify-center text-white/80 border border-white/20 shrink-0">
-              <User className="h-10 w-10 text-white/80" />
+            <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center text-white/90 border border-white/20 shadow-lg shadow-black/10 shrink-0">
+              <User className="h-12 w-12 text-white/90" />
             </div>
 
             {debouncedSearch ? (
-              <div className="flex flex-col items-center justify-center text-center max-w-lg mx-auto">
-                <h3 className="text-xl font-semibold text-white mb-2">
+              <div className="flex flex-col items-center justify-center text-center max-w-lg mx-auto gap-4">
+                <h3 className="text-xl font-semibold text-white">
                   No se encontraron resultados
                 </h3>
-                <p className="text-base text-white/70 mb-6 text-center leading-relaxed">
+                <p className="text-base text-white/70 text-center leading-relaxed">
                   No hay ningún lead que coincida con &ldquo;{debouncedSearch}&rdquo;.
                 </p>
                 <button
                   type="button"
                   onClick={() => setSearchInput("")}
-                  className="px-5 py-2.5 text-sm text-white border border-white/20 bg-white/10 hover:bg-white/20 rounded-full inline-flex items-center gap-2 cursor-pointer transition-colors"
+                  className="aurora-chip-btn h-10 px-5 text-sm"
                 >
                   <X className="h-4 w-4" />
                   <span>Limpiar búsqueda</span>
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center text-center max-w-lg mx-auto">
-                <p className="text-base sm:text-lg text-white/85 text-center leading-relaxed mb-8">
+              <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto gap-6">
+                <p className="text-lg sm:text-xl text-white/90 font-normal text-center leading-relaxed">
                   Registra tu primer lead para comenzar a gestionar tu pipeline
                   <br className="hidden sm:inline" /> comercial y hacer seguimiento a tus ventas.
                 </p>
                 <button
                   type="button"
                   onClick={handleOpenModal}
-                  className="inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-full bg-[#00c988] hover:bg-[#00b57a] text-white text-base font-semibold shadow-lg shadow-[#00c988]/25 transition-all cursor-pointer active:scale-95"
+                  className="aurora-chip-btn h-12 px-8 text-base font-medium"
                 >
                   <Plus className="h-5 w-5" />
                   <span>Crear mi primer lead</span>

@@ -147,18 +147,66 @@ body {
   box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
 }
 
-/* Ensure empty state is always strictly centered horizontally and vertically */
+/* Ensure empty state is always strictly centered horizontally and vertically with guaranteed separation */
 .leads-empty-state {
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
   text-align: center !important;
-  min-height: 420px !important;
+  min-height: 440px !important;
+  gap: 28px !important;
+  padding: 48px 24px !important;
 }
 
 .leads-empty-state * {
   text-align: center !important;
 }
+
+/* Button style matching "Tu Pipeline" chip from AuroraDashboard */
+.aurora-chip-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  background: rgba(255, 255, 255, 0.175) !important;
+  backdrop-filter: blur(16px) saturate(115%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(115%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  border-radius: 9999px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.aurora-chip-btn:hover {
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+.aurora-chip-btn:active {
+  transform: translateY(0px) scale(0.97) !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+}
+
+.aurora-chip-btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 38%;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.22) 50%, transparent 100%);
+  transform: translate3d(-150%, 0, 0) skewX(-18deg);
+  animation: sheen 3.5s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+}
+
 
 
