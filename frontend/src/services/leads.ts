@@ -186,3 +186,64 @@ export async function createLeadApi(payload: CreateLeadPayload): Promise<Lead> {
   };
   throw error;
 }
+
+/**
+ * Deletes a lead by ID through DELETE /api/leads/{id} with CSRF protection.
+ */
+export async function deleteLeadApi(id: number): Promise<void> {
+  const csrf = await fetchCsrfToken();
+  const csrfHeaderName = csrf.headerName || 'X-XSRF-TOKEN';
+  const csrfTokenValue = csrf.token || getCookie('XSRF-TOKEN') || '';
+
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  };
+
+  if (csrfTokenValue) {
+    headers[csrfHeaderName] = csrfTokenValue;
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`/api/leads/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers,
+    });
+  } catch (netErr) {
+    const error: LeadApiError = {
+      status: 0,
+      code: 'NETWORK_ERROR',
+      message: 'Error de conexión al eliminar el lead.',
+    };
+    throw error;
+  }
+
+  if (response.ok || response.status === 204) {
+    return;
+  }
+
+  if (response.status === 401) {
+    const error: LeadApiError = {
+      status: 401,
+      code: 'UNAUTHORIZED',
+      message: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
+    };
+    throw error;
+  }
+
+  let errorBody: any = {};
+  try {
+    errorBody = await response.json();
+  } catch {
+    // Non-JSON
+  }
+
+  const error: LeadApiError = {
+    status: response.status,
+    code: errorBody.code || 'DELETE_ERROR',
+    message: errorBody.message || `No se pudo eliminar el lead (${response.status}).`,
+  };
+  throw error;
+}
+
