@@ -44,7 +44,7 @@ class DatabaseMigrationIT {
     @DisplayName("La migracion inicial creo el historial de Flyway y la version 1 fue aplicada")
     void initialMigrationAppliedSuccessfully() {
         assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("1");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2"); //Cambiado
         assertThat(flyway.info().current().getState().isApplied()).isTrue();
 
         Integer historyCount = jdbcTemplate.queryForObject(
@@ -82,7 +82,7 @@ class DatabaseMigrationIT {
         );
         assertThat(leadColumns).contains(
                 "id", "usuario_id", "nombre", "telefono", "correo",
-                "etapa", "proximo_seguimiento", "creado_en", "actualizado_en"
+                "etapa", "proximo_seguimiento", "creado_en", "actualizado_en", "service"
         );
 
         List<String> notaColumns = jdbcTemplate.queryForList(

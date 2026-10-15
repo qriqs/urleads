@@ -33,6 +33,12 @@ class SpaControllerTest {
     @MockBean
     private UsuarioRepository usuarioRepository;
 
+    @MockBean
+    private com.urleads.repository.LeadRepository leadRepository;
+
+    @MockBean
+    private com.urleads.security.CurrentUserProvider currentUserProvider;
+
     @Test
     void rootIndexAndExtensionlessClientRoutesServeActualSpaHtml() throws Exception {
         mockMvc.perform(get("/").accept("text/html"))
