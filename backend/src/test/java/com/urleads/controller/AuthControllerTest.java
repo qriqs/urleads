@@ -3,6 +3,8 @@ package com.urleads.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.urleads.dto.LoginRequest;
 import com.urleads.entity.Usuario;
+import com.urleads.repository.LeadRepository;
+import com.urleads.repository.NotaRepository;
 import com.urleads.repository.UsuarioRepository;
 import com.urleads.database.TestDatabaseGuardInitializer;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +52,12 @@ class AuthControllerIT {
     private UsuarioRepository usuarioRepository;
 
     @Autowired
+    private LeadRepository leadRepository;
+
+    @Autowired(required = false)
+    private NotaRepository notaRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -61,7 +69,12 @@ class AuthControllerIT {
 
     @BeforeEach
     void setUp() {
+        if (notaRepository != null) {
+            notaRepository.deleteAll();
+        }
+        leadRepository.deleteAll();
         usuarioRepository.deleteAll();
+
         hashGuardado = passwordEncoder.encode(PASSWORD_TEST);
 
         Usuario usuario = new Usuario();
