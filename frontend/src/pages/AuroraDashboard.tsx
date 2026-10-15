@@ -292,26 +292,26 @@ export default function AuroraDashboard() {
           <defs>
             
             <linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3"/>
-              <stop offset="25%" stop-color="#ffffff" stop-opacity="0.85"/>
-              <stop offset="50%" stop-color="#ffffff" stop-opacity="1"/>
-              <stop offset="75%" stop-color="#ffffff" stop-opacity="0.9"/>
-              <stop offset="100%" stop-color="#ffffff" stop-opacity="0.4"/>
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.3"/>
+              <stop offset="25%" stopColor="#ffffff" stopOpacity="0.85"/>
+              <stop offset="50%" stopColor="#ffffff" stopOpacity="1"/>
+              <stop offset="75%" stopColor="#ffffff" stopOpacity="0.9"/>
+              <stop offset="100%" stopColor="#ffffff" stopOpacity="0.4"/>
             </linearGradient>
 
             
             <linearGradient id="wf" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.32"/>
-              <stop offset="45%" stop-color="#ffffff" stop-opacity="0.14"/>
-              <stop offset="100%" stop-color="#ffffff" stop-opacity="0.0"/>
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.32"/>
+              <stop offset="45%" stopColor="#ffffff" stopOpacity="0.14"/>
+              <stop offset="100%" stopColor="#ffffff" stopOpacity="0.0"/>
             </linearGradient>
 
             
             <mask id="wfade">
               <linearGradient id="wfade-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-                <stop offset="70%" stop-color="#ffffff" stop-opacity="0.5"/>
-                <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+                <stop offset="0%" stopColor="#ffffff" stopOpacity="1"/>
+                <stop offset="70%" stopColor="#ffffff" stopOpacity="0.5"/>
+                <stop offset="100%" stopColor="#ffffff" stopOpacity="0"/>
               </linearGradient>
               <rect x="0" y="0" width="835" height="230" fill="url(#wfade-grad)"/>
             </mask>
