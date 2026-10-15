@@ -108,12 +108,13 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
           tabIndex={-1}
           className="glass-dropdown-menu absolute top-[calc(100%+8px)] left-0 right-0 z-50 rounded-2xl p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150"
           style={{
-            background: "rgba(10, 20, 30, 0.97)",
-            backdropFilter: "blur(32px) saturate(140%)",
-            WebkitBackdropFilter: "blur(32px) saturate(140%)",
-            border: "1px solid rgba(255, 255, 255, 0.24)",
+            background:
+              "linear-gradient(160deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%), rgba(30, 42, 54, 0.94)",
+            backdropFilter: "blur(36px) saturate(135%)",
+            WebkitBackdropFilter: "blur(36px) saturate(135%)",
+            border: "1px solid rgba(255, 255, 255, 0.30)",
             boxShadow:
-              "0 25px 60px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.25)",
+              "0 25px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.45)",
           }}
         >
           {options.map((option) => {
