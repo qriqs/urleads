@@ -277,4 +277,220 @@ class LeadApiIT {
         mockMvc.perform(get("/api/leads").param("search", "ajeno"))
                 .andExpect(jsonPath("$.totalElements").value(0));
     }
+
+    // =========================================================================
+    // TESTS UL-17: REGLAS DE ETAPAS, SEGUIMIENTO Y FILTROS EN BASE DE DATOS
+    // =========================================================================
+
+    @Test
+    void crear_conEtapaCerradaYFecha_persisteCerradoSinFecha() throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Cerrado Directo","phone":"999111222",
+                                 "stage":"CERRADO","nextFollowUp":"2026-12-01"}"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.stage").value("CERRADO"))
+                .andExpect(jsonPath("$.nextFollowUp").value(nullValue()))
+                .andReturn();
+
+        Long id = ((Number) JsonPath.read(result.getResponse().getContentAsString(), "$.id")).longValue();
+        flushYLimpiar();
+
+        Lead guardado = leadRepository.findById(id).orElseThrow();
+        assertThat(guardado.getEtapa()).isEqualTo("CERRADO");
+        assertThat(guardado.getProximoSeguimiento()).isNull();
+    }
+
+    @Test
+    void actualizar_aCerradoConFecha_persisteCerradoSinFecha() throws Exception {
+        Lead lead = crearLead(owner, "Lead Activo", "999111222", null, "Web");
+        lead.setProximoSeguimiento(LocalDate.of(2026, 11, 20));
+        leadRepository.saveAndFlush(lead);
+        flushYLimpiar();
+
+        mockMvc.perform(put("/api/leads/{id}", lead.getId())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Lead Activo","phone":"999111222",
+                                 "stage":"CERRADO","nextFollowUp":"2026-12-05"}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("CERRADO"))
+                .andExpect(jsonPath("$.nextFollowUp").value(nullValue()));
+
+        flushYLimpiar();
+
+        Lead actualizado = leadRepository.findById(lead.getId()).orElseThrow();
+        assertThat(actualizado.getEtapa()).isEqualTo("CERRADO");
+        assertThat(actualizado.getProximoSeguimiento()).isNull();
+    }
+
+    @Test
+    void actualizar_reabrirCerradoConNuevaFecha_persisteNuevaEtapaYFecha() throws Exception {
+        Lead cerrado = crearLead(owner, "Lead Cerrado", "999111222", null, "SEO");
+        cerrado.setEtapa("CERRADO");
+        cerrado.setProximoSeguimiento(null);
+        leadRepository.saveAndFlush(cerrado);
+        flushYLimpiar();
+
+        LocalDate nuevaFecha = LocalDate.of(2026, 12, 15);
+        mockMvc.perform(put("/api/leads/{id}", cerrado.getId())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Lead Reabierto","phone":"999111222",
+                                 "stage":"EN_SEGUIMIENTO","nextFollowUp":"2026-12-15"}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("EN_SEGUIMIENTO"))
+                .andExpect(jsonPath("$.nextFollowUp").value("2026-12-15"));
+
+        flushYLimpiar();
+
+        Lead actualizado = leadRepository.findById(cerrado.getId()).orElseThrow();
+        assertThat(actualizado.getEtapa()).isEqualTo("EN_SEGUIMIENTO");
+        assertThat(actualizado.getProximoSeguimiento()).isEqualTo(nuevaFecha);
+    }
+
+    @Test
+    void crear_conFechaPasada_esValidoYPersiste() throws Exception {
+        LocalDate fechaPasada = LocalDate.of(2025, 5, 10);
+        MvcResult result = mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Lead Pasado","phone":"999111222",
+                                 "stage":"EN_SEGUIMIENTO","nextFollowUp":"2025-05-10"}"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.nextFollowUp").value("2025-05-10"))
+                .andReturn();
+
+        Long id = ((Number) JsonPath.read(result.getResponse().getContentAsString(), "$.id")).longValue();
+        flushYLimpiar();
+
+        Lead guardado = leadRepository.findById(id).orElseThrow();
+        assertThat(guardado.getProximoSeguimiento()).isEqualTo(fechaPasada);
+    }
+
+    @Test
+    void crear_conEtapaInvalida_devuelve400() throws Exception {
+        mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Invalido","phone":"999111222",
+                                 "stage":"PENDIENTE"}"""))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void actualizar_conEtapaInvalida_devuelve400() throws Exception {
+        Lead lead = crearLead(owner, "Valido", "999111222", null, null);
+        flushYLimpiar();
+
+        mockMvc.perform(put("/api/leads/{id}", lead.getId())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Valido","phone":"999111222",
+                                 "stage":"GANADO"}"""))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listar_filtrosStageYFollowUp_clasificacionCorrectaLima() throws Exception {
+        LocalDate hoyLima = LocalDate.now(java.time.ZoneId.of("America/Lima"));
+        LocalDate ayerLima = hoyLima.minusDays(1);
+        LocalDate mananaLima = hoyLima.plusDays(1);
+
+        // 1. Lead de hoy en EN_SEGUIMIENTO
+        Lead lHoy = crearLead(owner, "Lead De Hoy", "999000001", null, null);
+        lHoy.setEtapa("EN_SEGUIMIENTO");
+        lHoy.setProximoSeguimiento(hoyLima);
+        leadRepository.saveAndFlush(lHoy);
+
+        // 2. Lead atrasado en NUEVO
+        Lead lAyer = crearLead(owner, "Lead Atrasado", "999000002", null, null);
+        lAyer.setEtapa("NUEVO");
+        lAyer.setProximoSeguimiento(ayerLima);
+        leadRepository.saveAndFlush(lAyer);
+
+        // 3. Lead futuro en EN_SEGUIMIENTO
+        Lead lFuturo = crearLead(owner, "Lead Futuro", "999000003", null, null);
+        lFuturo.setEtapa("EN_SEGUIMIENTO");
+        lFuturo.setProximoSeguimiento(mananaLima);
+        leadRepository.saveAndFlush(lFuturo);
+
+        // 4. Lead cerrado (sin fecha)
+        Lead lCerrado = crearLead(owner, "Lead Cerrado", "999000004", null, null);
+        lCerrado.setEtapa("CERRADO");
+        lCerrado.setProximoSeguimiento(null);
+        leadRepository.saveAndFlush(lCerrado);
+
+        // 5. Lead ajeno (de other) con fecha de hoy para probar aislamiento
+        Lead lAjeno = crearLead(other, "Ajeno De Hoy", "999000005", null, null);
+        lAjeno.setEtapa("EN_SEGUIMIENTO");
+        lAjeno.setProximoSeguimiento(hoyLima);
+        leadRepository.saveAndFlush(lAjeno);
+
+        flushYLimpiar();
+
+        // followUp=today -> solo lHoy (el ajeno no)
+        mockMvc.perform(get("/api/leads").param("followUp", "today"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Lead De Hoy"));
+
+        // followUp=overdue -> solo lAyer
+        mockMvc.perform(get("/api/leads").param("followUp", "overdue"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Lead Atrasado"));
+
+        // stage=CERRADO -> solo lCerrado
+        mockMvc.perform(get("/api/leads").param("stage", "CERRADO"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Lead Cerrado"));
+
+        // stage=EN_SEGUIMIENTO -> lHoy y lFuturo (2)
+        mockMvc.perform(get("/api/leads").param("stage", "EN_SEGUIMIENTO"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+
+        // Combinado: stage=EN_SEGUIMIENTO y followUp=today -> solo lHoy
+        mockMvc.perform(get("/api/leads")
+                        .param("stage", "EN_SEGUIMIENTO")
+                        .param("followUp", "today"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Lead De Hoy"));
+
+        // Combinado: stage=EN_SEGUIMIENTO y followUp=overdue -> 0 (lAyer es NUEVO)
+        mockMvc.perform(get("/api/leads")
+                        .param("stage", "EN_SEGUIMIENTO")
+                        .param("followUp", "overdue"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+
+        // Combinado con search:
+        mockMvc.perform(get("/api/leads")
+                        .param("search", "Futuro")
+                        .param("stage", "EN_SEGUIMIENTO"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Lead Futuro"));
+    }
+
+    @Test
+    void listar_conFiltrosInvalidos_devuelve400() throws Exception {
+        mockMvc.perform(get("/api/leads").param("followUp", "proximamente"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        mockMvc.perform(get("/api/leads").param("stage", "INVALIDA"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
 }

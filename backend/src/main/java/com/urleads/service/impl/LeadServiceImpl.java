@@ -1,5 +1,6 @@
 package com.urleads.service.impl;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
@@ -10,23 +11,23 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.urleads.config.ClockConfig;
 import com.urleads.dto.CreateLeadRequest;
 import com.urleads.dto.LeadResponse;
 import com.urleads.dto.PageResponse;
 import com.urleads.dto.UpdateLeadRequest;
 import com.urleads.entity.Lead;
+import com.urleads.entity.LeadStage;
 import com.urleads.entity.Usuario;
 import com.urleads.exception.LeadNotFoundException;
+import com.urleads.exception.LeadValidationException;
 import com.urleads.exception.UsuarioNotFoundException;
 import com.urleads.repository.LeadRepository;
 import com.urleads.repository.UsuarioRepository;
 import com.urleads.service.LeadService;
 import com.urleads.service.LeadValidator;
 
-import lombok.RequiredArgsConstructor;
-
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class LeadServiceImpl implements LeadService {
 
@@ -34,6 +35,18 @@ public class LeadServiceImpl implements LeadService {
 
     private final LeadRepository leadRepository;
     private final UsuarioRepository usuarioRepository;
+    private final Clock clock;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public LeadServiceImpl(LeadRepository leadRepository, UsuarioRepository usuarioRepository, Clock clock) {
+        this.leadRepository = leadRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.clock = clock != null ? clock : Clock.system(ClockConfig.LIMA_ZONE);
+    }
+
+    public LeadServiceImpl(LeadRepository leadRepository, UsuarioRepository usuarioRepository) {
+        this(leadRepository, usuarioRepository, Clock.system(ClockConfig.LIMA_ZONE));
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -46,11 +59,27 @@ public class LeadServiceImpl implements LeadService {
     public PageResponse<LeadResponse> listarPaginado(
             Long usuarioId, String search, String followUp, String stage, int page) {
 
-        LocalDate hoy = LocalDate.now(ZoneId.of("America/Lima"));
+        LocalDate hoy = LocalDate.now(clock.withZone(ClockConfig.LIMA_ZONE));
 
         String patron = "%" + (search == null ? "" : search.trim().toLowerCase()) + "%";
-        String etapa = (stage == null || stage.isBlank()) ? "" : stage.trim().toUpperCase();
-        String modo = (followUp == null || followUp.isBlank()) ? "all" : followUp.trim().toLowerCase();
+
+        String etapa = "";
+        if (stage != null && !stage.isBlank()) {
+            String etapaTrimmed = stage.trim().toUpperCase();
+            if (!LeadStage.isValid(etapaTrimmed)) {
+                throw new LeadValidationException("Etapa no válida para filtro: solo se permite NUEVO, EN_SEGUIMIENTO o CERRADO");
+            }
+            etapa = etapaTrimmed;
+        }
+
+        String modo = "all";
+        if (followUp != null && !followUp.isBlank()) {
+            String modoTrimmed = followUp.trim().toLowerCase();
+            if (!modoTrimmed.equals("all") && !modoTrimmed.equals("today") && !modoTrimmed.equals("overdue")) {
+                throw new LeadValidationException("Filtro followUp no válido: solo se permite today, overdue o all");
+            }
+            modo = modoTrimmed;
+        }
 
         PageRequest pageable = PageRequest.of(
                 Math.max(page, 0),
@@ -84,8 +113,13 @@ public class LeadServiceImpl implements LeadService {
         lead.setTelefono(request.getTelefono());
         lead.setCorreo(request.getCorreo());
         lead.setService(request.getService());
-        lead.setEtapa(request.getEtapa());
-        lead.setProximoSeguimiento(request.getProximoSeguimiento());
+        lead.setEtapa(request.getEtapa().trim());
+
+        if ("CERRADO".equals(lead.getEtapa())) {
+            lead.setProximoSeguimiento(null);
+        } else {
+            lead.setProximoSeguimiento(request.getProximoSeguimiento());
+        }
 
         Lead leadGuardado = leadRepository.save(lead);
         return toResponse(leadGuardado);
@@ -102,8 +136,13 @@ public class LeadServiceImpl implements LeadService {
         lead.setTelefono(request.getTelefono());
         lead.setCorreo(request.getCorreo());
         lead.setService(request.getService());
-        lead.setEtapa(request.getEtapa());
-        lead.setProximoSeguimiento(request.getProximoSeguimiento());
+        lead.setEtapa(request.getEtapa().trim());
+
+        if ("CERRADO".equals(lead.getEtapa())) {
+            lead.setProximoSeguimiento(null);
+        } else {
+            lead.setProximoSeguimiento(request.getProximoSeguimiento());
+        }
 
         Lead leadActualizado = leadRepository.save(lead);
         return toResponse(leadActualizado);
