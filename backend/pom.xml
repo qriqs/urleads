@@ -84,6 +84,16 @@
 	</dependencies>
 
 	<build>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+			</resource>
+			<resource>
+				<directory>../frontend/dist</directory>
+				<targetPath>static</targetPath>
+				<filtering>false</filtering>
+			</resource>
+		</resources>
 		<plugins>
 			<!-- Plugin de compilación con soporte para Lombok -->
 			<plugin>
