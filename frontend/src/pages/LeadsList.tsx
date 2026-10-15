@@ -644,24 +644,24 @@ export default function LeadsList() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="new-lead-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/45 backdrop-blur-md animate-in fade-in duration-300"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-md animate-in fade-in duration-300"
           onClick={handleCloseModal}
         >
           <div
-            className="liquid-glass-modal rounded-3xl p-6 sm:p-8 max-w-lg w-full relative overflow-hidden space-y-6 shadow-2xl text-white max-h-[92vh] overflow-y-auto"
+            className="liquid-glass-modal lead-modal-dialog relative overflow-hidden shadow-2xl text-white max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-white/15 pb-4 relative z-10">
+            <div className="lead-modal-header relative z-10">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/15 border border-white/25 text-white backdrop-blur-md mb-2 shadow-sm">
-                  <Sparkles className="h-3 w-3 text-white/80" />
+                <div className="lead-modal-badge shadow-sm">
+                  <Sparkles className="h-3.5 w-3.5 text-white/90" />
                   <span>Nuevo Prospecto</span>
                 </div>
-                <h2 id="new-lead-title" className="text-2xl font-bold text-white tracking-tight">
+                <h2 id="new-lead-title" className="lead-modal-title">
                   Registrar Lead
                 </h2>
-                <p className="text-xs sm:text-sm text-white/70 mt-0.5">
+                <p className="lead-modal-subtitle">
                   Ingresa los datos para incorporarlo a tu embudo comercial.
                 </p>
               </div>
@@ -671,9 +671,9 @@ export default function LeadsList() {
                 onClick={handleCloseModal}
                 disabled={isSubmitting}
                 aria-label="Cerrar modal"
-                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer"
+                className="lead-modal-close"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
@@ -681,7 +681,7 @@ export default function LeadsList() {
             {formGeneralError && (
               <div
                 role="alert"
-                className="p-3.5 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-100 text-xs sm:text-sm flex items-start gap-2.5 shadow-lg relative z-10"
+                className="p-4 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-100 text-sm flex items-start gap-3 shadow-lg relative z-10"
               >
                 <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
                 <div className="flex-1 font-medium leading-relaxed">
@@ -691,10 +691,10 @@ export default function LeadsList() {
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmitLead} className="space-y-4 relative z-10" noValidate>
+            <form onSubmit={handleSubmitLead} className="relative z-10" noValidate>
               {/* Field: Nombre completo */}
-              <div className="space-y-1.5">
-                <label htmlFor="lead-name" className="text-xs font-semibold text-white/90 block">
+              <div className="lead-field-group">
+                <label htmlFor="lead-name">
                   Nombre completo <span className="text-white/60 font-normal">*</span>
                 </label>
                 <input
@@ -706,23 +706,23 @@ export default function LeadsList() {
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
                   disabled={isSubmitting}
-                  className={`w-full h-11 px-4 rounded-xl liquid-glass-input text-sm ${
+                  className={`liquid-glass-input ${
                     formErrors.name ? "border-red-400 ring-2 ring-red-400/30" : ""
                   }`}
                   aria-invalid={!!formErrors.name}
                   aria-describedby={formErrors.name ? "lead-name-error" : undefined}
                 />
                 {formErrors.name && (
-                  <p id="lead-name-error" role="alert" className="text-xs text-red-400 font-medium">
+                  <p id="lead-name-error" role="alert" className="lead-error-text">
                     {formErrors.name}
                   </p>
                 )}
               </div>
 
               {/* Two columns: Teléfono y Correo */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label htmlFor="lead-phone" className="text-xs font-semibold text-white/90 block">
+              <div className="lead-field-grid">
+                <div className="lead-field-group">
+                  <label htmlFor="lead-phone">
                     Teléfono
                   </label>
                   <input
@@ -732,19 +732,19 @@ export default function LeadsList() {
                     value={formData.phone || ""}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
                     disabled={isSubmitting}
-                    className={`w-full h-11 px-4 rounded-xl liquid-glass-input text-sm ${
+                    className={`liquid-glass-input ${
                       formErrors.phone ? "border-red-400 ring-2 ring-red-400/30" : ""
                     }`}
                   />
                   {formErrors.phone && (
-                    <p role="alert" className="text-xs text-red-400 font-medium">
+                    <p role="alert" className="lead-error-text">
                       {formErrors.phone}
                     </p>
                   )}
                 </div>
 
-                <div className="space-y-1.5">
-                  <label htmlFor="lead-email" className="text-xs font-semibold text-white/90 block">
+                <div className="lead-field-group">
+                  <label htmlFor="lead-email">
                     Correo electrónico
                   </label>
                   <input
@@ -754,26 +754,26 @@ export default function LeadsList() {
                     value={formData.email || ""}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     disabled={isSubmitting}
-                    className={`w-full h-11 px-4 rounded-xl liquid-glass-input text-sm ${
+                    className={`liquid-glass-input ${
                       formErrors.email ? "border-red-400 ring-2 ring-red-400/30" : ""
                     }`}
                   />
                   {formErrors.email && (
-                    <p role="alert" className="text-xs text-red-400 font-medium">
+                    <p role="alert" className="lead-error-text">
                       {formErrors.email}
                     </p>
                   )}
                 </div>
               </div>
 
-              <p className="text-[11px] text-white/50 italic">
+              <p className="lead-helper-text">
                 * Debe ingresar al menos un teléfono o un correo electrónico.
               </p>
 
               {/* Two columns: Etapa y Próximo Seguimiento */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label htmlFor="lead-stage" className="text-xs font-semibold text-white/90 block">
+              <div className="lead-field-grid">
+                <div className="lead-field-group">
+                  <label htmlFor="lead-stage">
                     Etapa comercial <span className="text-white/60 font-normal">*</span>
                   </label>
                   <select
@@ -783,7 +783,7 @@ export default function LeadsList() {
                       handleInputChange("stage", e.target.value as LeadStage)
                     }
                     disabled={isSubmitting}
-                    className="w-full h-11 px-4 rounded-xl liquid-glass-input text-sm text-white"
+                    className="liquid-glass-input text-white"
                   >
                     <option value="NUEVO" className="bg-[#0b1c28] text-white">NUEVO</option>
                     <option value="EN_SEGUIMIENTO" className="bg-[#0b1c28] text-white">EN SEGUIMIENTO</option>
@@ -791,8 +791,8 @@ export default function LeadsList() {
                   </select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label htmlFor="lead-followup" className="text-xs font-semibold text-white/90 block">
+                <div className="lead-field-group">
+                  <label htmlFor="lead-followup">
                     Próximo seguimiento
                   </label>
                   <input
@@ -801,12 +801,12 @@ export default function LeadsList() {
                     value={formData.nextFollowUp || ""}
                     onChange={(e) => handleInputChange("nextFollowUp", e.target.value)}
                     disabled={isSubmitting || formData.stage === "CERRADO"}
-                    className={`w-full h-11 px-4 rounded-xl liquid-glass-input text-sm ${
+                    className={`liquid-glass-input ${
                       formData.stage === "CERRADO" ? "opacity-35 cursor-not-allowed" : ""
                     }`}
                   />
                   {formData.stage === "CERRADO" && (
-                    <p className="text-[11px] text-white/40">
+                    <p className="lead-helper-text">
                       Un lead cerrado no requiere seguimiento.
                     </p>
                   )}
@@ -814,8 +814,8 @@ export default function LeadsList() {
               </div>
 
               {/* Field: Servicio de interés */}
-              <div className="space-y-1.5">
-                <label htmlFor="lead-service" className="text-xs font-semibold text-white/90 block">
+              <div className="lead-field-group">
+                <label htmlFor="lead-service">
                   Servicio de interés (Opcional)
                 </label>
                 <input
@@ -825,17 +825,17 @@ export default function LeadsList() {
                   value={formData.service || ""}
                   onChange={(e) => handleInputChange("service", e.target.value)}
                   disabled={isSubmitting}
-                  className="w-full h-11 px-4 rounded-xl liquid-glass-input text-sm"
+                  className="liquid-glass-input"
                 />
               </div>
 
               {/* Modal Actions */}
-              <div className="flex items-center justify-end gap-3 pt-5 border-t border-white/15">
+              <div className="lead-modal-actions">
                 <button
                   type="button"
                   onClick={handleCloseModal}
                   disabled={isSubmitting}
-                  className="h-10 px-5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white/80 hover:text-white text-sm font-medium transition-all cursor-pointer"
+                  className="lead-btn-cancel"
                 >
                   Cancelar
                 </button>
@@ -843,7 +843,7 @@ export default function LeadsList() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="aurora-chip-btn h-10 px-6 text-sm font-medium"
+                  className="aurora-chip-btn lead-btn-submit"
                 >
                   {isSubmitting ? (
                     <>
@@ -868,32 +868,32 @@ export default function LeadsList() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setLeadToDelete(null)}
         >
           <div
-            className="liquid-glass-modal rounded-3xl p-6 sm:p-7 max-w-md w-full relative overflow-hidden space-y-5 text-white"
+            className="liquid-glass-modal lead-delete-dialog relative overflow-hidden text-white"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center text-red-400 mb-2">
-              <Trash2 className="h-6 w-6" />
+            <div className="delete-icon-wrapper">
+              <Trash2 className="h-7 w-7" />
             </div>
 
-            <div className="space-y-1.5">
-              <h3 className="text-xl font-bold text-white">¿Descartar este lead?</h3>
-              <p className="text-sm text-white/70">
+            <div>
+              <h3 className="delete-title">¿Descartar este lead?</h3>
+              <p className="delete-desc">
                 Estás a punto de eliminar a{" "}
                 <span className="text-white font-semibold">&ldquo;{leadToDelete.name}&rdquo;</span>{" "}
                 de tu base de datos comercial. Esta acción no se puede deshacer.
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/15">
+            <div className="delete-actions">
               <button
                 type="button"
                 disabled={isDeleting}
                 onClick={() => setLeadToDelete(null)}
-                className="h-9 px-4 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white/80 hover:text-white text-xs font-medium transition-all cursor-pointer"
+                className="delete-btn-cancel"
               >
                 Cancelar
               </button>
@@ -902,7 +902,7 @@ export default function LeadsList() {
                 type="button"
                 disabled={isDeleting}
                 onClick={handleConfirmDelete}
-                className="h-9 px-5 rounded-full bg-red-500/25 hover:bg-red-500/40 border border-red-500/40 text-red-200 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                className="delete-btn-confirm"
               >
                 {isDeleting ? (
                   <>
