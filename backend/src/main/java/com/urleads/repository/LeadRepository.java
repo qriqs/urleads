@@ -48,4 +48,40 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
             @Param("modo") String modo,
             @Param("hoy") LocalDate hoy,
             Pageable pageable);
+
+    // ==========================================
+    // Consultas para Dashboard (/api/dashboard)
+    // ==========================================
+
+    long countByUsuarioId(Long usuarioId);
+
+    @Query("""
+            SELECT l.etapa, COUNT(l)
+            FROM Lead l
+            WHERE l.usuario.id = :usuarioId
+            GROUP BY l.etapa
+            """)
+    List<Object[]> countLeadsPorEtapa(@Param("usuarioId") Long usuarioId);
+
+    @Query("""
+            SELECT l FROM Lead l
+            WHERE l.usuario.id = :usuarioId
+              AND l.proximoSeguimiento = :hoy
+              AND l.etapa NOT IN ('GANADO', 'PERDIDO')
+            ORDER BY l.nombre ASC
+            """)
+    List<Lead> findSeguimientosHoy(
+            @Param("usuarioId") Long usuarioId,
+            @Param("hoy") LocalDate hoy);
+
+    @Query("""
+            SELECT l FROM Lead l
+            WHERE l.usuario.id = :usuarioId
+              AND l.proximoSeguimiento < :hoy
+              AND l.etapa NOT IN ('GANADO', 'PERDIDO')
+            ORDER BY l.proximoSeguimiento ASC, l.nombre ASC
+            """)
+    List<Lead> findSeguimientosAtrasados(
+            @Param("usuarioId") Long usuarioId,
+            @Param("hoy") LocalDate hoy);
 }
