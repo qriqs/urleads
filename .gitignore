@@ -10,6 +10,7 @@ Thumbs.db
 # Build and package outputs
 target/
 **/target/
+frontend/dist/
 *.class
 
 # Maven wrapper (preserve wrapper scripts and properties)
@@ -43,4 +44,3 @@ infra/postgres-data/
 logs/
 hs_err_pid*
 replay_pid*
-

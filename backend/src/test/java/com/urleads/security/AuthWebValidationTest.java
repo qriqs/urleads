@@ -38,10 +38,10 @@ class AuthWebSecurityTest {
     private UsuarioRepository usuarioRepository;
 
     @MockBean
-    private LeadRepository leadRepository;
+    private com.urleads.repository.LeadRepository leadRepository;
 
     @MockBean
-    private NotaRepository notaRepository;
+    private com.urleads.security.CurrentUserProvider currentUserProvider;
 
     @Test
     @DisplayName("Punto 1: Login sin CSRF devuelve 403 Forbidden")

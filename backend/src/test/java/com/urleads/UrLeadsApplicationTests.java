@@ -1,39 +1,53 @@
 package com.urleads;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
 
 import com.urleads.repository.LeadRepository;
-import com.urleads.repository.NotaRepository;
 import com.urleads.repository.UsuarioRepository;
+import com.urleads.security.CurrentUserProvider;
 
-/**
- * Prueba de carga del contexto basico de la aplicacion (scaffold).
- *
- * Excluye intencionalmente la autoconfiguracion de DataSource y Flyway para verificar
- * la inicializacion de los componentes de Spring sin requerir una base de datos PostgreSQL
- * en ejecucion. Esta prueba no constituye prueba de conectividad con la base de datos
- * (dicha verificacion corresponde a las pruebas de integracion en DatabaseMigrationIT).
- */
 @SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=" +
-        "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration," +
-        "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration," +
-        "org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration"
+        "spring.flyway.enabled=false",
+        "spring.autoconfigure.exclude="
+                + "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,"
+                + "org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration,"
+                + "org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,"
+                + "org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration,"
+                + "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration"
 })
+@AutoConfigureMockMvc
 class UrLeadsApplicationTests {
 
-    @MockBean
-    private UsuarioRepository usuarioRepository;
+    @Autowired
+    private MockMvc mockMvc;
 
     @MockBean
     private LeadRepository leadRepository;
 
     @MockBean
-    private NotaRepository notaRepository;
+    private UsuarioRepository usuarioRepository;
+
+    @MockBean
+    private CurrentUserProvider currentUserProvider;
 
     @Test
-    void contextLoads() {
+    @WithMockUser
+    void contextoArrancaSinBaseDeDatos_yLeadInexistenteDevuelve404Json() throws Exception {
+        org.mockito.Mockito.when(currentUserProvider.getCurrentUserId()).thenReturn(1L);
+
+        // El mock devuelve Optional.empty(): atraviesa controlador -> servicio -> handler
+        mockMvc.perform(get("/api/leads/{id}", 999))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
 }

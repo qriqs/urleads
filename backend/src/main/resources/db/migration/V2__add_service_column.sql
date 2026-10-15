@@ -1,0 +1,2 @@
+ALTER TABLE lead
+ADD COLUMN service VARCHAR(255);
