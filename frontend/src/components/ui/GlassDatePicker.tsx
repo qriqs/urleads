@@ -7,6 +7,7 @@ interface GlassDatePickerProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  onOpenChange?: (isOpen: boolean) => void;
 }
 
 const MONTH_NAMES = [
@@ -32,9 +33,15 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
   onChange,
   disabled = false,
   placeholder = "Seleccionar fecha...",
+  onOpenChange,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const updateOpenState = (next: boolean) => {
+    setIsOpen(next);
+    onOpenChange?.(next);
+  };
 
   // Parse current value without timezone offset issues
   const parseDate = (str: string) => {
@@ -73,7 +80,7 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
       ) {
-        setIsOpen(false);
+        updateOpenState(false);
       }
     };
 
@@ -89,7 +96,7 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
-        setIsOpen(false);
+        updateOpenState(false);
       }
     };
     if (isOpen) {
@@ -124,7 +131,7 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
     const pad = (n: number) => n.toString().padStart(2, "0");
     const dateStr = `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}`;
     onChange(dateStr);
-    setIsOpen(false);
+    updateOpenState(false);
   };
 
   const handleSelectToday = (e: React.MouseEvent) => {
@@ -134,13 +141,13 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
     onChange(dateStr);
     setViewYear(currentYear);
     setViewMonth(currentMonth);
-    setIsOpen(false);
+    updateOpenState(false);
   };
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     onChange("");
-    setIsOpen(false);
+    updateOpenState(false);
   };
 
   // Format display text: "15 oct. 2026"
@@ -207,7 +214,7 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
         type="button"
         id={id}
         disabled={disabled}
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={() => updateOpenState(!isOpen)}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         className={`w-full h-[52px] px-5 rounded-2xl liquid-glass-input flex items-center justify-between text-left transition-all cursor-pointer ${
@@ -236,7 +243,7 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
         )}
       </button>
 
-      {/* Floating Liquid Glass Calendar Popover */}
+      {/* Floating Transparent Liquid Glass Calendar Popover */}
       {isOpen && (
         <div
           role="dialog"
@@ -244,12 +251,12 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
           className="glass-calendar-popover absolute top-[calc(100%+8px)] left-0 sm:left-auto sm:right-0 z-50 rounded-2xl p-3.5 w-[290px] animate-in fade-in zoom-in-95 duration-150"
           style={{
             background:
-              "linear-gradient(160deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%), rgba(30, 42, 54, 0.94)",
-            backdropFilter: "blur(36px) saturate(135%)",
-            WebkitBackdropFilter: "blur(36px) saturate(135%)",
-            border: "1px solid rgba(255, 255, 255, 0.30)",
+              "linear-gradient(135deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.08) 100%)",
+            backdropFilter: "blur(28px) saturate(130%)",
+            WebkitBackdropFilter: "blur(28px) saturate(130%)",
+            border: "1px solid rgba(255, 255, 255, 0.28)",
             boxShadow:
-              "0 25px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.45)",
+              "0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35)",
           }}
         >
           {/* Calendar Header */}

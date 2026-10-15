@@ -78,6 +78,8 @@ export default function LeadsList() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formGeneralError, setFormGeneralError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isStageSelectOpen, setIsStageSelectOpen] = useState<boolean>(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState<boolean>(false);
 
   // Delete modal state
   const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
@@ -143,11 +145,15 @@ export default function LeadsList() {
   const handleOpenModal = () => {
     setFormErrors({});
     setFormGeneralError(null);
+    setIsStageSelectOpen(false);
+    setIsDatePickerOpen(false);
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setIsStageSelectOpen(false);
+    setIsDatePickerOpen(false);
     setFormErrors({});
     setFormGeneralError(null);
   };
@@ -756,6 +762,7 @@ export default function LeadsList() {
                     }
                     options={STAGE_OPTIONS}
                     disabled={isSubmitting}
+                    onOpenChange={setIsStageSelectOpen}
                   />
                 </div>
 
@@ -769,6 +776,7 @@ export default function LeadsList() {
                     onChange={(val) => handleInputChange("nextFollowUp", val)}
                     disabled={isSubmitting || formData.stage === "CERRADO"}
                     placeholder="dd / mm / aaaa"
+                    onOpenChange={setIsDatePickerOpen}
                   />
                   {formData.stage === "CERRADO" && (
                     <p className="lead-helper-text">
@@ -779,7 +787,13 @@ export default function LeadsList() {
               </div>
 
               {/* Field 3: Teléfono y Correo con helper text integrado */}
-              <div className="lead-field-group">
+              <div
+                className={`lead-field-group transition-opacity duration-200 ${
+                  isStageSelectOpen || isDatePickerOpen
+                    ? "opacity-0 pointer-events-none"
+                    : "opacity-100"
+                }`}
+              >
                 <div className="lead-field-grid">
                   <div className="lead-field-group">
                     <label htmlFor="lead-phone" className="flex items-center justify-between">
@@ -833,7 +847,13 @@ export default function LeadsList() {
               </div>
 
               {/* Field 4: Servicio de interés */}
-              <div className="lead-field-group">
+              <div
+                className={`lead-field-group transition-opacity duration-200 ${
+                  isDatePickerOpen
+                    ? "opacity-0 pointer-events-none"
+                    : "opacity-100"
+                }`}
+              >
                 <label htmlFor="lead-service">
                   Servicio de interés <span className="text-white/40 font-normal">(Opcional)</span>
                 </label>

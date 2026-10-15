@@ -15,6 +15,7 @@ interface GlassSelectProps {
   options: GlassSelectOption[];
   disabled?: boolean;
   placeholder?: string;
+  onOpenChange?: (isOpen: boolean) => void;
 }
 
 export const GlassSelect: React.FC<GlassSelectProps> = ({
@@ -24,11 +25,17 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
   options,
   disabled = false,
   placeholder = "Seleccionar...",
+  onOpenChange,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find((opt) => opt.value === value);
+
+  const updateOpenState = (next: boolean) => {
+    setIsOpen(next);
+    onOpenChange?.(next);
+  };
 
   // Close when clicking outside
   useEffect(() => {
@@ -37,7 +44,7 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
       ) {
-        setIsOpen(false);
+        updateOpenState(false);
       }
     };
 
@@ -53,7 +60,7 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
-        setIsOpen(false);
+        updateOpenState(false);
       }
     };
     if (isOpen) {
@@ -66,7 +73,7 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
 
   const handleSelect = (optionValue: string) => {
     onChange(optionValue);
-    setIsOpen(false);
+    updateOpenState(false);
   };
 
   return (
@@ -76,7 +83,7 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
         type="button"
         id={id}
         disabled={disabled}
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={() => updateOpenState(!isOpen)}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         className={`w-full h-[52px] px-5 rounded-2xl liquid-glass-input flex items-center justify-between text-left transition-all cursor-pointer ${
@@ -101,7 +108,7 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
         />
       </button>
 
-      {/* Liquid Glass Dropdown Menu */}
+      {/* Transparent Liquid Glass Dropdown Menu */}
       {isOpen && (
         <div
           role="listbox"
@@ -109,12 +116,12 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
           className="glass-dropdown-menu absolute top-[calc(100%+8px)] left-0 right-0 z-50 rounded-2xl p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150"
           style={{
             background:
-              "linear-gradient(160deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%), rgba(30, 42, 54, 0.94)",
-            backdropFilter: "blur(36px) saturate(135%)",
-            WebkitBackdropFilter: "blur(36px) saturate(135%)",
-            border: "1px solid rgba(255, 255, 255, 0.30)",
+              "linear-gradient(135deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.08) 100%)",
+            backdropFilter: "blur(28px) saturate(130%)",
+            WebkitBackdropFilter: "blur(28px) saturate(130%)",
+            border: "1px solid rgba(255, 255, 255, 0.28)",
             boxShadow:
-              "0 25px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.45)",
+              "0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35)",
           }}
         >
           {options.map((option) => {
@@ -128,7 +135,7 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
                 className={`w-full px-4 py-3 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
                   isSelected
                     ? "bg-white/25 border border-white/35 text-white font-semibold shadow-sm"
-                    : "text-white/80 hover:bg-white/15 hover:text-white"
+                    : "text-white/85 hover:bg-white/15 hover:text-white"
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
