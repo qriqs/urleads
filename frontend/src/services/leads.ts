@@ -144,6 +144,65 @@ export async function getLeadsApi(
 }
 
 /**
+ * Fetches a single lead by ID through GET /api/leads/{id}.
+ */
+export async function getLeadByIdApi(id: number | string): Promise<Lead> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/leads/${id}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+  } catch (netErr) {
+    const error: LeadApiError = {
+      status: 0,
+      code: 'NETWORK_ERROR',
+      message: 'No se pudo conectar con el servidor. Verifica tu conexión de red.',
+    };
+    throw error;
+  }
+
+  if (response.ok) {
+    return await response.json();
+  }
+
+  if (response.status === 401) {
+    const error: LeadApiError = {
+      status: 401,
+      code: 'UNAUTHORIZED',
+      message: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
+    };
+    throw error;
+  }
+
+  if (response.status === 404) {
+    const error: LeadApiError = {
+      status: 404,
+      code: 'NOT_FOUND',
+      message: 'El lead solicitado no existe o fue eliminado.',
+    };
+    throw error;
+  }
+
+  let errorData: any = {};
+  try {
+    errorData = await response.json();
+  } catch {
+    // Ignore parse error
+  }
+
+  const error: LeadApiError = {
+    status: response.status,
+    code: errorData.code || 'SERVER_ERROR',
+    message: errorData.message || `Error al obtener el lead (${response.status}).`,
+  };
+  throw error;
+}
+
+/**
  * Creates a new lead through POST /api/leads with CSRF protection and real session cookie.
  */
 export async function createLeadApi(payload: CreateLeadPayload): Promise<Lead> {
