@@ -38,6 +38,9 @@ class AuthWebSecurityTest {
     private UsuarioRepository usuarioRepository;
 
     @MockBean
+    private NotaRepository notaRepository;
+
+    @MockBean
     private com.urleads.repository.LeadRepository leadRepository;
 
     @MockBean
