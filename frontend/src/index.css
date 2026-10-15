@@ -147,3 +147,18 @@ body {
   box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
 }
 
+/* Ensure empty state is always strictly centered horizontally and vertically */
+.leads-empty-state {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  min-height: 380px !important;
+}
+
+.leads-empty-state * {
+  text-align: center !important;
+}
+
+
