@@ -7,7 +7,6 @@ import {
   Mail,
   Calendar,
   AlertCircle,
-  CheckCircle2,
   RefreshCw,
   X,
   ChevronRight,
@@ -16,6 +15,7 @@ import {
   Trash2,
   Sparkles,
 } from "lucide-react";
+import { sileo } from "sileo";
 import {
   getLeadsApi,
   createLeadApi,
@@ -63,7 +63,6 @@ export default function LeadsList() {
   // Loading & error states
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<LeadApiError | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Modal & form states
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -104,14 +103,17 @@ export default function LeadsList() {
       setTotalElements(response.totalElements ?? 0);
       setTotalPages(response.totalPages ?? 1);
     } catch (err: any) {
-      setError(
-        err.message
-          ? (err as LeadApiError)
-          : {
-              status: 500,
-              message: "Error al comunicarse con el servidor.",
-            }
-      );
+      const errorObj: LeadApiError = err.message
+        ? (err as LeadApiError)
+        : {
+            status: 500,
+            message: "Error al comunicarse con el servidor.",
+          };
+      setError(errorObj);
+      sileo.error({
+        title: "Error de sincronización",
+        description: errorObj.message,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -133,14 +135,6 @@ export default function LeadsList() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isModalOpen, leadToDelete]);
-
-  // Clear success notification after 5 seconds
-  useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => setSuccessMessage(null), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [successMessage]);
 
   const handleOpenModal = () => {
     setFormErrors({});
@@ -218,7 +212,10 @@ export default function LeadsList() {
         nextFollowUp: "",
         service: "",
       });
-      setSuccessMessage("¡Lead registrado exitosamente!");
+      sileo.success({
+        title: "¡Lead registrado exitosamente!",
+        description: `${trimmedName} ahora forma parte de tu pipeline comercial.`,
+      });
       fetchLeads(debouncedSearch, 0);
       setPage(0);
     } catch (err: any) {
@@ -226,7 +223,12 @@ export default function LeadsList() {
       if (apiErr.fieldErrors && Object.keys(apiErr.fieldErrors).length > 0) {
         setFormErrors(apiErr.fieldErrors);
       }
-      setFormGeneralError(apiErr.message || "Error al registrar el lead. Revisa los datos.");
+      const errorMsg = apiErr.message || "Error al registrar el lead. Revisa los datos.";
+      setFormGeneralError(errorMsg);
+      sileo.error({
+        title: "Error al registrar lead",
+        description: errorMsg,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -235,16 +237,25 @@ export default function LeadsList() {
   // Delete lead handler
   const handleConfirmDelete = async () => {
     if (!leadToDelete) return;
+    const deletedName = leadToDelete.name;
     setIsDeleting(true);
     try {
       await deleteLeadApi(leadToDelete.id);
-      setSuccessMessage(`El lead "${leadToDelete.name}" fue descartado exitosamente.`);
+      sileo.success({
+        title: "Lead descartado exitosamente",
+        description: `El lead "${deletedName}" fue eliminado del pipeline.`,
+      });
       setLeadToDelete(null);
       fetchLeads(debouncedSearch, page);
     } catch (err: any) {
+      const errorMsg = err.message || "No se pudo descartar el lead.";
       setError({
         status: 500,
-        message: err.message || "No se pudo descartar el lead.",
+        message: errorMsg,
+      });
+      sileo.error({
+        title: "Error al descartar lead",
+        description: errorMsg,
       });
       setLeadToDelete(null);
     } finally {
@@ -340,27 +351,6 @@ export default function LeadsList() {
           </button>
         </div>
       </div>
-
-      {/* ── Success Banner ── */}
-      {successMessage && (
-        <div
-          role="status"
-          className="flex items-center justify-between p-4 rounded-2xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-100 text-sm backdrop-blur-xl shadow-[0_8px_20px_rgba(16,185,129,0.15)] animate-in fade-in duration-300"
-        >
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-            <span className="font-medium">{successMessage}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSuccessMessage(null)}
-            className="text-emerald-300 hover:text-white transition-colors p-1"
-            aria-label="Cerrar notificación"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
 
       {/* ── Error Banner ── */}
       {error && (

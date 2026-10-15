@@ -556,5 +556,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   animation: sheen 3.5s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
 }
 
-
-
+/* Sileo Toaster Viewport Elevation */
+[data-sileo-viewport] {
+  z-index: 9999 !important;
+}
