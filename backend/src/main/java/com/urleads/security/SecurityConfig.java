@@ -81,6 +81,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/health", "/api/auth/csrf").permitAll()
                 .requestMatchers("/api/auth/login").permitAll()
+                .requestMatchers("/api/**").authenticated()
+                .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/robots.txt", "/{*path}").permitAll()
                 .requestMatchers("/api/auth/session", "/api/auth/me").authenticated()
                 .anyRequest().authenticated()
             )

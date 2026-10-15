@@ -104,12 +104,13 @@ checks localmente, sigue las instrucciones de la
 
 ## 💻 Desarrollo local
 
-Estos pasos describen cómo compilar el backend, ejecutar las pruebas y arrancar
-el servidor en desarrollo.
+Estos pasos describen cómo compilar el frontend y backend en un único JAR,
+ejecutar las pruebas y arrancar el servidor integrado.
 
-**Requisitos:** JDK 21 instalado, Docker y Docker Compose para la base de datos
-local, y conexión a internet en la primera ejecución. Maven Wrapper descarga
-Maven y las dependencias que falten; **no instala Java** ni requiere Maven global.
+**Requisitos:** JDK 21 instalado, Bun 1.3.10 y Docker/Compose para la base
+local, además de conexión a internet en la primera ejecución. Maven Wrapper
+descarga Maven y las dependencias que falten; **no instala Java** ni requiere
+Maven global.
 
 Para compilar y ejecutar las pruebas básicas del scaffold no requieres Docker;
 para iniciar el servidor con persistencia o ejecutar las pruebas de integración
@@ -134,15 +135,16 @@ cd infra && docker compose up -d --wait && cd ..
 Consulta [infra/README.md](infra/README.md) para más opciones de gestión,
 reanudación de contenedores y alternativas sin Docker.
 
-### 2. Prepara la terminal del backend
+### 2. Instala las dependencias del frontend y selecciona Java 21
 
-Sitúate en el directorio `backend/`:
+Desde `frontend/`, instala las dependencias exactas del lockfile. Luego
+selecciona Java 21 en la terminal que usarás para compilar y arrancar:
 
 ```bash
-cd backend
+cd frontend
+bun install --frozen-lockfile
+cd ..
 ```
-
-Todos los comandos siguientes se ejecutan desde `backend/`.
 
 <details>
 <summary><strong>☕ Seleccionar Java 21 si tu terminal usa otra versión</strong></summary>
@@ -184,22 +186,23 @@ Comprueba que Java y Maven Wrapper reconozcan la versión 21:
 
 ```bash
 java -version
-./mvnw -v
+./backend/mvnw -f backend/pom.xml -v
 ```
 
-En Windows, sustituye `./mvnw` por `mvnw.cmd` en Command Prompt o
-`.\mvnw.cmd` en PowerShell.
+En Windows, desde la raíz, usa `backend\mvnw.cmd -f backend\pom.xml -v` en
+Command Prompt o `./backend/mvnw.cmd -f backend/pom.xml -v` en PowerShell.
 
-### 3. Compila y verifica el scaffold
+### 3. Compila y verifica el artefacto integrado
 
-Ejecuta las pruebas unitarias del scaffold (contexto y health, sin requerir
-Docker ni base de datos activa) y genera el JAR:
+Desde la raíz del repositorio, ejecuta el script reproducible. El script verifica
+tipos, compila Vite y empaqueta los assets generados en el JAR Spring Boot:
 
 ```bash
-./mvnw clean verify
+./scripts/build.sh
 ```
 
-El artefacto se genera en `target/urleads-backend-0.0.1-SNAPSHOT.jar`.
+El artefacto se genera en `backend/target/urleads-backend-0.0.1-SNAPSHOT.jar`.
+Los archivos generados en `frontend/dist/` y `backend/target/` no se versionan.
 
 > **Pruebas de integración con base de datos:** El backend cuenta con una suite
 > de pruebas de migración e integridad (`DatabaseMigrationIT`) bajo el perfil
@@ -208,11 +211,13 @@ El artefacto se genera en `target/urleads-backend-0.0.1-SNAPSHOT.jar`.
 > en `_test` y variables `TEST_DB_*` (ver guía detallada en
 > [infra/README.md](infra/README.md)).
 
-### 4. Arranca el servidor
+### 4. Arranca el servidor integrado
 
-Para iniciar el servidor con conexión a tu base de datos de desarrollo:
+El mismo JAR sirve la interfaz y la API; no requiere un servidor Node en
+ejecución. Para iniciar el servidor con conexión a tu base de datos de desarrollo:
 
-1. Exporta las variables de conexión en la terminal donde ejecutarás el backend:
+1. Exporta las variables de conexión desde la raíz del repositorio, en la
+   terminal donde ejecutarás el backend:
 
    ```bash
    export DB_URL="jdbc:postgresql://localhost:5432/urleads"
@@ -224,10 +229,10 @@ Para iniciar el servidor con conexión a tu base de datos de desarrollo:
    export DB_PASSWORD
    ```
 
-2. Inicia Spring Boot desde Maven:
+2. Inicia el JAR generado desde la raíz del repositorio:
 
 ```bash
-./mvnw spring-boot:run
+java -jar backend/target/urleads-backend-0.0.1-SNAPSHOT.jar
 ```
 
 El puerto predeterminado es **8080**. Elige una sola forma de arranque y detén
@@ -237,21 +242,22 @@ migraciones pendientes al iniciar.
 <details>
 <summary><strong>⚙️ Ejecutar el JAR o usar otro puerto</strong></summary>
 
-Después de compilar, puedes ejecutar directamente el artefacto:
+Desde la raíz del repositorio, puedes ejecutar directamente el artefacto:
 
 ```bash
-java -jar target/urleads-backend-0.0.1-SNAPSHOT.jar
+java -jar backend/target/urleads-backend-0.0.1-SNAPSHOT.jar
 ```
 
 Para cambiar el puerto, configura `PORT`. En Bash o Zsh:
 
 ```bash
-PORT=8085 java -jar target/urleads-backend-0.0.1-SNAPSHOT.jar
+PORT=8085 java -jar backend/target/urleads-backend-0.0.1-SNAPSHOT.jar
 ```
 
-También puedes usar `PORT=8085 ./mvnw spring-boot:run`. En Windows, configura
-primero `set PORT=8085` (Command Prompt) o `$env:PORT = "8085"` (PowerShell)
-y luego ejecuta Java o Maven Wrapper.
+También puedes usar `PORT=8085 ./backend/mvnw -f backend/pom.xml spring-boot:run`.
+En Windows, configura primero `PORT` (Command Prompt) o `$env:PORT = "8085"`
+(PowerShell) y luego ejecuta Java o el wrapper `backend\mvnw.cmd -f
+backend\pom.xml spring-boot:run` desde la raíz.
 
 </details>
 
@@ -274,6 +280,13 @@ Health confirma que el servidor HTTP responde, **no** que PostgreSQL esté
 conectado o que el producto completo esté disponible.
 
 Para detener el servidor, presiona **Ctrl + C** en la terminal de arranque.
+
+La raíz (`/`) y las rutas frontend sin extensión sirven la aplicación React.
+Las rutas `/api/**` conservan el comportamiento de seguridad de la API, y los
+recursos estáticos inexistentes responden 404 en vez de recibir el HTML de SPA.
+La UI y API comparten origen, por lo que producción no requiere CORS. Mantén
+CSRF habilitado; en HTTPS de producción configura `COOKIE_SECURE=true`. El valor
+predeterminado `false` permite desarrollo HTTP local.
 
 ## 🗂️ Estructura
 
