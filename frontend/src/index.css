@@ -560,3 +560,36 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 [data-sileo-viewport] {
   z-index: 9999 !important;
 }
+
+/* Leads Top Bar: Search Input & New Lead Button */
+.lead-search-input {
+  width: 100% !important;
+  height: 40px !important;
+  padding-left: 44px !important;
+  padding-right: 36px !important;
+  border-radius: 9999px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  font-size: 0.875rem !important;
+  color: #ffffff !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-sizing: border-box !important;
+}
+
+.lead-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+.lead-search-input:focus {
+  outline: none !important;
+  border-color: rgba(0, 201, 136, 0.5) !important;
+  box-shadow: 0 0 0 2px rgba(0, 201, 136, 0.3) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.lead-btn-new {
+  padding-left: 28px !important;
+  padding-right: 28px !important;
+}

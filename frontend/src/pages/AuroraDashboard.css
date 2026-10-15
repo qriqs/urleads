@@ -17,8 +17,6 @@
 
       .aurora-wrapper *, .aurora-wrapper *::before, .aurora-wrapper *::after {
         box-sizing: border-box;
-        margin: 0;
-        padding: 0;
       }
 
       .aurora-wrapper {

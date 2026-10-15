@@ -331,7 +331,7 @@ export default function LeadsList() {
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Buscar por nombre..."
               aria-label="Buscar leads por nombre"
-              className="w-full h-10 pl-10 pr-9 rounded-full bg-white/10 border border-white/20 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#00c988]/40 backdrop-blur-md transition-all"
+              className="lead-search-input"
             />
             {searchInput && (
               <button
@@ -349,7 +349,7 @@ export default function LeadsList() {
           <button
             type="button"
             onClick={handleOpenModal}
-            className="aurora-chip-btn shrink-0 h-10 px-5 text-sm font-medium"
+            className="aurora-chip-btn lead-btn-new shrink-0 h-10 text-sm font-medium"
           >
             <Plus className="h-4 w-4" />
             <span>Nuevo Lead</span>
