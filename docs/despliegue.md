@@ -203,6 +203,16 @@ integrada y evidencia real:
 - [ ] El instructor acepta el proveedor y el costo, y el despliegue usa un plan
       gratuito autorizado sin actualización paga no aprobada.
 
+El build local integrado se genera desde la raíz con `./scripts/build.sh`. Este
+comando compila React con Vite, ejecuta su type-check y empaqueta los assets
+generados en `backend/target/urleads-backend-0.0.1-SNAPSHOT.jar`. El JAR sirve
+la UI y `/api` desde un mismo origen, sin servidor Node en producción. Para
+ejecutarlo, configura la conexión PostgreSQL mediante `DB_URL`, `DB_USERNAME` y
+`DB_PASSWORD`, y ejecuta `java -jar backend/target/urleads-backend-0.0.1-SNAPSHOT.jar`.
+Configura `COOKIE_SECURE=true` cuando el servicio use HTTPS; conserva el valor
+predeterminado `false` para HTTP local. CSRF permanece habilitado. El build y el
+arranque local no equivalen a un despliegue ni marcan UL-20b como completado.
+
 Consulta los [precios de Railway](https://railway.com/pricing) y el uso real en
 el panel antes de cada prueba. La disponibilidad de créditos y la elegibilidad
 pueden cambiar.

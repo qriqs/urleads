@@ -10,16 +10,19 @@ GitHub Actions ejecuta checks en pull requests hacia `main`, pushes a `main` y
 ejecuciones manuales. Los jobs de backend y frontend son independientes. Un
 comando fallido hace fallar su job.
 
-- **Backend:** Java 21, Maven Wrapper y un servicio efímero PostgreSQL 16.
-  Ejecuta desde `backend/`:
+- **Backend integrado:** Java 21, Node.js 22, Bun 1.3.10 y un servicio efímero
+  PostgreSQL 16. Desde la raíz, instala primero las dependencias frontend con
+  `bun install --frozen-lockfile` en `frontend/`. Luego ejecuta:
 
   ```bash
-  ./mvnw --batch-mode --no-transfer-progress clean verify -Pdb-integration
+  ./scripts/build.sh -Pdb-integration
   ```
 
-  El job configura `TEST_DB_URL` hacia `127.0.0.1` y la base aislada
-  `urleads_test`, junto con credenciales ficticias desechables. No usa la base
-  de desarrollo ni requiere secretos del repositorio.
+  El script genera `frontend/dist/` antes de verificar y empaquetar el backend;
+  las pruebas de rutas SPA requieren esos recursos. El job configura
+  `TEST_DB_URL` hacia `127.0.0.1` y la base aislada `urleads_test`, junto con
+  credenciales ficticias desechables. No usa la base de desarrollo ni requiere
+  secretos del repositorio.
 - **Frontend:** Node.js 22 y Bun 1.3.10. Ejecuta desde `frontend/`:
 
   ```bash
@@ -35,7 +38,7 @@ comando fallido hace fallar su job.
 Puedes reproducir localmente los checks frontend con los comandos anteriores.
 Para backend, sigue el procedimiento de base de datos aislada de
 [`infra/README.md`](../infra/README.md), usando `urleads_test` y variables
-`TEST_DB_*`, antes de ejecutar el comando del job.
+`TEST_DB_*`, antes de ejecutar el build integrado desde la raíz.
 
 ## Pruebas automatizadas de desarrolladores
 
