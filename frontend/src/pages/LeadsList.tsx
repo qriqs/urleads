@@ -644,28 +644,24 @@ export default function LeadsList() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="new-lead-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xl animate-in fade-in duration-300"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/45 backdrop-blur-md animate-in fade-in duration-300"
           onClick={handleCloseModal}
         >
           <div
             className="liquid-glass-modal rounded-3xl p-6 sm:p-8 max-w-lg w-full relative overflow-hidden space-y-6 shadow-2xl text-white max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Ambient Top Glow */}
-            <div className="absolute -top-24 -left-24 w-52 h-52 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-24 -right-24 w-52 h-52 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-white/10 pb-4 relative z-10">
+            <div className="flex items-start justify-between border-b border-white/15 pb-4 relative z-10">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-400/15 text-cyan-200 border border-cyan-400/30 mb-2">
-                  <Sparkles className="h-3 w-3" />
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/15 border border-white/25 text-white backdrop-blur-md mb-2 shadow-sm">
+                  <Sparkles className="h-3 w-3 text-white/80" />
                   <span>Nuevo Prospecto</span>
                 </div>
                 <h2 id="new-lead-title" className="text-2xl font-bold text-white tracking-tight">
                   Registrar Lead
                 </h2>
-                <p className="text-xs sm:text-sm text-white/60 mt-0.5">
+                <p className="text-xs sm:text-sm text-white/70 mt-0.5">
                   Ingresa los datos para incorporarlo a tu embudo comercial.
                 </p>
               </div>
@@ -675,7 +671,7 @@ export default function LeadsList() {
                 onClick={handleCloseModal}
                 disabled={isSubmitting}
                 aria-label="Cerrar modal"
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer"
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -694,12 +690,12 @@ export default function LeadsList() {
               </div>
             )}
 
-            {/* Liquid Glass Form */}
+            {/* Form */}
             <form onSubmit={handleSubmitLead} className="space-y-4 relative z-10" noValidate>
               {/* Field: Nombre completo */}
               <div className="space-y-1.5">
                 <label htmlFor="lead-name" className="text-xs font-semibold text-white/90 block">
-                  Nombre completo <span className="text-cyan-400">*</span>
+                  Nombre completo <span className="text-white/60 font-normal">*</span>
                 </label>
                 <input
                   id="lead-name"
@@ -778,7 +774,7 @@ export default function LeadsList() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label htmlFor="lead-stage" className="text-xs font-semibold text-white/90 block">
-                    Etapa comercial <span className="text-cyan-400">*</span>
+                    Etapa comercial <span className="text-white/60 font-normal">*</span>
                   </label>
                   <select
                     id="lead-stage"
@@ -787,11 +783,11 @@ export default function LeadsList() {
                       handleInputChange("stage", e.target.value as LeadStage)
                     }
                     disabled={isSubmitting}
-                    className="w-full h-11 px-4 rounded-xl liquid-glass-input text-sm bg-[#091e30]"
+                    className="w-full h-11 px-4 rounded-xl liquid-glass-input text-sm text-white"
                   >
-                    <option value="NUEVO">NUEVO</option>
-                    <option value="EN_SEGUIMIENTO">EN SEGUIMIENTO</option>
-                    <option value="CERRADO">CERRADO</option>
+                    <option value="NUEVO" className="bg-[#0b1c28] text-white">NUEVO</option>
+                    <option value="EN_SEGUIMIENTO" className="bg-[#0b1c28] text-white">EN SEGUIMIENTO</option>
+                    <option value="CERRADO" className="bg-[#0b1c28] text-white">CERRADO</option>
                   </select>
                 </div>
 
@@ -834,12 +830,12 @@ export default function LeadsList() {
               </div>
 
               {/* Modal Actions */}
-              <div className="flex items-center justify-end gap-3 pt-5 border-t border-white/10">
+              <div className="flex items-center justify-end gap-3 pt-5 border-t border-white/15">
                 <button
                   type="button"
                   onClick={handleCloseModal}
                   disabled={isSubmitting}
-                  className="liquid-glass-btn-secondary px-5 py-2.5 rounded-xl text-sm font-medium cursor-pointer"
+                  className="h-10 px-5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white/80 hover:text-white text-sm font-medium transition-all cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -847,7 +843,7 @@ export default function LeadsList() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="liquid-glass-btn-primary px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="aurora-chip-btn h-10 px-6 text-sm font-medium"
                 >
                   {isSubmitting ? (
                     <>
@@ -872,14 +868,14 @@ export default function LeadsList() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xl animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setLeadToDelete(null)}
         >
           <div
             className="liquid-glass-modal rounded-3xl p-6 sm:p-7 max-w-md w-full relative overflow-hidden space-y-5 text-white"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 rounded-2xl bg-red-500/20 border border-red-500/30 flex items-center justify-center text-red-400 mb-2">
+            <div className="w-12 h-12 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center text-red-400 mb-2">
               <Trash2 className="h-6 w-6" />
             </div>
 
@@ -892,12 +888,12 @@ export default function LeadsList() {
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/15">
               <button
                 type="button"
                 disabled={isDeleting}
                 onClick={() => setLeadToDelete(null)}
-                className="liquid-glass-btn-secondary px-4 py-2 rounded-xl text-sm font-medium cursor-pointer"
+                className="h-9 px-4 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white/80 hover:text-white text-xs font-medium transition-all cursor-pointer"
               >
                 Cancelar
               </button>
@@ -906,7 +902,7 @@ export default function LeadsList() {
                 type="button"
                 disabled={isDeleting}
                 onClick={handleConfirmDelete}
-                className="liquid-glass-btn-danger px-5 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 cursor-pointer"
+                className="h-9 px-5 rounded-full bg-red-500/25 hover:bg-red-500/40 border border-red-500/40 text-red-200 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 {isDeleting ? (
                   <>
