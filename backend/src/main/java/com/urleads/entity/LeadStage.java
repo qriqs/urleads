@@ -1,10 +1,20 @@
 package com.urleads.entity;
 
-//Por si queremos migrar
 public enum LeadStage {
 
     NUEVO,
     EN_SEGUIMIENTO,
-    CERRADO
+    CERRADO;
 
+    public static boolean isValid(String stage) {
+        if (stage == null) {
+            return false;
+        }
+        for (LeadStage s : values()) {
+            if (s.name().equalsIgnoreCase(stage.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

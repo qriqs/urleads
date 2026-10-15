@@ -323,4 +323,33 @@ class LeadControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
+
+    // =========================================================================
+    // TESTS UL-17: ETAPAS Y FILTROS
+    // =========================================================================
+
+
+    @Test
+    void actualizar_etapaInvalida_devuelve400() throws Exception {
+        enviar("PUT", "/api/leads/10", """
+                {"name":"Test","phone":"999111222","stage":"INVALIDA"}""")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.stage").exists());
+
+        verifyNoInteractions(leadService);
+    }
+
+    @Test
+    void listar_pasaStageYFollowUpAlServicio() throws Exception {
+        when(leadService.listarPaginado(USUARIO_ACTUAL, null, "today", "NUEVO", 0))
+                .thenReturn(new PageResponse<>(List.of(respuesta()), 0, 20, 1, 1));
+
+        mockMvc.perform(get("/api/leads")
+                        .param("stage", "NUEVO")
+                        .param("followUp", "today"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(leadService).listarPaginado(USUARIO_ACTUAL, null, "today", "NUEVO", 0);
+    }
 }
