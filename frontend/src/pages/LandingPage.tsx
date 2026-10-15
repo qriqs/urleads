@@ -80,7 +80,7 @@ export default function LandingPage() {
             <Button
               className="rounded-full px-6 py-5 text-sm font-medium font-body bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 shadow-sm active:scale-98 cursor-pointer"
             >
-              {isAuthenticated ? "Ir al CRM" : "Iniciar Sesión"}
+              Go to CRM
             </Button>
           </Link>
 

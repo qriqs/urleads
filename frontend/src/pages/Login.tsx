@@ -12,6 +12,7 @@ import {
   Loader2,
   Sparkles
 } from 'lucide-react';
+import { sileo } from 'sileo';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
@@ -70,13 +71,18 @@ export default function Login() {
     try {
       // Safe login call - no passwords printed to console
       await login({ username: trimmedUsername, password });
+      sileo.success({
+        title: "¡Bienvenido a UrLeads!",
+        description: `Sesión iniciada como ${trimmedUsername}.`,
+      });
       navigate(from, { replace: true });
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setServerError(err.message);
-      } else {
-        setServerError('No fue posible iniciar sesión. Intenta de nuevo.');
-      }
+      const msg = err instanceof Error ? err.message : 'No fue posible iniciar sesión. Intenta de nuevo.';
+      setServerError(msg);
+      sileo.error({
+        title: "Error de inicio de sesión",
+        description: msg,
+      });
     } finally {
       setIsSubmitting(false);
     }
