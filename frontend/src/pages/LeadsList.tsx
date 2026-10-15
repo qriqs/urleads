@@ -75,7 +75,6 @@ export default function LeadsList() {
     service: "",
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [formGeneralError, setFormGeneralError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isStageSelectOpen, setIsStageSelectOpen] = useState<boolean>(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState<boolean>(false);
@@ -138,7 +137,6 @@ export default function LeadsList() {
 
   const handleOpenModal = () => {
     setFormErrors({});
-    setFormGeneralError(null);
     setIsStageSelectOpen(false);
     setIsDatePickerOpen(false);
     setIsModalOpen(true);
@@ -149,7 +147,6 @@ export default function LeadsList() {
     setIsStageSelectOpen(false);
     setIsDatePickerOpen(false);
     setFormErrors({});
-    setFormGeneralError(null);
   };
 
   const handleInputChange = (field: keyof CreateLeadPayload, value: string) => {
@@ -161,15 +158,11 @@ export default function LeadsList() {
         return updated;
       });
     }
-    if (formGeneralError) {
-      setFormGeneralError(null);
-    }
   };
 
   const handleSubmitLead = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormErrors({});
-    setFormGeneralError(null);
 
     const trimmedName = formData.name.trim();
     const trimmedPhone = formData.phone?.trim() || "";
@@ -180,15 +173,28 @@ export default function LeadsList() {
       localErrors.name = "El nombre debe tener al menos 2 caracteres.";
     }
     if (!trimmedPhone && !trimmedEmail) {
-      setFormGeneralError("Debe proporcionar al menos un teléfono o un correo electrónico.");
+      localErrors.phone = "Ingresa al menos un teléfono o correo.";
+      localErrors.email = "Ingresa al menos un teléfono o correo.";
     }
 
     if (Object.keys(localErrors).length > 0) {
       setFormErrors(localErrors);
-      return;
-    }
-
-    if (!trimmedPhone && !trimmedEmail) {
+      if (localErrors.name && (!trimmedPhone && !trimmedEmail)) {
+        sileo.warning({
+          title: "Campos requeridos",
+          description: "Completa el nombre y proporciona al menos un teléfono o correo de contacto.",
+        });
+      } else if (localErrors.name) {
+        sileo.warning({
+          title: "Nombre requerido",
+          description: "El nombre debe tener al menos 2 caracteres.",
+        });
+      } else {
+        sileo.warning({
+          title: "Contacto requerido",
+          description: "Debe ingresar al menos un teléfono o un correo electrónico.",
+        });
+      }
       return;
     }
 
@@ -224,7 +230,6 @@ export default function LeadsList() {
         setFormErrors(apiErr.fieldErrors);
       }
       const errorMsg = apiErr.message || "Error al registrar el lead. Revisa los datos.";
-      setFormGeneralError(errorMsg);
       sileo.error({
         title: "Error al registrar lead",
         description: errorMsg,
@@ -352,30 +357,6 @@ export default function LeadsList() {
         </div>
       </div>
 
-      {/* ── Error Banner ── */}
-      {error && (
-        <div
-          role="alert"
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-200 text-sm backdrop-blur-xl shadow-[0_8px_20px_rgba(239,68,68,0.15)] animate-in fade-in duration-300"
-        >
-          <div className="flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
-            <div>
-              <p className="font-semibold text-white">Error al sincronizar leads</p>
-              <p className="text-red-200 text-xs sm:text-sm">{error.message}</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => fetchLeads(debouncedSearch, page)}
-            className="shrink-0 liquid-glass-btn-secondary px-3.5 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Reintentar
-          </button>
-        </div>
-      )}
-
       {/* ── Main Content Area ── */}
       <div className="w-full">
         {/* Loading State */}
@@ -388,6 +369,27 @@ export default function LeadsList() {
             <p className="text-white/60 text-xs sm:text-sm mt-1">
               Obteniendo prospectos comerciales en tiempo real
             </p>
+          </div>
+        ) : error && leads.length === 0 ? (
+          /* Connection Error State */
+          <div className="leads-empty-state w-full min-h-[440px] p-10 sm:p-16 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md flex flex-col items-center justify-center text-center gap-4">
+            <div className="w-20 h-20 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0">
+              <AlertCircle className="h-10 w-10" />
+            </div>
+            <h3 className="text-xl font-semibold text-white">
+              No se pudieron sincronizar los leads
+            </h3>
+            <p className="text-base text-white/70 max-w-md mx-auto leading-relaxed">
+              {error.message || "Ocurrió un error al consultar el servidor."}
+            </p>
+            <button
+              type="button"
+              onClick={() => fetchLeads(debouncedSearch, page)}
+              className="aurora-chip-btn h-10 px-6 text-sm font-medium"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>Reintentar conexión</span>
+            </button>
           </div>
         ) : leads.length === 0 ? (
           /* Empty State */
@@ -695,19 +697,6 @@ export default function LeadsList() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-
-            {/* General Server Error Banner */}
-            {formGeneralError && (
-              <div
-                role="alert"
-                className="p-4 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-100 text-sm flex items-start gap-3 shadow-lg relative z-10"
-              >
-                <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-                <div className="flex-1 font-medium leading-relaxed">
-                  {formGeneralError}
-                </div>
-              </div>
-            )}
 
             {/* Form */}
             <form onSubmit={handleSubmitLead} className="relative z-10" noValidate>
