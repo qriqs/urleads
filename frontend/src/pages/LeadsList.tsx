@@ -788,17 +788,14 @@ export default function LeadsList() {
 
               {/* Field 3: Teléfono y Correo con helper text integrado */}
               <div
-                className={`lead-field-group transition-opacity duration-200 ${
-                  isStageSelectOpen || isDatePickerOpen
-                    ? "opacity-0 pointer-events-none"
-                    : "opacity-100"
+                className={`lead-field-group form-field-dimmable ${
+                  isStageSelectOpen || isDatePickerOpen ? "is-dimmed" : ""
                 }`}
               >
                 <div className="lead-field-grid">
                   <div className="lead-field-group">
-                    <label htmlFor="lead-phone" className="flex items-center justify-between">
-                      <span>Teléfono</span>
-                      <span className="text-[11px] text-white/40 font-normal">o correo</span>
+                    <label htmlFor="lead-phone">
+                      Teléfono
                     </label>
                     <input
                       id="lead-phone"
@@ -819,9 +816,8 @@ export default function LeadsList() {
                   </div>
 
                   <div className="lead-field-group">
-                    <label htmlFor="lead-email" className="flex items-center justify-between">
-                      <span>Correo electrónico</span>
-                      <span className="text-[11px] text-white/40 font-normal">o teléfono</span>
+                    <label htmlFor="lead-email">
+                      Correo electrónico
                     </label>
                     <input
                       id="lead-email"
@@ -848,10 +844,8 @@ export default function LeadsList() {
 
               {/* Field 4: Servicio de interés */}
               <div
-                className={`lead-field-group transition-opacity duration-200 ${
-                  isDatePickerOpen
-                    ? "opacity-0 pointer-events-none"
-                    : "opacity-100"
+                className={`lead-field-group form-field-dimmable ${
+                  isDatePickerOpen ? "is-dimmed" : ""
                 }`}
               >
                 <label htmlFor="lead-service">

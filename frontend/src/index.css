@@ -369,6 +369,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   border-radius: 20px !important;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
   z-index: 70 !important;
+  will-change: transform, opacity !important;
+  transform: translate3d(0, 0, 0) !important;
+  animation: glassMenuPop 120ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
 .glass-calendar-popover {
@@ -382,6 +385,36 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   border-radius: 22px !important;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
   z-index: 70 !important;
+  will-change: transform, opacity !important;
+  transform: translate3d(0, 0, 0) !important;
+  animation: glassMenuPop 120ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes glassMenuPop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* Instant lag-free hardware-accelerated field dimming */
+.form-field-dimmable {
+  transition: opacity 120ms cubic-bezier(0.16, 1, 0.3, 1), transform 120ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+  will-change: opacity, transform !important;
+  transform: translate3d(0, 0, 0) !important;
+  backface-visibility: hidden !important;
+}
+
+.form-field-dimmable.is-dimmed {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translate3d(0, -3px, 0) !important;
+  visibility: hidden !important;
+  transition: opacity 80ms ease-out, visibility 80ms !important;
 }
 
 .glass-calendar-popover button {

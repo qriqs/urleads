@@ -248,7 +248,7 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
         <div
           role="dialog"
           aria-label="Selector de calendario"
-          className="glass-calendar-popover absolute top-[calc(100%+8px)] left-0 sm:left-auto sm:right-0 z-50 rounded-2xl p-3.5 w-[290px] animate-in fade-in zoom-in-95 duration-150"
+          className="glass-calendar-popover absolute top-[calc(100%+8px)] left-0 sm:left-auto sm:right-0 z-50 rounded-2xl p-3.5 w-[290px]"
           style={{
             background:
               "linear-gradient(135deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.08) 100%)",

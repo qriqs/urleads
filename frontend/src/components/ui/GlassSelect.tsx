@@ -113,7 +113,7 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
         <div
           role="listbox"
           tabIndex={-1}
-          className="glass-dropdown-menu absolute top-[calc(100%+8px)] left-0 right-0 z-50 rounded-2xl p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150"
+          className="glass-dropdown-menu absolute top-[calc(100%+8px)] left-0 right-0 z-50 rounded-2xl p-2 space-y-1"
           style={{
             background:
               "linear-gradient(135deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.08) 100%)",
