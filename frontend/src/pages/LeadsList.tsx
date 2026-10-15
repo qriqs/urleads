@@ -715,7 +715,7 @@ export default function LeadsList() {
 
             {/* Form */}
             <form onSubmit={handleSubmitLead} className="relative z-10" noValidate>
-              {/* Field: Nombre completo */}
+              {/* Field 1: Nombre completo */}
               <div className="lead-field-group">
                 <label htmlFor="lead-name">
                   Nombre completo <span className="text-white/60 font-normal">*</span>
@@ -742,58 +742,7 @@ export default function LeadsList() {
                 )}
               </div>
 
-              {/* Two columns: Teléfono y Correo */}
-              <div className="lead-field-grid">
-                <div className="lead-field-group">
-                  <label htmlFor="lead-phone">
-                    Teléfono
-                  </label>
-                  <input
-                    id="lead-phone"
-                    type="tel"
-                    placeholder="Ej: 998877665"
-                    value={formData.phone || ""}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    disabled={isSubmitting}
-                    className={`liquid-glass-input ${
-                      formErrors.phone ? "border-red-400 ring-2 ring-red-400/30" : ""
-                    }`}
-                  />
-                  {formErrors.phone && (
-                    <p role="alert" className="lead-error-text">
-                      {formErrors.phone}
-                    </p>
-                  )}
-                </div>
-
-                <div className="lead-field-group">
-                  <label htmlFor="lead-email">
-                    Correo electrónico
-                  </label>
-                  <input
-                    id="lead-email"
-                    type="email"
-                    placeholder="laura@empresa.com"
-                    value={formData.email || ""}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    disabled={isSubmitting}
-                    className={`liquid-glass-input ${
-                      formErrors.email ? "border-red-400 ring-2 ring-red-400/30" : ""
-                    }`}
-                  />
-                  {formErrors.email && (
-                    <p role="alert" className="lead-error-text">
-                      {formErrors.email}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <p className="lead-helper-text">
-                * Debe ingresar al menos un teléfono o un correo electrónico.
-              </p>
-
-              {/* Two columns: Etapa y Próximo Seguimiento */}
+              {/* Field 2: Etapa comercial y Próximo seguimiento (elevado para evitar scroll) */}
               <div className="lead-field-grid">
                 <div className="lead-field-group">
                   <label htmlFor="lead-stage">
@@ -829,10 +778,64 @@ export default function LeadsList() {
                 </div>
               </div>
 
-              {/* Field: Servicio de interés */}
+              {/* Field 3: Teléfono y Correo con helper text integrado */}
+              <div className="lead-field-group">
+                <div className="lead-field-grid">
+                  <div className="lead-field-group">
+                    <label htmlFor="lead-phone" className="flex items-center justify-between">
+                      <span>Teléfono</span>
+                      <span className="text-[11px] text-white/40 font-normal">o correo</span>
+                    </label>
+                    <input
+                      id="lead-phone"
+                      type="tel"
+                      placeholder="Ej: 998877665"
+                      value={formData.phone || ""}
+                      onChange={(e) => handleInputChange("phone", e.target.value)}
+                      disabled={isSubmitting}
+                      className={`liquid-glass-input ${
+                        formErrors.phone ? "border-red-400 ring-2 ring-red-400/30" : ""
+                      }`}
+                    />
+                    {formErrors.phone && (
+                      <p role="alert" className="lead-error-text">
+                        {formErrors.phone}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="lead-field-group">
+                    <label htmlFor="lead-email" className="flex items-center justify-between">
+                      <span>Correo electrónico</span>
+                      <span className="text-[11px] text-white/40 font-normal">o teléfono</span>
+                    </label>
+                    <input
+                      id="lead-email"
+                      type="email"
+                      placeholder="laura@empresa.com"
+                      value={formData.email || ""}
+                      onChange={(e) => handleInputChange("email", e.target.value)}
+                      disabled={isSubmitting}
+                      className={`liquid-glass-input ${
+                        formErrors.email ? "border-red-400 ring-2 ring-red-400/30" : ""
+                      }`}
+                    />
+                    {formErrors.email && (
+                      <p role="alert" className="lead-error-text">
+                        {formErrors.email}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <p className="lead-helper-text">
+                  * Debe ingresar al menos un teléfono o un correo electrónico de contacto.
+                </p>
+              </div>
+
+              {/* Field 4: Servicio de interés */}
               <div className="lead-field-group">
                 <label htmlFor="lead-service">
-                  Servicio de interés (Opcional)
+                  Servicio de interés <span className="text-white/40 font-normal">(Opcional)</span>
                 </label>
                 <input
                   id="lead-service"
