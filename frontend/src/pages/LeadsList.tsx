@@ -265,8 +265,8 @@ export default function LeadsList() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white drop-shadow-sm">
               Leads
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold liquid-glass-pill text-white/90">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 border border-white/15 text-white/80 backdrop-blur-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00c988]" />
               {totalElements} {totalElements === 1 ? "contacto" : "contactos"}
             </span>
           </div>
@@ -276,7 +276,7 @@ export default function LeadsList() {
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          {/* Search bar with perfect icon alignment and liquid glass finish */}
+          {/* Search bar with perfect icon alignment */}
           <div className="relative flex-1 sm:w-72">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50 pointer-events-none" />
             <input
@@ -286,7 +286,7 @@ export default function LeadsList() {
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Buscar por nombre..."
               aria-label="Buscar leads por nombre"
-              className="w-full h-10 pl-10 pr-9 rounded-full liquid-glass-input text-sm text-white placeholder:text-white/40"
+              className="w-full h-10 pl-10 pr-9 rounded-full bg-white/10 border border-white/20 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#00c988]/40 backdrop-blur-md transition-all"
             />
             {searchInput && (
               <button
@@ -300,11 +300,11 @@ export default function LeadsList() {
             )}
           </div>
 
-          {/* New Lead Liquid Glass Button */}
+          {/* New Lead Pill Button */}
           <button
             type="button"
             onClick={handleOpenModal}
-            className="shrink-0 h-10 px-5 rounded-full liquid-glass-btn-primary font-medium text-sm flex items-center gap-2 cursor-pointer active:scale-95"
+            className="shrink-0 h-10 px-5 rounded-full bg-[#00c988] hover:bg-[#00b57a] text-white font-medium text-sm flex items-center gap-2 cursor-pointer shadow-lg shadow-[#00c988]/20 active:scale-95 transition-all"
           >
             <Plus className="h-4 w-4" />
             <span>Nuevo Lead</span>
@@ -372,7 +372,7 @@ export default function LeadsList() {
           </div>
         ) : leads.length === 0 ? (
           /* Empty State */
-          <div className="p-8 sm:p-14 text-center rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+          <div className="p-10 sm:p-16 text-center rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/10 flex items-center justify-center text-white/60 border border-white/15">
               <User className="h-8 w-8" />
             </div>
@@ -396,16 +396,14 @@ export default function LeadsList() {
               </>
             ) : (
               <>
-                <h3 className="text-lg font-semibold text-white">
-                  No tienes leads registrados aún
-                </h3>
-                <p className="text-sm text-white/60 mt-1 max-w-md mx-auto">
-                  Registra tu primer lead para comenzar a gestionar tu pipeline comercial y hacer seguimiento a tus ventas.
+                <p className="text-sm text-white/70 max-w-md mx-auto leading-relaxed mb-6">
+                  Registra tu primer lead para comenzar a gestionar tu pipeline
+                  <br className="hidden sm:inline" /> comercial y hacer seguimiento a tus ventas.
                 </p>
                 <button
                   type="button"
                   onClick={handleOpenModal}
-                  className="mt-5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-500/20 inline-flex items-center gap-2 cursor-pointer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#00c988] hover:bg-[#00b57a] text-white text-sm font-semibold shadow-lg shadow-[#00c988]/25 transition-all cursor-pointer active:scale-95"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Crear mi primer lead</span>
