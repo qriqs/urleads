@@ -356,6 +356,39 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
 
+/* Glass Select & DatePicker helpers */
+.glass-dropdown-menu {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  padding: 8px !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  backdrop-filter: blur(28px) saturate(135%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(135%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  z-index: 70 !important;
+}
+
+.glass-calendar-popover {
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 20px !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  backdrop-filter: blur(30px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(140%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  z-index: 70 !important;
+}
+
+.glass-calendar-popover button {
+  box-sizing: border-box !important;
+}
+
+
 .liquid-glass-input {
   background: rgba(255, 255, 255, 0.10);
   border: 1px solid rgba(255, 255, 255, 0.22);

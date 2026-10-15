@@ -25,6 +25,29 @@ import {
   CreateLeadPayload,
   LeadApiError,
 } from "../services/leads";
+import { GlassSelect, GlassSelectOption } from "../components/ui/GlassSelect";
+import { GlassDatePicker } from "../components/ui/GlassDatePicker";
+
+const STAGE_OPTIONS: GlassSelectOption[] = [
+  {
+    value: "NUEVO",
+    label: "NUEVO",
+    description: "Prospecto recién registrado",
+    colorDot: "bg-sky-400",
+  },
+  {
+    value: "EN_SEGUIMIENTO",
+    label: "EN SEGUIMIENTO",
+    description: "Contacto activo y negociación",
+    colorDot: "bg-amber-400",
+  },
+  {
+    value: "CERRADO",
+    label: "CERRADO",
+    description: "Trato comercial concretado",
+    colorDot: "bg-emerald-400",
+  },
+];
 
 export default function LeadsList() {
   // Data states
@@ -776,34 +799,27 @@ export default function LeadsList() {
                   <label htmlFor="lead-stage">
                     Etapa comercial <span className="text-white/60 font-normal">*</span>
                   </label>
-                  <select
+                  <GlassSelect
                     id="lead-stage"
                     value={formData.stage}
-                    onChange={(e) =>
-                      handleInputChange("stage", e.target.value as LeadStage)
+                    onChange={(val) =>
+                      handleInputChange("stage", val as LeadStage)
                     }
+                    options={STAGE_OPTIONS}
                     disabled={isSubmitting}
-                    className="liquid-glass-input text-white"
-                  >
-                    <option value="NUEVO" className="bg-[#0b1c28] text-white">NUEVO</option>
-                    <option value="EN_SEGUIMIENTO" className="bg-[#0b1c28] text-white">EN SEGUIMIENTO</option>
-                    <option value="CERRADO" className="bg-[#0b1c28] text-white">CERRADO</option>
-                  </select>
+                  />
                 </div>
 
                 <div className="lead-field-group">
                   <label htmlFor="lead-followup">
                     Próximo seguimiento
                   </label>
-                  <input
+                  <GlassDatePicker
                     id="lead-followup"
-                    type="date"
                     value={formData.nextFollowUp || ""}
-                    onChange={(e) => handleInputChange("nextFollowUp", e.target.value)}
+                    onChange={(val) => handleInputChange("nextFollowUp", val)}
                     disabled={isSubmitting || formData.stage === "CERRADO"}
-                    className={`liquid-glass-input ${
-                      formData.stage === "CERRADO" ? "opacity-35 cursor-not-allowed" : ""
-                    }`}
+                    placeholder="dd / mm / aaaa"
                   />
                   {formData.stage === "CERRADO" && (
                     <p className="lead-helper-text">
