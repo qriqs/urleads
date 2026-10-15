@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Search,
   Plus,
@@ -109,11 +109,28 @@ export default function LeadsList() {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [page, setPage] = useState<number>(0);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialStage = (searchParams.get("stage") as LeadStage) || "";
+  const initialFollowUp = (searchParams.get("followUp") as FollowUpFilter) || "all";
+  const initialSearch = searchParams.get("search") || "";
+
   // Search & filter states
-  const [searchInput, setSearchInput] = useState<string>("");
-  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
-  const [selectedStage, setSelectedStage] = useState<LeadStage | "">("");
-  const [selectedFollowUp, setSelectedFollowUp] = useState<FollowUpFilter>("all");
+  const [searchInput, setSearchInput] = useState<string>(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState<string>(initialSearch);
+  const [selectedStage, setSelectedStage] = useState<LeadStage | "">(initialStage);
+  const [selectedFollowUp, setSelectedFollowUp] = useState<FollowUpFilter>(initialFollowUp);
+
+  // Sync state when URL params change (e.g. navigation from dashboard)
+  useEffect(() => {
+    const stageParam = (searchParams.get("stage") as LeadStage) || "";
+    const followUpParam = (searchParams.get("followUp") as FollowUpFilter) || "all";
+    const searchParam = searchParams.get("search") || "";
+    setSelectedStage(stageParam);
+    setSelectedFollowUp(followUpParam);
+    setSearchInput(searchParam);
+    setDebouncedSearch(searchParam);
+  }, [searchParams]);
+
 
   // Loading & error states
   const [isLoading, setIsLoading] = useState<boolean>(true);

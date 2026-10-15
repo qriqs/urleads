@@ -1,8 +1,31 @@
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
-import { Users, DollarSign, Activity, FileText, CheckCircle, Target, Grid, BarChart2, Calendar, Settings } from 'lucide-react';
-import React from 'react';
+import {
+  Users,
+  DollarSign,
+  Activity,
+  FileText,
+  CheckCircle,
+  Target,
+  Grid,
+  BarChart2,
+  Calendar,
+  Settings,
+  AlertCircle,
+  Clock,
+  ArrowRight,
+  Sparkles,
+  Plus,
+  RefreshCw,
+} from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './AuroraDashboard.css';
 import { useAuth } from '../context/AuthContext';
+import {
+  getDashboardMetricsApi,
+  DashboardMetrics,
+  DashboardApiError,
+  formatDayDate,
+} from '../services/dashboard';
 
 export default function AuroraDashboard() {
   const { user, logout } = useAuth();
@@ -17,6 +40,49 @@ export default function AuroraDashboard() {
   else if (path === '/app/ajustes') activeIndex = 4;
   
   const pipTop = 131 + (activeIndex * 66);
+
+  // Real dashboard metrics state
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [isLoadingMetrics, setIsLoadingMetrics] = useState<boolean>(true);
+  const [metricsError, setMetricsError] = useState<DashboardApiError | null>(null);
+
+  const fetchMetrics = useCallback(async () => {
+    setIsLoadingMetrics(true);
+    setMetricsError(null);
+    try {
+      const data = await getDashboardMetricsApi();
+      setMetrics(data);
+    } catch (err: any) {
+      if (err?.status === 401) {
+        navigate('/login');
+        return;
+      }
+      setMetricsError(err);
+    } finally {
+      setIsLoadingMetrics(false);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    if (activeIndex === 0) {
+      fetchMetrics();
+    }
+  }, [activeIndex, fetchMetrics]);
+
+  const totalLeads = metrics?.totalLeads ?? 0;
+  const newCount = metrics?.leadsPorEtapa?.['NUEVO'] ?? 0;
+  const inProgressCount = metrics?.leadsPorEtapa?.['EN_SEGUIMIENTO'] ?? 0;
+  const closedCount = metrics?.leadsPorEtapa?.['CERRADO'] ?? 0;
+
+  const newPercent = totalLeads > 0 ? Math.round((newCount / totalLeads) * 100) : 0;
+  const inProgressPercent = totalLeads > 0 ? Math.round((inProgressCount / totalLeads) * 100) : 0;
+  const closedPercent = totalLeads > 0 ? Math.round((closedCount / totalLeads) * 100) : 0;
+
+  const pendingLeads = [
+    ...(metrics?.seguimientos?.leadsAtrasados ?? []),
+    ...(metrics?.seguimientos?.leadsHoy ?? []),
+  ];
+
 
   return (
     <div className="aurora-wrapper">
@@ -213,14 +279,32 @@ export default function AuroraDashboard() {
         </div>
 
         <div className="header-tools">
-          <button type="button" className="tool" aria-label="Add location">
+          <button
+            type="button"
+            className="tool"
+            aria-label="Nuevo Lead"
+            title="Ir a leads y registrar prospecto"
+            onClick={() => navigate('/app/leads')}
+          >
             <svg><use href="#i-plus"></use></svg>
           </button>
-          <button type="button" className="tool" aria-label="Search">
+          <button
+            type="button"
+            className="tool"
+            aria-label="Buscar Leads"
+            title="Buscar prospectos"
+            onClick={() => navigate('/app/leads')}
+          >
             <svg><use href="#i-search"></use></svg>
           </button>
-          <button type="button" className="tool" aria-label="Notifications">
-            <svg><use href="#i-bell"></use></svg>
+          <button
+            type="button"
+            className="tool"
+            aria-label="Refrescar métricas"
+            title="Refrescar métricas del dashboard"
+            onClick={() => fetchMetrics()}
+          >
+            <RefreshCw className={`w-4 h-4 text-white ${isLoadingMetrics ? 'animate-spin' : ''}`} />
           </button>
           <button 
             type="button" 
@@ -249,170 +333,322 @@ export default function AuroraDashboard() {
       {activeIndex === 0 ? (
         <>
           <section className="hero">
-        <div className="chip">Tu Pipeline</div>
-        <h1>
-          <span className="ln"><span>Cierra</span></span>
-          <span className="ln"><span>más Ventas</span></span>
-        </h1>
-        <p className="blurb">
-          Tu resumen de ventas, leads calificados y próximos seguimientos.<br />
-          Monitorea el valor de tu pipeline, tasas de conversión y<br />
-          tareas pendientes para hoy. Todo en tiempo real.
-        </p>
-      </section>
+            <div className="chip">
+              <Sparkles className="w-3.5 h-3.5 text-cyan-300 inline mr-1" />
+              <span>Resumen Comercial</span>
+            </div>
+            <h1>
+              <span className="ln"><span>Cierra</span></span>
+              <span className="ln"><span>más Ventas</span></span>
+            </h1>
+            <p className="blurb">
+              Tu resumen de ventas, leads calificados y próximos seguimientos.<br />
+              Monitorea el estado de tu pipeline, tasas de conversión y<br />
+              tareas pendientes para hoy. Todo en tiempo real.
+            </p>
+          </section>
+
+          {/* Central Pipeline Area */}
           <section className="forecast">
-        <div className="forecast-temps">
-          <div className="ft-item">
-            <span className="ft-val">$12K</span>
-            <Target className="ft-icon" strokeWidth={2} />
-          </div>
-          <div className="ft-item">
-            <span className="ft-val">$45K</span>
-            <CheckCircle className="ft-icon" strokeWidth={2} />
-          </div>
-          <div className="ft-item">
-            <span className="ft-val">$58K</span>
-            <CheckCircle className="ft-icon" strokeWidth={2} />
-          </div>
-          <div className="ft-item">
-            <span className="ft-val">$80K</span>
-            <Users className="ft-icon" strokeWidth={2} />
-          </div>
-          <div className="ft-item">
-            <span className="ft-val">$84K</span>
-            <Activity className="ft-icon" strokeWidth={2} />
-          </div>
-          <div className="ft-item">
-            <span className="ft-val">$120K</span>
-            <Target className="ft-icon" strokeWidth={2} />
-          </div>
-        </div>
+            {/* Quick Metrics Chips Row */}
+            <div className="forecast-temps">
+              <Link
+                to="/app/leads"
+                className="ft-item group"
+                title="Ver todos los prospectos"
+              >
+                <span className="ft-val">{metrics ? totalLeads : (isLoadingMetrics ? "..." : 0)}</span>
+                <div className="flex flex-col">
+                  <span className="text-[11px] uppercase tracking-wider text-white/70 font-semibold">Total</span>
+                  <span className="text-[10px] text-white/50">Prospectos</span>
+                </div>
+                <Users className="ft-icon group-hover:scale-110 transition-transform text-white/80" strokeWidth={2} />
+              </Link>
 
-        <svg className="wave-chart" viewBox="0 0 835 230" preserveAspectRatio="none">
-          <defs>
-            
-            <linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.3"/>
-              <stop offset="25%" stopColor="#ffffff" stopOpacity="0.85"/>
-              <stop offset="50%" stopColor="#ffffff" stopOpacity="1"/>
-              <stop offset="75%" stopColor="#ffffff" stopOpacity="0.9"/>
-              <stop offset="100%" stopColor="#ffffff" stopOpacity="0.4"/>
-            </linearGradient>
+              <Link
+                to="/app/leads?stage=NUEVO"
+                className="ft-item group"
+                title="Filtrar prospectos Nuevos"
+              >
+                <span className="ft-val">{metrics ? newCount : (isLoadingMetrics ? "..." : 0)}</span>
+                <div className="flex flex-col">
+                  <span className="text-[11px] uppercase tracking-wider text-sky-300 font-semibold">Nuevos</span>
+                  <span className="text-[10px] text-white/50">Por calificar</span>
+                </div>
+                <Target className="ft-icon group-hover:scale-110 transition-transform text-sky-400" strokeWidth={2} />
+              </Link>
 
-            
-            <linearGradient id="wf" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.32"/>
-              <stop offset="45%" stopColor="#ffffff" stopOpacity="0.14"/>
-              <stop offset="100%" stopColor="#ffffff" stopOpacity="0.0"/>
-            </linearGradient>
+              <Link
+                to="/app/leads?stage=EN_SEGUIMIENTO"
+                className="ft-item group"
+                title="Filtrar prospectos En Seguimiento"
+              >
+                <span className="ft-val">{metrics ? inProgressCount : (isLoadingMetrics ? "..." : 0)}</span>
+                <div className="flex flex-col">
+                  <span className="text-[11px] uppercase tracking-wider text-amber-300 font-semibold">Activos</span>
+                  <span className="text-[10px] text-white/50">En gestión</span>
+                </div>
+                <Activity className="ft-icon group-hover:scale-110 transition-transform text-amber-400" strokeWidth={2} />
+              </Link>
 
-            
-            <mask id="wfade">
-              <linearGradient id="wfade-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#ffffff" stopOpacity="1"/>
-                <stop offset="70%" stopColor="#ffffff" stopOpacity="0.5"/>
-                <stop offset="100%" stopColor="#ffffff" stopOpacity="0"/>
-              </linearGradient>
-              <rect x="0" y="0" width="835" height="230" fill="url(#wfade-grad)"/>
-            </mask>
+              <Link
+                to="/app/leads?stage=CERRADO"
+                className="ft-item group"
+                title="Filtrar prospectos Cerrados"
+              >
+                <span className="ft-val">{metrics ? closedCount : (isLoadingMetrics ? "..." : 0)}</span>
+                <div className="flex flex-col">
+                  <span className="text-[11px] uppercase tracking-wider text-emerald-300 font-semibold">Cerrados</span>
+                  <span className="text-[10px] text-white/50">Concretados</span>
+                </div>
+                <CheckCircle className="ft-icon group-hover:scale-110 transition-transform text-emerald-400" strokeWidth={2} />
+              </Link>
 
-            
-            <clipPath id="wclip">
-              <rect id="wclipr" x="0" y="0" width="835" height="230" />
-            </clipPath>
-          </defs>
+              <Link
+                to="/app/leads?followUp=today"
+                className="ft-item group"
+                title="Filtrar seguimientos programados para hoy"
+              >
+                <span className="ft-val">{metrics ? metrics.seguimientos.hoy : (isLoadingMetrics ? "..." : 0)}</span>
+                <div className="flex flex-col">
+                  <span className="text-[11px] uppercase tracking-wider text-cyan-300 font-semibold">Para Hoy</span>
+                  <span className="text-[10px] text-white/50">Programados</span>
+                </div>
+                <Calendar className="ft-icon group-hover:scale-110 transition-transform text-cyan-300" strokeWidth={2} />
+              </Link>
 
-          
-          <path className="wfill" clipPath="url(#wclip)" mask="url(#wfade)"
-                d="M0,79 C 80,75 110,68 170,68 C 240,68 280,60 340,60 C 410,60 440,98 505,98 C 570,98 610,22 675,22 C 740,22 780,80 835,86 L835,230 L0,230 Z"
-                fill="url(#wf)" />
+              <Link
+                to="/app/leads?followUp=overdue"
+                className="ft-item group"
+                title="Filtrar seguimientos atrasados"
+              >
+                <span className="ft-val">{metrics ? metrics.seguimientos.atrasados : (isLoadingMetrics ? "..." : 0)}</span>
+                <div className="flex flex-col">
+                  <span className="text-[11px] uppercase tracking-wider text-rose-300 font-semibold">Atrasados</span>
+                  <span className="text-[10px] text-white/50">Urgentes</span>
+                </div>
+                <AlertCircle className="ft-icon group-hover:scale-110 transition-transform text-rose-400" strokeWidth={2} />
+              </Link>
+            </div>
 
-          
-          <path className="wline wline-outer"
-                d="M0,79 C 80,75 110,68 170,68 C 240,68 280,60 340,60 C 410,60 440,98 505,98 C 570,98 610,22 675,22 C 740,22 780,80 835,86"
-                fill="none" stroke="url(#wg)" strokeWidth="6.2" opacity="0.17" strokeLinecap="round" pathLength="1" />
-          <path className="wline wline-mid"
-                d="M0,79 C 80,75 110,68 170,68 C 240,68 280,60 340,60 C 410,60 440,98 505,98 C 570,98 610,22 675,22 C 740,22 780,80 835,86"
-                fill="none" stroke="url(#wg)" strokeWidth="4.6" opacity="0.26" strokeLinecap="round" pathLength="1" />
-          <path className="wline wline-core"
-                d="M0,79 C 80,75 110,68 170,68 C 240,68 280,60 340,60 C 410,60 440,98 505,98 C 570,98 610,22 675,22 C 740,22 780,80 835,86"
-                fill="none" stroke="url(#wg)" strokeWidth="3.4" opacity="1" strokeLinecap="round" pathLength="1" />
-        </svg>
+            {/* Central Liquid Glass Pipeline Card */}
+            <div className="card mt-6 p-6 rounded-2xl border border-white/20 backdrop-blur-xl space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-400/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300">
+                    <BarChart2 className="w-4 h-4" />
+                  </div>
+                  <h2 className="text-base font-semibold text-white">
+                    Distribución de tu Pipeline Comercial
+                  </h2>
+                </div>
+                <span className="text-xs text-white/70 font-medium bg-white/10 px-2.5 py-1 rounded-full border border-white/10">
+                  {totalLeads} {totalLeads === 1 ? "lead registrado" : "leads registrados"}
+                </span>
+              </div>
 
-        <div className="forecast-days">
-          <div className="day">Ene</div>
-          <div className="day">Feb</div>
-          <div className="day">Mar</div>
-          <div className="day on">Abr</div>
-          <div className="day">May</div>
-          <div className="day">Jun</div>
-        </div>
-      </section>
+              {isLoadingMetrics ? (
+                <div className="py-8 flex flex-col items-center justify-center gap-3 text-white/60">
+                  <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
+                  <span className="text-xs">Sincronizando métricas en tiempo real...</span>
+                </div>
+              ) : metricsError ? (
+                <div className="py-6 flex flex-col items-center justify-center gap-3 text-center">
+                  <AlertCircle className="w-6 h-6 text-rose-400" />
+                  <p className="text-xs text-rose-200">{metricsError.message}</p>
+                  <button
+                    type="button"
+                    onClick={() => fetchMetrics()}
+                    className="aurora-chip-btn h-8 px-4 text-xs font-medium text-white flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Reintentar</span>
+                  </button>
+                </div>
+              ) : totalLeads === 0 ? (
+                <div className="py-8 px-4 text-center flex flex-col items-center justify-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40">
+                    <Users className="w-6 h-6 text-cyan-300/70" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-white">
+                    Aún no tienes prospectos registrados
+                  </h3>
+                  <p className="text-xs text-white/60 max-w-md leading-relaxed">
+                    Registra tu primer lead para comenzar a gestionar tu pipeline comercial y hacer seguimiento a tus ventas.
+                  </p>
+                  <Link
+                    to="/app/leads"
+                    className="aurora-chip-btn h-9 px-5 text-xs font-medium text-white inline-flex items-center gap-1.5 mt-2 hover:border-emerald-400/40 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4 text-emerald-400" />
+                    <span>Registrar primer lead</span>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Multi-segment Segmented Progress Bar */}
+                  <div className="space-y-2">
+                    <div className="h-3 w-full rounded-full bg-white/10 overflow-hidden flex p-0.5 gap-1">
+                      {newPercent > 0 && (
+                        <div
+                          style={{ width: `${newPercent}%` }}
+                          className="h-full rounded-full bg-gradient-to-r from-sky-400 to-sky-500 transition-all duration-500"
+                          title={`Nuevos: ${newCount} (${newPercent}%)`}
+                        />
+                      )}
+                      {inProgressPercent > 0 && (
+                        <div
+                          style={{ width: `${inProgressPercent}%` }}
+                          className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-500"
+                          title={`En seguimiento: ${inProgressCount} (${inProgressPercent}%)`}
+                        />
+                      )}
+                      {closedPercent > 0 && (
+                        <div
+                          style={{ width: `${closedPercent}%` }}
+                          className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-500"
+                          title={`Cerrados: ${closedCount} (${closedPercent}%)`}
+                        />
+                      )}
+                    </div>
+
+                    {/* Stage Distribution Legend with Direct Filter Navigation */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1">
+                      <Link
+                        to="/app/leads?stage=NUEVO"
+                        className="flex items-center gap-1.5 hover:underline text-white/80 hover:text-sky-300"
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block" />
+                        <span>Nuevos: <strong>{newCount}</strong> ({newPercent}%)</span>
+                      </Link>
+                      <Link
+                        to="/app/leads?stage=EN_SEGUIMIENTO"
+                        className="flex items-center gap-1.5 hover:underline text-white/80 hover:text-amber-300"
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
+                        <span>En Seguimiento: <strong>{inProgressCount}</strong> ({inProgressPercent}%)</span>
+                      </Link>
+                      <Link
+                        to="/app/leads?stage=CERRADO"
+                        className="flex items-center gap-1.5 hover:underline text-white/80 hover:text-emerald-300"
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" />
+                        <span>Cerrados: <strong>{closedCount}</strong> ({closedPercent}%)</span>
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-white/[0.08]">
+                    <span className="text-[11px] text-white/50">
+                      Horario y clasificación calculados bajo zona horaria <strong>America/Lima</strong>.
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to="/app/leads"
+                        className="aurora-chip-btn h-8 px-4 text-xs font-medium text-white flex items-center gap-1.5 hover:border-emerald-400/40"
+                      >
+                        <span>Gestionar leads</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Right Rail: Real Follow-ups and Pending Contacts */}
           <aside className="rail">
-        
-        <div className="card big">
-          <div className="card-loc">
-            <span>Leads Activos</span>
-            <Target className="loc-pin" strokeWidth={2} />
-          </div>
+            {/* Big Card: Pending Summary */}
+            <div className="card big">
+              <div className="card-loc">
+                <span>Seguimientos</span>
+                <Calendar className="loc-pin text-cyan-300" strokeWidth={2} />
+              </div>
 
-          <div className="big-temp">$120K</div>
+              <div className="big-temp">
+                {metrics ? (metrics.seguimientos.hoy + metrics.seguimientos.atrasados) : (isLoadingMetrics ? "..." : 0)}
+                <i>pendientes</i>
+              </div>
 
-          <div className="card-metrics">
-            <div className="metric">
-              <Activity className="m-icon" strokeWidth={2} />
-              <span>45 Leads</span>
+              <div className="card-metrics">
+                <Link
+                  to="/app/leads?followUp=today"
+                  className="metric hover:text-cyan-300 transition-colors"
+                  title="Ver seguimientos para hoy"
+                >
+                  <Clock className="m-icon text-cyan-300" strokeWidth={2} />
+                  <span>{metrics?.seguimientos?.hoy ?? 0} Hoy</span>
+                </Link>
+                <Link
+                  to="/app/leads?followUp=overdue"
+                  className="metric hover:text-rose-300 transition-colors"
+                  title="Ver seguimientos atrasados"
+                >
+                  <AlertCircle className="m-icon text-rose-400" strokeWidth={2} />
+                  <span>{metrics?.seguimientos?.atrasados ?? 0} Atrasados</span>
+                </Link>
+                <Link
+                  to="/app/leads"
+                  className="metric hover:text-emerald-300 transition-colors"
+                  title="Ver total de prospectos"
+                >
+                  <Users className="m-icon text-emerald-400" strokeWidth={2} />
+                  <span>{totalLeads} Total</span>
+                </Link>
+              </div>
             </div>
-            <div className="metric">
-              <FileText className="m-icon" strokeWidth={2} />
-              <span>24%</span>
-            </div>
-            <div className="metric">
-              <DollarSign className="m-icon" strokeWidth={2} />
-              <span>34K ARR</span>
-            </div>
-          </div>
-        </div>
 
-        
-        <div className="card card-row">
-          <div className="row-info">
-            <span className="row-country">Consultoría IT</span>
-<h3 className="row-city">Carlos Torres</h3>
-<span className="row-cond">Hace 2 horas</span>
-          </div>
-          <div className="row-temp-box">
-            <span className="row-temp">Ganado</span>
-            <CheckCircle className="row-icon" color="#10b981" strokeWidth={2} />
-          </div>
-        </div>
-
-        
-        <div className="card card-row">
-          <div className="row-info">
-            <span className="row-country">Plan Enterprise</span>
-<h3 className="row-city">Tech Solutions</h3>
-<span className="row-cond">Hace 5 horas</span>
-          </div>
-          <div className="row-temp-box">
-            <span className="row-temp">Activo</span>
-            <CheckCircle className="row-icon" color="#10b981" strokeWidth={2} />
-          </div>
-        </div>
-
-        
-        <div className="card card-row">
-          <div className="row-info">
-            <span className="row-country">Marketing</span>
-<h3 className="row-city">María López</h3>
-<span className="row-cond">Ayer</span>
-          </div>
-          <div className="row-temp-box">
-            <span className="row-temp">Nuevo</span>
-            <Target className="row-icon" color="#3b82f6" strokeWidth={2} />
-          </div>
-        </div>
-      </aside>
+            {/* Row Cards: Real Priority Pending Leads */}
+            {isLoadingMetrics ? (
+              <div className="card card-row flex items-center justify-center text-white/50 text-xs">
+                <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                <span>Cargando pendientes...</span>
+              </div>
+            ) : pendingLeads.length > 0 ? (
+              pendingLeads.slice(0, 3).map((lead) => {
+                const isOverdue = metrics?.seguimientos?.leadsAtrasados.some((al) => al.id === lead.id);
+                return (
+                  <Link
+                    key={lead.id}
+                    to={`/app/leads/${lead.id}`}
+                    className="card card-row group"
+                    title={`Ver detalle de ${lead.nombre}`}
+                  >
+                    <div className="row-info">
+                      <span className={`row-country ${isOverdue ? 'text-rose-300' : 'text-cyan-300'} font-medium`}>
+                        {isOverdue ? 'Atrasado' : 'Para Hoy'} • {lead.etapa.replace('_', ' ')}
+                      </span>
+                      <h3 className="row-city group-hover:text-cyan-200 transition-colors line-clamp-1">
+                        {lead.nombre}
+                      </h3>
+                      <span className="row-cond text-white/70">
+                        {formatDayDate(lead.proximoSeguimiento)}
+                      </span>
+                    </div>
+                    <div className="row-temp-box">
+                      {isOverdue ? (
+                        <AlertCircle className="row-icon text-rose-400 group-hover:scale-110 transition-transform" strokeWidth={2} />
+                      ) : (
+                        <Clock className="row-icon text-cyan-300 group-hover:scale-110 transition-transform" strokeWidth={2} />
+                      )}
+                    </div>
+                  </Link>
+                );
+              })
+            ) : (
+              <div className="card card-row">
+                <div className="row-info">
+                  <span className="row-country text-emerald-300 font-medium">Todo al día</span>
+                  <h3 className="row-city">Sin pendientes</h3>
+                  <span className="row-cond text-white/70">No hay seguimientos atrasados ni para hoy</span>
+                </div>
+                <div className="row-temp-box">
+                  <CheckCircle className="row-icon text-emerald-400" strokeWidth={2} />
+                </div>
+              </div>
+            )}
+          </aside>
         </>
       ) : (
         <div className="aurora-outlet-container">
@@ -421,6 +657,7 @@ export default function AuroraDashboard() {
           </div>
         </div>
       )}
+
 
     </div>
 

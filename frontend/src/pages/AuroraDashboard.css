@@ -454,7 +454,17 @@
         display: flex;
         align-items: center;
         gap: calc(8 * var(--u));
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        cursor: pointer;
       }
+
+      .ft-item:hover {
+        transform: translateY(-2px);
+        opacity: 0.95;
+      }
+
 
       .ft-val {
         font-size: calc(37 * var(--u));
@@ -549,6 +559,9 @@
         -webkit-backdrop-filter: blur(calc(26 * var(--u))) saturate(118%);
         border-radius: calc(24 * var(--u));
         border: 1px solid rgba(255, 255, 255, .22);
+        text-decoration: none;
+        color: inherit;
+        display: block;
       }
 
       /* Specular Sheen Coda */
@@ -598,9 +611,9 @@
       }
 
       .big-temp {
-        font-size: calc(92 * var(--u));
+        font-size: calc(84 * var(--u));
         font-weight: 500;
-        letter-spacing: calc(-4.4 * var(--u));
+        letter-spacing: calc(-4 * var(--u));
         line-height: 1;
         color: #ffffff;
         margin: calc(10 * var(--u)) 0;
@@ -609,11 +622,14 @@
 
       .big-temp i {
         font-style: normal;
-        font-size: calc(38 * var(--u));
-        vertical-align: top;
-        margin-left: calc(4 * var(--u));
-        opacity: .9;
+        font-size: calc(20 * var(--u));
+        vertical-align: middle;
+        margin-left: calc(8 * var(--u));
+        opacity: .85;
+        font-weight: 400;
+        letter-spacing: 0;
       }
+
 
       .card-metrics {
         display: flex;
@@ -646,7 +662,22 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        cursor: pointer;
       }
+
+      .card.card-row:hover {
+        background: linear-gradient(180deg,
+          rgba(255, 255, 255, .28) 0%,
+          rgba(255, 255, 255, .32) 24%,
+          rgba(255, 255, 255, .30) 78%,
+          rgba(255, 255, 255, .28) 100%);
+        border-color: rgba(255, 255, 255, .4);
+        transform: translateY(-2px);
+      }
+
 
       .row-info {
         display: flex;
