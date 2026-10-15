@@ -186,7 +186,7 @@ export default function AuroraDashboard() {
         <nav className="nav">
           <Link to="/app" aria-label="Dashboard" aria-current={activeIndex === 0 ? "page" : undefined}><Grid strokeWidth={2} /></Link>
           <Link to="/app/reportes" aria-label="Reportes" aria-current={activeIndex === 1 ? "page" : undefined}><BarChart2 strokeWidth={2} /></Link>
-          <Link to="/app/leads" aria-label="Leads"><Users strokeWidth={2} /></Link>
+          <Link to="/app/leads" aria-label="Leads" aria-current={activeIndex === 2 ? "page" : undefined}><Users strokeWidth={2} /></Link>
           <Link to="/app/tareas" aria-label="Tareas" aria-current={activeIndex === 3 ? "page" : undefined}><Calendar strokeWidth={2} /></Link>
           <Link to="/app/ajustes" aria-label="Ajustes" aria-current={activeIndex === 4 ? "page" : undefined}><Settings strokeWidth={2} /></Link>
         </nav>
@@ -415,8 +415,8 @@ export default function AuroraDashboard() {
       </aside>
         </>
       ) : (
-        <div style={{ position: 'absolute', top: 'calc(136 * var(--u))', left: 'calc(126 * var(--u))', right: 'calc(38 * var(--u))', bottom: 'calc(38 * var(--u))', zIndex: 5, overflow: 'auto' }}>
-          <div style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(16px)', borderRadius: '24px', padding: '32px', minHeight: '100%', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div className="aurora-outlet-container">
+          <div className="aurora-outlet-card">
              <Outlet />
           </div>
         </div>
