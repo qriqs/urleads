@@ -372,41 +372,41 @@ export default function LeadsList() {
           </div>
         ) : leads.length === 0 ? (
           /* Empty State */
-          <div className="leads-empty-state w-full min-h-[360px] p-8 sm:p-14 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md flex flex-col items-center justify-center text-center">
-            {/* User Icon: strictly centered */}
-            <div className="w-16 h-16 mb-4 rounded-full bg-white/10 flex items-center justify-center text-white/60 border border-white/15 shrink-0">
-              <User className="h-8 w-8" />
+          <div className="leads-empty-state w-full min-h-[420px] p-10 sm:p-16 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md flex flex-col items-center justify-center text-center">
+            {/* User Icon: enlarged and centered */}
+            <div className="w-20 h-20 mb-6 rounded-full bg-white/10 flex items-center justify-center text-white/80 border border-white/20 shrink-0">
+              <User className="h-10 w-10 text-white/80" />
             </div>
 
             {debouncedSearch ? (
-              <div className="flex flex-col items-center justify-center text-center max-w-md mx-auto">
-                <h3 className="text-lg font-semibold text-white mb-1">
+              <div className="flex flex-col items-center justify-center text-center max-w-lg mx-auto">
+                <h3 className="text-xl font-semibold text-white mb-2">
                   No se encontraron resultados
                 </h3>
-                <p className="text-sm text-white/60 mb-4 text-center">
+                <p className="text-base text-white/70 mb-6 text-center leading-relaxed">
                   No hay ningún lead que coincida con &ldquo;{debouncedSearch}&rdquo;.
                 </p>
                 <button
                   type="button"
                   onClick={() => setSearchInput("")}
-                  className="px-4 py-2 text-sm text-white border border-white/20 bg-white/10 hover:bg-white/20 rounded-xl inline-flex items-center gap-1.5 cursor-pointer"
+                  className="px-5 py-2.5 text-sm text-white border border-white/20 bg-white/10 hover:bg-white/20 rounded-full inline-flex items-center gap-2 cursor-pointer transition-colors"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="h-4 w-4" />
                   <span>Limpiar búsqueda</span>
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center text-center max-w-md mx-auto">
-                <p className="text-sm text-white/70 text-center leading-relaxed mb-6">
+              <div className="flex flex-col items-center justify-center text-center max-w-lg mx-auto">
+                <p className="text-base sm:text-lg text-white/85 text-center leading-relaxed mb-8">
                   Registra tu primer lead para comenzar a gestionar tu pipeline
                   <br className="hidden sm:inline" /> comercial y hacer seguimiento a tus ventas.
                 </p>
                 <button
                   type="button"
                   onClick={handleOpenModal}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#00c988] hover:bg-[#00b57a] text-white text-sm font-semibold shadow-lg shadow-[#00c988]/25 transition-all cursor-pointer active:scale-95"
+                  className="inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-full bg-[#00c988] hover:bg-[#00b57a] text-white text-base font-semibold shadow-lg shadow-[#00c988]/25 transition-all cursor-pointer active:scale-95"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-5 w-5" />
                   <span>Crear mi primer lead</span>
                 </button>
               </div>
