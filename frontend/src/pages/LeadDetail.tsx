@@ -29,13 +29,17 @@ import {
   UpdateLeadPayload,
   LeadApiError,
 } from "../services/leads";
+import {
+  getNotesByLeadIdApi,
+  createNoteApi,
+  LeadNoteResponse,
+} from "../services/notes";
 import { GlassSelect, GlassSelectOption } from "../components/ui/GlassSelect";
 import { GlassDatePicker } from "../components/ui/GlassDatePicker";
 import { useAuth } from "../context/AuthContext";
-import { fetchCsrfToken, getCookie } from "../services/auth";
 
-export interface LeadNote {
-  id: string;
+export interface LeadNoteItem {
+  id: number;
   content: string;
   author: string;
   createdAt: string;
@@ -131,31 +135,30 @@ export default function LeadDetail() {
   // User and internal notes state
   const { user } = useAuth();
   const [noteContent, setNoteContent] = useState<string>("");
-  const [notes, setNotes] = useState<LeadNote[]>(() => {
-    if (!id) return [];
-    try {
-      const saved = localStorage.getItem(`urleads_notes_${id}`);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.warn("Error leyendo notas locales:", e);
-    }
-    return [];
-  });
+  const [notes, setNotes] = useState<LeadNoteResponse[]>([]);
+  const [isLoadingNotes, setIsLoadingNotes] = useState<boolean>(true);
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const [noteSubmitError, setNoteSubmitError] = useState<string | null>(null);
   const [isSubmittingNote, setIsSubmittingNote] = useState<boolean>(false);
 
-  useEffect(() => {
+  // Fetch real internal notes from backend API
+  const fetchNotes = useCallback(async () => {
     if (!id) return;
+    setIsLoadingNotes(true);
+    setNotesError(null);
     try {
-      const saved = localStorage.getItem(`urleads_notes_${id}`);
-      if (saved) {
-        setNotes(JSON.parse(saved));
-      } else {
-        setNotes([]);
-      }
-    } catch {
-      setNotes([]);
+      const data = await getNotesByLeadIdApi(id);
+      setNotes(data);
+    } catch (err: any) {
+      setNotesError(err.message || "Error al cargar las notas del lead.");
+    } finally {
+      setIsLoadingNotes(false);
     }
   }, [id]);
+
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
 
   const handleAddNote = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -168,78 +171,39 @@ export default function LeadDetail() {
       return;
     }
 
-    setIsSubmittingNote(true);
-
-    const newNote: LeadNote = {
-      id: Date.now().toString(),
-      content: trimmed,
-      author: user?.username || "Sebas Cabezas",
-      createdAt: new Date().toISOString(),
-    };
-
-    // Intentar persistir en endpoint de notas de UL-14 / UL-15b si responde
-    try {
-      const csrf = await fetchCsrfToken();
-      const csrfHeaderName = csrf.headerName || "X-XSRF-TOKEN";
-      const csrfTokenValue = csrf.token || getCookie("XSRF-TOKEN") || "";
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (csrfTokenValue) {
-        headers[csrfHeaderName] = csrfTokenValue;
-      }
-
-      const res = await fetch(`/api/leads/${id}/notes`, {
-        method: "POST",
-        credentials: "include",
-        headers,
-        body: JSON.stringify({ content: trimmed }),
+    if (trimmed.length > 2000) {
+      sileo.warning({
+        title: "Límite excedido",
+        description: "El contenido de la nota no puede superar los 2.000 caracteres.",
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.id) {
-          newNote.id = String(data.id);
-          if (data.author) newNote.author = data.author;
-          if (data.createdAt) newNote.createdAt = data.createdAt;
-        }
-      }
-    } catch {
-      // Backend aún no conectado para notas; fallback fluido a localStorage
+      return;
     }
 
-    const nextNotes = [newNote, ...notes];
-    setNotes(nextNotes);
-    if (id) {
-      try {
-        localStorage.setItem(`urleads_notes_${id}`, JSON.stringify(nextNotes));
-      } catch (err) {
-        console.error("Error guardando nota:", err);
-      }
-    }
+    if (!id) return;
 
-    setNoteContent("");
-    setIsSubmittingNote(false);
-    sileo.success({
-      title: "Nota registrada",
-      description: "La actualización interna fue agregada a la bitácora.",
-    });
-  };
+    setIsSubmittingNote(true);
+    setNoteSubmitError(null);
 
-  const handleDeleteNote = (noteId: string) => {
-    const updated = notes.filter((n) => n.id !== noteId);
-    setNotes(updated);
-    if (id) {
-      try {
-        localStorage.setItem(`urleads_notes_${id}`, JSON.stringify(updated));
-      } catch (err) {
-        console.error("Error eliminando nota:", err);
-      }
+    try {
+      const createdNote = await createNoteApi(id, trimmed);
+      setNotes((prev) => [...prev, createdNote]);
+      setNoteContent("");
+      setNoteSubmitError(null);
+      sileo.success({
+        title: "Nota registrada",
+        description: "La actualización interna fue agregada a la bitácora.",
+      });
+    } catch (err: any) {
+      // Preserve user typed text on failure for retry
+      const errMsg = err.message || "No se pudo registrar la nota interna en el servidor.";
+      setNoteSubmitError(errMsg);
+      sileo.error({
+        title: "Error al guardar nota",
+        description: errMsg,
+      });
+    } finally {
+      setIsSubmittingNote(false);
     }
-    sileo.info({
-      title: "Nota eliminada",
-      description: "La actualización fue retirada del historial.",
-    });
   };
 
 
@@ -688,14 +652,33 @@ export default function LeadDetail() {
 
             {/* Note Editor Area */}
             <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md">
-              <label htmlFor="lead-note-input" className="text-xs font-semibold text-white/80 uppercase tracking-wider block">
-                Registrar actualización interna
-              </label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="lead-note-input" className="text-xs font-semibold text-white/80 uppercase tracking-wider block">
+                  Registrar actualización interna
+                </label>
+                <span
+                  className={`text-[11px] font-mono transition-colors ${
+                    noteContent.length > 2000
+                      ? "text-rose-400 font-bold"
+                      : noteContent.length > 1800
+                      ? "text-amber-400 font-medium"
+                      : "text-white/40"
+                  }`}
+                  aria-live="polite"
+                >
+                  {noteContent.length} / 2.000
+                </span>
+              </div>
+
               <textarea
                 id="lead-note-input"
                 rows={3}
                 value={noteContent}
-                onChange={(e) => setNoteContent(e.target.value)}
+                maxLength={2100}
+                onChange={(e) => {
+                  setNoteContent(e.target.value);
+                  if (noteSubmitError) setNoteSubmitError(null);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                     e.preventDefault();
@@ -704,8 +687,38 @@ export default function LeadDetail() {
                 }}
                 placeholder="Escribe una actualización sobre qué conversaron, qué pidió el contacto o próximos acuerdos..."
                 disabled={isSubmittingNote}
-                className="w-full p-3.5 rounded-xl bg-white/5 border border-white/15 text-sm text-white placeholder-white/40 resize-none cursor-text focus:outline-none focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/20 transition-all duration-200"
+                className={`w-full p-3.5 rounded-xl bg-white/5 border text-sm text-white placeholder-white/40 resize-none cursor-text focus:outline-none transition-all duration-200 ${
+                  noteContent.length > 2000
+                    ? "border-rose-400/80 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20"
+                    : "border-white/15 focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/20"
+                }`}
               />
+
+              {noteContent.length > 2000 && (
+                <p className="text-xs text-rose-400 flex items-center gap-1.5 font-medium">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span>El contenido de la nota no puede superar los 2.000 caracteres.</span>
+                </p>
+              )}
+
+              {/* Inline Submission Error with Retry */}
+              {noteSubmitError && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                    <span>{noteSubmitError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAddNote()}
+                    disabled={isSubmittingNote}
+                    className="liquid-glass-btn-secondary px-3 py-1 rounded-lg text-xs font-medium cursor-pointer text-white hover:text-rose-200 shrink-0 self-end sm:self-auto"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
                 <span className="text-[11px] text-white/50">
                   Tip: Presiona <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/15 text-white/80 text-[10px] font-mono">Ctrl + Enter</kbd> o haz clic para guardar.
@@ -713,7 +726,11 @@ export default function LeadDetail() {
                 <button
                   type="button"
                   onClick={() => handleAddNote()}
-                  disabled={isSubmittingNote || !noteContent.trim()}
+                  disabled={
+                    isSubmittingNote ||
+                    !noteContent.trim() ||
+                    noteContent.trim().length > 2000
+                  }
                   className="aurora-chip-btn h-9 px-5 text-xs font-medium self-end sm:self-auto disabled:opacity-40 disabled:cursor-not-allowed hover:border-emerald-400/40 hover:shadow-[0_0_15px_rgba(52,211,153,0.3)] transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   {isSubmittingNote ? (
@@ -735,7 +752,26 @@ export default function LeadDetail() {
                 <span>{notes.length} {notes.length === 1 ? "nota" : "notas"}</span>
               </div>
 
-              {notes.length === 0 ? (
+              {isLoadingNotes ? (
+                <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 text-center flex flex-col items-center justify-center gap-3">
+                  <RefreshCw className="h-6 w-6 text-cyan-300 animate-spin" />
+                  <p className="text-xs text-white/60">Cargando notas internas...</p>
+                </div>
+              ) : notesError ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                    <span>{notesError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={fetchNotes}
+                    className="liquid-glass-btn-secondary px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer text-white hover:text-rose-200 shrink-0 self-end sm:self-auto"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              ) : notes.length === 0 ? (
                 /* Empty state for Notes */
                 <div className="p-8 sm:p-10 rounded-2xl bg-white/[0.02] border border-white/10 text-center flex flex-col items-center justify-center gap-3">
                   <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40">
@@ -757,26 +793,18 @@ export default function LeadDetail() {
                       <div className="p-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 transition-colors space-y-2">
                         <div className="flex items-center justify-between gap-2 text-xs">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-white">{n.author}</span>
+                            <span className="font-semibold text-white">
+                              {user?.username || "Usuario"}
+                            </span>
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-300 border border-emerald-400/20 font-medium">
                               Interno
                             </span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[11px] text-white/50">
-                              {formatDateTime(n.createdAt)}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteNote(n.id)}
-                              className="opacity-0 group-hover:opacity-100 hover:text-red-400 text-white/40 transition-opacity p-1 cursor-pointer"
-                              title="Eliminar nota"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
+                          <span className="text-[11px] text-white/50">
+                            {formatDateTime(n.createdAt)}
+                          </span>
                         </div>
-                        <p className="text-xs sm:text-sm text-white/90 whitespace-pre-wrap leading-relaxed">
+                        <p className="text-xs sm:text-sm text-white/90 whitespace-pre-wrap break-words leading-relaxed">
                           {n.content}
                         </p>
                       </div>
