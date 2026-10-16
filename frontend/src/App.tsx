@@ -1,4 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom"
+import { Toaster } from "sileo"
+import "sileo/styles.css"
 import { AuthProvider } from "./context/AuthContext"
 import { ProtectedRoute } from "./components/ProtectedRoute"
 import Login from "./pages/Login"
@@ -12,6 +14,7 @@ import Dashboard from "./pages/Dashboard"
 export default function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-center" />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />

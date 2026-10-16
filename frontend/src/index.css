@@ -56,3 +56,588 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Universal Liquid Glass Scrollbar System
+   ═══════════════════════════════════════════════════════════════════════ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  box-shadow: inset 0 0 6px rgba(255, 255, 255, 0.25), 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: background 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.4), 0 0 12px rgba(255, 255, 255, 0.35);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: rgba(255, 255, 255, 0.65);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.6), 0 0 14px rgba(0, 201, 136, 0.4);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+
+/* ── Liquid Glass System (Ruixen UI Inspired) ── */
+.liquid-glass-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.liquid-glass-modal {
+  background: rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: blur(28px) saturate(125%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(125%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.26) !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+  color: #ffffff !important;
+}
+
+/* ── Spacious Lead Creation & Edit Modal ── */
+.lead-modal-dialog {
+  width: 100% !important;
+  max-width: 760px !important;
+  padding: 40px 48px !important;
+  border-radius: 28px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 28px !important;
+}
+
+@media (max-width: 640px) {
+  .lead-modal-dialog {
+    max-width: 100% !important;
+    padding: 24px 20px !important;
+    gap: 20px !important;
+    border-radius: 22px !important;
+  }
+}
+
+.lead-modal-dialog .lead-modal-header {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  padding-bottom: 22px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18) !important;
+  gap: 16px !important;
+}
+
+.lead-modal-dialog .lead-modal-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 14px !important;
+  border-radius: 9999px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
+  margin-bottom: 10px !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.lead-modal-dialog .lead-modal-title {
+  font-size: 30px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.025em !important;
+  line-height: 1.2 !important;
+}
+
+.lead-modal-dialog .lead-modal-subtitle {
+  font-size: 15px !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+  margin-top: 6px !important;
+  line-height: 1.45 !important;
+}
+
+.lead-modal-dialog .lead-modal-close {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 9999px !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  flex-shrink: 0 !important;
+}
+
+.lead-modal-dialog .lead-modal-close:hover {
+  background: rgba(255, 255, 255, 0.24) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  color: #ffffff !important;
+  transform: rotate(90deg) scale(1.05) !important;
+}
+
+.lead-modal-dialog form {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 22px !important;
+  width: 100% !important;
+}
+
+.lead-modal-dialog .lead-field-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+.lead-modal-dialog .lead-field-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 20px !important;
+  width: 100% !important;
+}
+
+@media (max-width: 640px) {
+  .lead-modal-dialog .lead-field-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+.lead-modal-dialog label {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  letter-spacing: 0.01em !important;
+  display: block !important;
+}
+
+.lead-modal-dialog .liquid-glass-input {
+  height: 52px !important;
+  padding: 0 20px !important;
+  font-size: 15px !important;
+  border-radius: 16px !important;
+  width: 100% !important;
+}
+
+.lead-modal-dialog .lead-helper-text {
+  font-size: 12px !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  font-style: italic !important;
+  margin-top: 2px !important;
+}
+
+.lead-modal-dialog .lead-error-text {
+  font-size: 12px !important;
+  color: #f87171 !important;
+  font-weight: 500 !important;
+  margin-top: 3px !important;
+}
+
+.lead-modal-dialog .lead-modal-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 16px !important;
+  padding-top: 24px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.18) !important;
+  margin-top: 6px !important;
+}
+
+.lead-modal-dialog .lead-btn-cancel {
+  height: 50px !important;
+  padding: 0 28px !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  border-radius: 9999px !important;
+  background: rgba(255, 255, 255, 0.11) !important;
+  border: 1px solid rgba(255, 255, 255, 0.24) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.lead-modal-dialog .lead-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  color: #ffffff !important;
+}
+
+.lead-modal-dialog .lead-btn-submit {
+  height: 50px !important;
+  padding: 0 32px !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+}
+
+/* ── Delete Confirmation Dialog ── */
+.lead-delete-dialog {
+  width: 100% !important;
+  max-width: 520px !important;
+  padding: 36px 40px !important;
+  border-radius: 26px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 24px !important;
+}
+
+@media (max-width: 640px) {
+  .lead-delete-dialog {
+    max-width: 100% !important;
+    padding: 24px 20px !important;
+    gap: 18px !important;
+  }
+}
+
+.lead-delete-dialog .delete-icon-wrapper {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 18px !important;
+  background: rgba(239, 68, 68, 0.18) !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #f87171 !important;
+}
+
+.lead-delete-dialog .delete-title {
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.015em !important;
+}
+
+.lead-delete-dialog .delete-desc {
+  font-size: 15px !important;
+  line-height: 1.55 !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+  margin-top: 8px !important;
+}
+
+.lead-delete-dialog .delete-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 14px !important;
+  padding-top: 20px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.16) !important;
+}
+
+.lead-delete-dialog .delete-btn-confirm {
+  height: 48px !important;
+  padding: 0 24px !important;
+  border-radius: 9999px !important;
+  background: rgba(239, 68, 68, 0.3) !important;
+  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.lead-delete-dialog .delete-btn-confirm:hover {
+  background: rgba(239, 68, 68, 0.45) !important;
+  border-color: rgba(239, 68, 68, 0.7) !important;
+}
+
+.lead-delete-dialog .delete-btn-cancel {
+  height: 48px !important;
+  padding: 0 24px !important;
+  border-radius: 9999px !important;
+  background: rgba(255, 255, 255, 0.11) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.lead-delete-dialog .delete-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+/* Date picker icon in glass mode */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+  opacity: 0.75;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Glass Select & DatePicker helpers */
+.glass-dropdown-menu {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  padding: 8px !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  backdrop-filter: blur(28px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  z-index: 70 !important;
+  will-change: transform, opacity !important;
+  transform: translate3d(0, 0, 0) !important;
+  animation: glassMenuPop 120ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.glass-calendar-popover {
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 16px !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  backdrop-filter: blur(28px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-radius: 22px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  z-index: 70 !important;
+  will-change: transform, opacity !important;
+  transform: translate3d(0, 0, 0) !important;
+  animation: glassMenuPop 120ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes glassMenuPop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* Instant lag-free hardware-accelerated field dimming */
+.form-field-dimmable {
+  transition: opacity 120ms cubic-bezier(0.16, 1, 0.3, 1), transform 120ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+  will-change: opacity, transform !important;
+  transform: translate3d(0, 0, 0) !important;
+  backface-visibility: hidden !important;
+}
+
+.form-field-dimmable.is-dimmed {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translate3d(0, -3px, 0) !important;
+  visibility: hidden !important;
+  transition: opacity 80ms ease-out, visibility 80ms !important;
+}
+
+.glass-calendar-popover button {
+  box-sizing: border-box !important;
+}
+
+
+.liquid-glass-input {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
+  color: #ffffff;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-input:focus {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2), inset 0 1px 2px rgba(0, 0, 0, 0.08);
+  outline: none;
+}
+
+.liquid-glass-pill {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.liquid-glass-btn-primary {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(6, 182, 212, 0.35) 100%);
+  border: 1px solid rgba(52, 211, 153, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-btn-primary:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.5) 0%, rgba(6, 182, 212, 0.5) 100%);
+  border-color: rgba(52, 211, 153, 0.7);
+  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transform: translateY(-1px);
+}
+
+.liquid-glass-btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: rgba(255, 255, 255, 0.85);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+.liquid-glass-btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #fca5a5;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.28);
+  border-color: rgba(239, 68, 68, 0.55);
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+}
+
+/* Ensure empty state is always strictly centered horizontally and vertically with guaranteed separation */
+.leads-empty-state {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  min-height: 440px !important;
+  gap: 28px !important;
+  padding: 48px 24px !important;
+}
+
+.leads-empty-state * {
+  text-align: center !important;
+}
+
+/* Button style matching "Tu Pipeline" chip from AuroraDashboard */
+.aurora-chip-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  background: rgba(255, 255, 255, 0.175) !important;
+  backdrop-filter: blur(16px) saturate(115%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(115%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  border-radius: 9999px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.aurora-chip-btn:hover {
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+.aurora-chip-btn:active {
+  transform: translateY(0px) scale(0.97) !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+}
+
+.aurora-chip-btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 38%;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.22) 50%, transparent 100%);
+  transform: translate3d(-150%, 0, 0) skewX(-18deg);
+  animation: sheen 3.5s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+}
+
+/* Sileo Toaster Viewport Elevation */
+[data-sileo-viewport] {
+  z-index: 9999 !important;
+}
+
+/* Leads Top Bar: Search Input & New Lead Button */
+.lead-search-input {
+  width: 100% !important;
+  height: 40px !important;
+  padding-left: 44px !important;
+  padding-right: 36px !important;
+  border-radius: 9999px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  font-size: 0.875rem !important;
+  color: #ffffff !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-sizing: border-box !important;
+}
+
+.lead-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+.lead-search-input:focus {
+  outline: none !important;
+  border-color: rgba(0, 201, 136, 0.5) !important;
+  box-shadow: 0 0 0 2px rgba(0, 201, 136, 0.3) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.lead-btn-new {
+  padding-left: 28px !important;
+  padding-right: 28px !important;
+}
