@@ -102,7 +102,23 @@ requires working `GET`, `POST`, `PUT`, and `DELETE` operations.
 - Do not log or commit passwords, tokens, cookies, secrets, real personal data,
   or sensitive Railway variables. Use fictitious sample data.
 
-## Team ownership
+## Backend V2 ownership (current plan)
+
+> **Current precedence:** The user-approved Backend V2 plan supersedes the
+> original MVP module assignments for asynchronous backend service work.
+> Each person owns an independent backend service end-to-end:
+>
+> - **Cristopher:** CRM service (`backend/`, port 8080, branch `feat/crm`). Tasks C01..C15.
+> - **Sebas:** Comercial service (`services/comercial/`, port 8081, branch `feat/comercial`). Tasks S01..S15.
+> - **Alexander:** Agenda & Notifications service (`services/agenda/`, port 8082, branch `feat/agenda-notificaciones`). Tasks A01..A15.
+>
+> Integration occurs via `integration/backend-v2`. Detailed guides and contracts
+> are located in `docs/backend-v2/` and `docs/plan-tareas-backend.md`.
+>
+> Historical contributions and original MVP assignments (including Karlo on lead CRUD,
+> Villa on manual QA/Postman, and Sebas on frontend) remain recorded below for traceability.
+
+## Team ownership (historical MVP baseline)
 
 The initial responsibilities are recorded in `docs/plan-equipo.md` and
 `docs/backlog.md`:

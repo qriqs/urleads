@@ -24,10 +24,16 @@ y mantener cada seguimiento a la vista.
 ---
 
 > [!NOTE]
-> 🚧 **En construcción.** El repositorio cuenta con el backend mínimo en Spring Boot,
+> 🚀 **Plan de expansión Backend V2 en ejecución:** El equipo trabaja en una
+> arquitectura desacoplada de tres microservicios (CRM, Comercial y Agenda).
+> Consulta [docs/backend-v2/](docs/backend-v2/) y
+> [docs/plan-tareas-backend.md](docs/plan-tareas-backend.md) para los contratos,
+> guías por responsable y el flujo de ramas. La información previa del MVP
+> monolítico se mantiene a continuación como línea base histórica.
+>
+> 🚧 **Estado MVP:** El repositorio cuenta con el backend en Spring Boot,
 > PostgreSQL 16 con Docker Compose y migración inicial Flyway para el esquema de datos.
-> El frontend, login, CRUD de leads y despliegue en la nube siguen en desarrollo.
-> La documentación describe el MVP, no una aplicación terminada.
+> La documentación describe el alcance del sistema.
 
 ## 🧭 El producto
 

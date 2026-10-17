@@ -1,17 +1,33 @@
-# Backlog publicado en Linear
+# Backlog de tareas en Linear
+
+> **Plan actual (Backend V2):** El plan activo de desarrollo del backend se
+> encuentra desglosado en **45 tareas asignadas a Cris, Sebas y Alex** en el
+> proyecto Linear [UrLeads en DSW2](https://linear.app/enmanuelprojects/project/urleads-b3c2085df458).
+> Consulta el índice de tareas actual y contratos en
+> [docs/plan-tareas-backend.md](plan-tareas-backend.md) y
+> [docs/backend-v2/](backend-v2/).
+>
+> Las 9 tareas de reserva, QA y cierre del backlog anterior (DSW-24, DSW-29,
+> DSW-31, DSW-32, DSW-33, DSW-35, DSW-36, DSW-38 y DSW-39) han sido canceladas
+> formalmente por sustitución hacia el plan V2. Las 25 tareas completadas
+> previas se preservan a continuación como registro histórico.
+
+---
+
+## Tareas históricas del MVP inicial (Línea base)
 
 El proyecto [UrLeads en DSW2](https://linear.app/enmanuelprojects/project/urleads-b3c2085df458)
 contiene instrucciones por tarea, hitos y bloqueos. Este índice enlaza los
 códigos UL con los issues. Las horas estimadas están en las descripciones de
 Linear y no se convierten a puntos.
 
-## Responsables
+### Responsables históricos del MVP inicial
 
-Las cuentas confirmadas son Cristopher Arias, Karlo
+Las cuentas confirmadas fueron Cristopher Arias, Karlo
 (`i202404879@cibertec.edu.pe`), Alexander, Sebas Cabezas y Villa/Villavicencio.
 Los issues de Karlo están asignados a su cuenta.
 
-## Tareas activas
+### Estado de tareas del backlog inicial
 
 | UL | Issue | Trabajo | Responsable |
 |---|---|---|---|
