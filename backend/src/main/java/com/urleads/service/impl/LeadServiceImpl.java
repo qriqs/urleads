@@ -27,6 +27,7 @@ import com.urleads.repository.LeadRepository;
 import com.urleads.repository.UsuarioRepository;
 import com.urleads.service.LeadService;
 import com.urleads.service.LeadValidator;
+import com.urleads.service.OutboxService;
 
 @Service
 @Transactional
@@ -36,17 +37,32 @@ public class LeadServiceImpl implements LeadService {
 
     private final LeadRepository leadRepository;
     private final UsuarioRepository usuarioRepository;
+    private final OutboxService outboxService;
     private final Clock clock;
 
     @org.springframework.beans.factory.annotation.Autowired
-    public LeadServiceImpl(LeadRepository leadRepository, UsuarioRepository usuarioRepository, Clock clock) {
+    public LeadServiceImpl(LeadRepository leadRepository,
+                           UsuarioRepository usuarioRepository,
+                           @org.springframework.beans.factory.annotation.Autowired(required = false) OutboxService outboxService,
+                           Clock clock) {
         this.leadRepository = leadRepository;
         this.usuarioRepository = usuarioRepository;
+        this.outboxService = outboxService;
         this.clock = clock != null ? clock : Clock.system(ClockConfig.LIMA_ZONE);
     }
 
+    public LeadServiceImpl(LeadRepository leadRepository,
+                           UsuarioRepository usuarioRepository,
+                           OutboxService outboxService) {
+        this(leadRepository, usuarioRepository, outboxService, Clock.system(ClockConfig.LIMA_ZONE));
+    }
+
+    public LeadServiceImpl(LeadRepository leadRepository, UsuarioRepository usuarioRepository, Clock clock) {
+        this(leadRepository, usuarioRepository, null, clock);
+    }
+
     public LeadServiceImpl(LeadRepository leadRepository, UsuarioRepository usuarioRepository) {
-        this(leadRepository, usuarioRepository, Clock.system(ClockConfig.LIMA_ZONE));
+        this(leadRepository, usuarioRepository, null, Clock.system(ClockConfig.LIMA_ZONE));
     }
 
     @Override
@@ -136,6 +152,9 @@ public class LeadServiceImpl implements LeadService {
         }
 
         Lead leadGuardado = leadRepository.save(lead);
+        if (outboxService != null) {
+            outboxService.recordLeadCreated(usuarioId, leadGuardado);
+        }
         return toResponse(leadGuardado);
     }
 
@@ -159,6 +178,9 @@ public class LeadServiceImpl implements LeadService {
         }
 
         Lead leadActualizado = leadRepository.save(lead);
+        if (outboxService != null) {
+            outboxService.recordLeadUpdated(usuarioId, leadActualizado);
+        }
         return toResponse(leadActualizado);
     }
 
@@ -167,7 +189,11 @@ public class LeadServiceImpl implements LeadService {
         Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
                 .orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
 
+        Long idEliminado = lead.getId();
         leadRepository.delete(lead);
+        if (outboxService != null) {
+            outboxService.recordLeadDeleted(usuarioId, idEliminado);
+        }
     }
 
     private LeadResponse toResponse(Lead lead) {
