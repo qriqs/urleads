@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.urleads.config.ClockConfig;
 import com.urleads.dto.CreateLeadRequest;
+import com.urleads.dto.InternalLeadResponse;
 import com.urleads.dto.LeadResponse;
 import com.urleads.dto.PageResponse;
 import com.urleads.dto.UpdateLeadRequest;
@@ -98,6 +99,19 @@ public class LeadServiceImpl implements LeadService {
                 .orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
 
         return toResponse(lead);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public InternalLeadResponse obtenerInterno(Long leadId, Long usuarioId) {
+        Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
+                .orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
+
+        return new InternalLeadResponse(
+                lead.getId(),
+                lead.getEtapa(),
+                lead.getProximoSeguimiento()
+        );
     }
 
     @Override
