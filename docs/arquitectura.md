@@ -3,7 +3,8 @@
 > **Arquitectura Backend V2 (Microservicios):** Para la fase de ampliación, el
 > sistema evoluciona hacia una arquitectura desacoplada en tres microservicios:
 > CRM (`backend/`), Comercial (`services/comercial/`) y Agenda (`services/agenda/`),
-> comunicados mediante contratos REST y mensajería asíncrona RabbitMQ.
+> comunicados mediante contratos REST, mensajería asíncrona RabbitMQ, descubrimiento
+> dinámico con Spring Cloud Netflix Eureka y consulta SOAP GetLead con SoapUI.
 > Consulta la especificación técnica completa en
 > [docs/backend-v2/contratos.md](backend-v2/contratos.md).
 >
