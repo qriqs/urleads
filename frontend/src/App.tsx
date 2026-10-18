@@ -11,6 +11,10 @@ import LeadDetail from "./pages/LeadDetail"
 import MainLayout from "./components/MainLayout"
 import Dashboard from "./pages/Dashboard"
 
+import ReportsPage from "./pages/ReportsPage"
+import TasksPage from "./pages/TasksPage"
+import SettingsPage from "./pages/SettingsPage"
+
 export default function App() {
   return (
     <AuthProvider>
@@ -25,9 +29,9 @@ export default function App() {
           <Route path="/app" element={<AuroraDashboard />}>
             <Route path="leads" element={<LeadsList />} />
             <Route path="leads/:id" element={<LeadDetail />} />
-            <Route path="reportes" element={<div className="p-8 text-foreground"><h2 className="text-2xl font-semibold mb-2">Reportes</h2><p className="text-muted-foreground text-sm">Módulo de reportes en construcción...</p></div>} />
-            <Route path="tareas" element={<div className="p-8 text-foreground"><h2 className="text-2xl font-semibold mb-2">Tareas</h2><p className="text-muted-foreground text-sm">Módulo de tareas en construcción...</p></div>} />
-            <Route path="ajustes" element={<div className="p-8 text-foreground"><h2 className="text-2xl font-semibold mb-2">Ajustes</h2><p className="text-muted-foreground text-sm">Módulo de ajustes en construcción...</p></div>} />
+            <Route path="reportes" element={<ReportsPage />} />
+            <Route path="tareas" element={<TasksPage />} />
+            <Route path="ajustes" element={<SettingsPage />} />
           </Route>
           <Route path="/preview" element={<MainLayout />}>
             <Route index element={<Dashboard />} />
