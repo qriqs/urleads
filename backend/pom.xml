@@ -55,6 +55,12 @@
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 
+		<!-- OAuth2 Resource Server (JWT) - Backend V2 C02 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+		</dependency>
+
 		<!-- Persistencia & JPA -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
