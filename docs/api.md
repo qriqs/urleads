@@ -2,14 +2,17 @@
 
 La API usa JSON y el prefijo `/api`.
 
-Actualmente, el único endpoint implementado en el backend es la comprobación
-pública de salud `GET /api/health` (responde HTTP 200 con `{"status":"UP"}`).
-El backend cuenta con la configuración de PostgreSQL 16 y el esquema inicial
-versionado mediante Flyway (`V1__initial_schema.sql`). Los endpoints de
-autenticación, gestión de leads, bitácora interna y dashboard descritos en este
-documento corresponden al contrato acordado del MVP y se implementarán en las
-siguientes tareas del backlog. Las rutas de leads, bitácora y dashboard
-requerirán sesión. La obtención inicial del token CSRF y el login no requieren
+El backend cuenta con la implementación operativa de los endpoints de salud,
+autenticación y sesiones (incluyendo emisión de tokens JWT inter-servicio C02),
+gestión integral de leads (CRUD y reglas de etapas), bitácora interna de notas,
+dashboard de resumen y métricas, y la consulta paginada del historial de auditoría
+de cambios a nivel de campo (C09). Este documento describe tanto los contratos
+actualmente implementados en el backend como las especificaciones y acuerdos
+compartidos para el ecosistema Backend V2.
+
+Las rutas privadas de leads, bitácora, dashboard y auditoría requieren una sesión
+autenticada (o token Bearer verificado en rutas inter-servicio). La obtención
+inicial del token CSRF, el login y la comprobación pública de salud no requieren
 una sesión autenticada previa.
 
 ## Autenticación
@@ -70,6 +73,7 @@ credenciales de acceso inter-servicio protegidas por la sesión web existente:
 |---|---|---|
 | GET | `/api/leads` | Lista filtrable y paginada. |
 | GET | `/api/leads/{id}` | Detalle de un lead propio. |
+| GET | `/api/leads/{id}/audit` | Historial paginado de deltas de auditoría del lead (Backend V2 C09). |
 | POST | `/api/leads` | Crear lead; responde 201 y representación. |
 | PUT | `/api/leads/{id}` | Reemplazar campos editables; responde 200. |
 | DELETE | `/api/leads/{id}` | Eliminar lead y notas; responde 204. |
@@ -149,10 +153,66 @@ contenido. El listado se ordena del más antiguo al más reciente para facilitar
 la lectura del progreso; la interfaz puede desplazarse a la entrada más nueva
 al agregar una actualización. El contenido se trata siempre como texto plano.
 
+### Historial de auditoría de cambios (`GET /api/leads/{id}/audit`)
+
+Endpoint de lectura paginada incorporado en Backend V2 (Tarea C09) para consultar
+el registro cronológico de deltas a nivel de campo generado automáticamente ante
+cada actualización exitosa de un lead:
+
+- **Autenticación requerida:** Sesión web activa (cookie `JSESSIONID`).
+- **Control de acceso y aislamiento:** Estrictamente restringido al propietario
+  autenticado del lead. Si el lead no existe o pertenece a otro usuario, responde
+  HTTP 404 (`{"status":404,"code":"NOT_FOUND","message":"Lead no encontrado"}`) de
+  forma indistinguible, sin revelar existencia del recurso ni filtrar historial ajeno.
+- **Parámetros de consulta:**
+  - `page` (opcional, entero, por defecto `0`). Índices negativos se normalizan a `0`.
+  - El tamaño de página es fijo y acotado por el servidor a 20 registros; cualquier
+    parámetro `size` enviado por el cliente es ignorado.
+  - Parámetros adicionales como `ownerId` son ignorados; la identidad proviene del servidor.
+- **Ordenamiento:** Descendente estable (`createdAt DESC, id DESC`), presentando los
+  cambios más recientes primero.
+- **Campos auditados:** `name`, `phone`, `email`, `service`, `stage`, `nextFollowUp`.
+  Se almacena únicamente un registro por cada campo efectivamente modificado con sus
+  valores anterior (`oldValue`) y nuevo (`newValue`). Actualizaciones no-op, creaciones,
+  borrados y validaciones fallidas no generan registros de auditoría.
+- **Independencia de notas privadas:** Los registros residen en la tabla dedicada `lead_audit_log`
+  sin alterar ni interactuar con la tabla `nota` ni con `/api/leads/{id}/notes`.
+- **Respuesta 200 OK:**
+```json
+{
+  "content": [
+    {
+      "id": 102,
+      "leadId": 42,
+      "field": "stage",
+      "oldValue": "NUEVO",
+      "newValue": "EN_SEGUIMIENTO",
+      "createdAt": "2026-10-18T10:15:30Z"
+    },
+    {
+      "id": 101,
+      "leadId": 42,
+      "field": "phone",
+      "oldValue": "+51 900 000 000",
+      "newValue": "+51 999 111 222",
+      "createdAt": "2026-10-18T10:15:30Z"
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 2,
+  "totalPages": 1
+}
+```
+- **Transición a null y CERRADO:** Valores nulos (como teléfonos o servicios borrados)
+  se serializan como `null` JSON explícito (distinto de la cadena `"null"`). Al actualizar
+  un lead a `CERRADO`, la normalización automática de `proximoSeguimiento` a `null` se audita
+  reflejando la fecha previa y `newValue: null`.
+
 ## Monitoreo y salud
 
-El endpoint de salud es público y no requiere sesión ni credenciales. Es el
-único endpoint implementado actualmente en el scaffold del backend.
+El endpoint de salud es público y no requiere sesión ni credenciales.
+Valida la disponibilidad HTTP básica del servicio backend.
 
 | Método | Ruta | Estado | Resultado |
 |---|---|---|---|

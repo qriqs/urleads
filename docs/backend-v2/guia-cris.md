@@ -589,3 +589,119 @@ Migración versionada `V3__create_outbox_table.sql` con constraints de unicidad 
 # 2. Verificación completa del backend y empaquetado JAR (152 pruebas, 0 fallas)
 ./mvnw --batch-mode --no-transfer-progress verify
 ```
+
+---
+
+<a id="9-implementacion-y-verificacion-de-c09-historial-de-cambios-y-auditoria-independiente"></a>
+## 9. Implementación y verificación de C09 (Historial de cambios y auditoría independiente)
+
+Esta sección documenta la arquitectura técnica, esquema de base de datos,
+modelo de deltas, aislamiento de propietario y resultados de validación de la
+tarea C09 (DSW-49) para el servicio CRM.
+
+### 9.1. Arquitectura de auditoría, deltas a nivel de campo y separación con notas
+
+1. **Tabla de auditoría dedicada e inmutable (`lead_audit_log`):**
+   - Esquema gestionado mediante migración Flyway `V7__create_lead_audit_log_table.sql`.
+   - Las migraciones V1 a V3 permanecen intactas; las versiones V4, V5 y V6 están
+     reservadas para tareas hermanas (C06, C07, C08) y se mantienen ausentes sin
+     migraciones de relleno.
+   - Columnas: `id` (PK IDENTITY), `lead_id` (BIGINT NOT NULL), `usuario_id` (BIGINT NOT NULL),
+     `field_name` (VARCHAR(50) NOT NULL), `old_value` (TEXT), `new_value` (TEXT),
+     `created_at` (TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP).
+   - Claves foráneas: `fk_lead_audit_log_lead` hacia `lead(id)` con `ON DELETE CASCADE`
+     para preservar la compatibilidad del endpoint `DELETE /api/leads/{id}`; y
+     `fk_lead_audit_log_usuario` hacia `usuario(id)` con `ON DELETE RESTRICT`.
+   - Restricción de chequeo: `chk_lead_audit_log_field_not_blank` asegurando que
+     el identificador de campo no sea vacío ni espacios en blanco.
+   - Índices compuestos: `idx_lead_audit_log_lead_user` sobre `(lead_id, usuario_id, created_at DESC, id DESC)`
+     para optimizar la consulta paginada por propietario, y `idx_lead_audit_log_created_at`.
+
+2. **Deltas atómicos a nivel de campo en la transacción de actualización:**
+   - La captura de deltas se ejecuta dentro del método `@Transactional`
+     `LeadServiceImpl.actualizar(Long, Long, UpdateLeadRequest)`.
+   - Compara los valores previos cargados de la entidad con los nuevos valores
+     normalizados para los 6 campos editables: `name`, `phone`, `email`, `service`,
+     `stage` y `nextFollowUp`.
+   - Se persiste exactamente un registro por cada campo efectivamente modificado.
+     Si un campo permanece idéntico, no genera fila en la tabla.
+   - Actualizaciones no-op (sin cambios en ningún campo), operaciones de creación
+     (`crear`), borrado (`eliminar`) o rechazos por validación no generan filas de
+     auditoría.
+   - Atomicidad estricta: Si la persistencia de auditoría falla, la transacción de
+     base de datos se revierte por completo (ni el lead se actualiza ni se publica
+     el outbox). Se preserva la semántica del outbox transaccional de C04 sin emitir
+     eventos adicionales.
+
+3. **Manejo de valores nulos y normalización de etapa CERRADO:**
+   - Transiciones desde o hacia `null` se auditan explícitamente preservando `null`
+     como valor nulo de JSON y distinguiéndolo de cadenas literales `"null"`.
+   - Al actualizar a etapa `CERRADO`, la regla de negocio normaliza `proximoSeguimiento`
+     a `null`. El delta de auditoría registra la fecha previa en `oldValue` y `null` en
+     `newValue`.
+   - Leads previamente cerrados que reciben actualización en otros campos no generan
+     falsos deltas de fecha de seguimiento.
+
+4. **Independencia de notas privadas y política de retención:**
+   - La auditoría técnica es enteramente independiente de las notas privadas del
+     usuario (`Nota`, `/api/leads/{id}/notes`).
+   - La entidad `Lead` no posee relación `@OneToMany` ni cascada JPA hacia la auditoría,
+     evitando cargas perezosas accidentales o modificaciones no controladas.
+   - La retención física de registros se vincula al ciclo de vida del lead: la eliminación
+     física (`DELETE /api/leads/{id}`) purga en cascada relacional sus auditorías,
+     manteniendo la compatibilidad del contrato actual. La retención duradera sin
+     borrado físico se delegará al flujo de archivado de leads en C12 (DSW-52).
+
+### 9.2. Consulta paginada y aislamiento estricto de propietario (`GET /api/leads/{id}/audit`)
+
+1. **Ruta y autenticación:**
+   - Expuesta en `LeadController` bajo `@GetMapping("/{id}/audit")`.
+   - Protegida por la cadena de sesión existente en `SecurityConfig`. Peticiones
+     sin sesión activa reciben HTTP 401 Unauthorized (`{"message":"No autorizado"}`).
+
+2. **Aislamiento de propietario a nivel de consulta:**
+   - La identidad del usuario se obtiene exclusivamente del servidor a través de
+     `CurrentUserProvider.getCurrentUserId()`.
+   - Se valida la existencia y pertenencia del lead mediante `LeadRepository.findByIdAndUsuarioId`.
+     Tanto leads inexistentes como leads pertenecientes a otros usuarios devuelven
+     el mismo error HTTP 404 Not Found (`{"status":404,"code":"NOT_FOUND","message":"Lead no encontrado"}`),
+     sin revelar la existencia del registro ni exponer historial ajeno.
+   - Parámetros del cliente en la URL (como `?ownerId=`) son ignorados por el backend.
+
+3. **Paginación acotada y ordenamiento estable:**
+   - Retorna la estructura estándar `PageResponse<LeadAuditResponse>` (`content`, `page`,
+     `size`, `totalElements`, `totalPages`).
+   - Tamaño de página fijo e inmutable en el servidor: `PAGE_SIZE = 20`. Parámetros
+     `size` enviados por el cliente no alteran el límite del servidor.
+   - Ordenamiento temporal estable: `createdAt DESC, id DESC` (los cambios más recientes
+     primero).
+   - Índices de página negativos se normalizan a `0`.
+
+4. **DTO mínimo de auditoría (`LeadAuditResponse`):**
+   - Expone exclusivamente: `id`, `leadId`, `field`, `oldValue`, `newValue`, `createdAt`.
+   - No expone datos de usuario, contraseñas, notas privadas ni información ajena a los deltas.
+
+### 9.3. Matriz de aceptación y resultados C09
+
+| ID | Escenario | Resultado esperado | Evidencia |
+|---|---|---|---|
+| **R1** | Esquema Flyway V7 | Migración `V7__create_lead_audit_log_table.sql` crea tabla dedicada con FKs e índices; V1-V3 preservados y V4-V6 ausentes | `LeadAuditSchemaTest` |
+| **R2** | Actualización de múltiples campos | Exactamente un delta por campo modificado con `oldValue`, `newValue`, UTC timestamp; campos inalterados ausentes | `LeadAuditServiceTest` |
+| **R2b** | Creación, no-op y fallas de validación | Creación, actualizaciones sin cambios y validaciones erróneas no generan filas de auditoría | `LeadAuditServiceTest` |
+| **R3** | Atomicidad transaccional y regresión outbox | Falla en auditoría aborta actualización y outbox; outbox C04 permanece intacto | `LeadAuditServiceTest`, `LeadServiceImplOutboxTest` |
+| **R4** | Estructura de endpoint y ordenamiento | `PageResponse` con tamaño acotado a 20, orden `createdAt DESC, id DESC`; navegación de página | `LeadAuditServiceTest`, `LeadControllerTest` |
+| **R5** | Aislamiento y acceso no autorizado | Anónimo recibe 401; lead ajeno e inexistente reciben 404 idéntico; `ownerId` ignorado | `LeadControllerTest`, `LeadAuditServiceTest` |
+| **R6** | Privacidad e independencia de notas | DTO contiene solo metadatos y deltas; notas y entidades no se filtran | `LeadControllerTest`, `LeadAuditServiceTest` |
+| **REG** | Compatibilidad regresiva | Suites de LeadController, LeadService y Outbox pasan sin regresiones | `LeadControllerTest`, `LeadServiceImplTest`, `LeadServiceImplOutboxTest` |
+
+### 9.4. Comandos reproducibles de verificación
+
+```bash
+# 1. Pruebas focalizadas de C09 y regresión de servicios (71 pruebas, 0 fallas)
+./mvnw --batch-mode --no-transfer-progress test \
+  -Dtest=LeadAuditServiceTest,LeadAuditSchemaTest,LeadControllerTest,LeadServiceImplTest,LeadServiceImplOutboxTest
+
+# 2. Pruebas de integración de seguridad y outbox (122 pruebas, 0 fallas)
+./mvnw --batch-mode --no-transfer-progress test \
+  -Dtest=UrLeadsApplicationTests,SecurityCurrentUserProviderTest,AuthWebSecurityTest,CrmJwtSecurityWebTest,InternalLeadSecurityWebTest,OutboxPublisherTest,LeadAuditServiceTest,LeadAuditSchemaTest,LeadControllerTest,LeadServiceImplTest,LeadServiceImplOutboxTest
+```
