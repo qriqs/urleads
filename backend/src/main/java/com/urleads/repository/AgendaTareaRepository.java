@@ -22,4 +22,10 @@ public interface AgendaTareaRepository extends JpaRepository<AgendaTarea, Long> 
     Optional<AgendaTarea> findByIdAndUsuarioId(Long id, Long usuarioId);
 
     long countByUsuarioIdAndEstado(Long usuarioId, String estado);
+
+    java.util.List<AgendaTarea> findByUsuarioIdAndFechaLimiteBetweenOrderByFechaLimiteAscHoraLimiteAscIdAsc(
+            Long usuarioId, java.time.LocalDate desde, java.time.LocalDate hasta);
+
+    java.util.List<AgendaTarea> findByUsuarioIdAndLeadIdAndFechaLimiteBetweenOrderByFechaLimiteAscHoraLimiteAscIdAsc(
+            Long usuarioId, Long leadId, java.time.LocalDate desde, java.time.LocalDate hasta);
 }

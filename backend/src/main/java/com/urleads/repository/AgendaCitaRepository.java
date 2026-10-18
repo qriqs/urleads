@@ -31,6 +31,12 @@ public interface AgendaCitaRepository extends JpaRepository<AgendaCita, Long> {
     Page<AgendaCita> findByUsuarioIdAndInicioBetweenOrderByInicioAscIdAsc(
             Long usuarioId, Instant desde, Instant hasta, Pageable pageable);
 
+    List<AgendaCita> findByUsuarioIdAndInicioBetweenOrderByInicioAscIdAsc(
+            Long usuarioId, Instant desde, Instant hasta);
+
+    List<AgendaCita> findByUsuarioIdAndLeadIdAndInicioBetweenOrderByInicioAscIdAsc(
+            Long usuarioId, Long leadId, Instant desde, Instant hasta);
+
     @Query("SELECT c FROM AgendaCita c WHERE c.usuario.id = :usuarioId AND c.estado <> 'CANCELADA' AND c.inicio < :fin AND c.fin > :inicio")
     List<AgendaCita> findOverlapping(
             @Param("usuarioId") Long usuarioId,
