@@ -67,7 +67,7 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
             SELECT l FROM Lead l
             WHERE l.usuario.id = :usuarioId
               AND l.proximoSeguimiento = :hoy
-              AND l.etapa NOT IN ('GANADO', 'PERDIDO')
+              AND l.etapa != 'CERRADO'
             ORDER BY l.nombre ASC
             """)
     List<Lead> findSeguimientosHoy(
@@ -78,7 +78,7 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
             SELECT l FROM Lead l
             WHERE l.usuario.id = :usuarioId
               AND l.proximoSeguimiento < :hoy
-              AND l.etapa NOT IN ('GANADO', 'PERDIDO')
+              AND l.etapa != 'CERRADO'
             ORDER BY l.proximoSeguimiento ASC, l.nombre ASC
             """)
     List<Lead> findSeguimientosAtrasados(

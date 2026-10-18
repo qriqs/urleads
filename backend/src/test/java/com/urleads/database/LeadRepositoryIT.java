@@ -171,4 +171,187 @@ class LeadRepositoryIT {
         Optional<Lead> deleted = leadRepository.findById(saved.getId());
         assertThat(deleted).isEmpty();
     }
+
+    @Test
+    @DisplayName("Dashboard: countLeadsPorEtapa agrupa por etapas canónicas y respeta aislamiento de propietario")
+    void shouldCountLeadsPorEtapaCanonical() {
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("dashUserA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("dashUserB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        // Usuario A: 2 NUEVO, 1 EN_SEGUIMIENTO, 1 CERRADO
+        Lead l1 = new Lead();
+        l1.setUsuario(usuarioA);
+        l1.setNombre("Lead N1");
+        l1.setTelefono("111");
+        l1.setEtapa("NUEVO");
+        leadRepository.save(l1);
+
+        Lead l2 = new Lead();
+        l2.setUsuario(usuarioA);
+        l2.setNombre("Lead N2");
+        l2.setTelefono("222");
+        l2.setEtapa("NUEVO");
+        leadRepository.save(l2);
+
+        Lead l3 = new Lead();
+        l3.setUsuario(usuarioA);
+        l3.setNombre("Lead S1");
+        l3.setTelefono("333");
+        l3.setEtapa("EN_SEGUIMIENTO");
+        leadRepository.save(l3);
+
+        Lead l4 = new Lead();
+        l4.setUsuario(usuarioA);
+        l4.setNombre("Lead C1");
+        l4.setTelefono("444");
+        l4.setEtapa("CERRADO");
+        leadRepository.save(l4);
+
+        // Usuario B: 1 NUEVO (no debe contarse para usuario A)
+        Lead lB = new Lead();
+        lB.setUsuario(usuarioB);
+        lB.setNombre("Lead B");
+        lB.setTelefono("555");
+        lB.setEtapa("NUEVO");
+        leadRepository.save(lB);
+
+        List<Object[]> agrupados = leadRepository.countLeadsPorEtapa(usuarioA.getId());
+        java.util.Map<String, Long> conteos = new java.util.HashMap<>();
+        for (Object[] fila : agrupados) {
+            conteos.put((String) fila[0], (Long) fila[1]);
+        }
+
+        assertThat(conteos)
+                .containsEntry("NUEVO", 2L)
+                .containsEntry("EN_SEGUIMIENTO", 1L)
+                .containsEntry("CERRADO", 1L)
+                .doesNotContainKey("GANADO")
+                .doesNotContainKey("PERDIDO");
+    }
+
+    @Test
+    @DisplayName("Dashboard: findSeguimientosHoy excluye CERRADO y respeta orden por nombre y aislamiento")
+    void shouldFindSeguimientosHoyExcludingCerrado() {
+        LocalDate hoy = LocalDate.now();
+
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("hoyUserA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("hoyUserB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        Lead l1 = new Lead();
+        l1.setUsuario(usuarioA);
+        l1.setNombre("Zeta Lead Hoy");
+        l1.setTelefono("111");
+        l1.setEtapa("EN_SEGUIMIENTO");
+        l1.setProximoSeguimiento(hoy);
+        leadRepository.save(l1);
+
+        Lead l2 = new Lead();
+        l2.setUsuario(usuarioA);
+        l2.setNombre("Alfa Lead Hoy");
+        l2.setTelefono("222");
+        l2.setEtapa("NUEVO");
+        l2.setProximoSeguimiento(hoy);
+        leadRepository.save(l2);
+
+        // Lead cerrado (sin seguimiento por restriccion de BD)
+        Lead lCerrado = new Lead();
+        lCerrado.setUsuario(usuarioA);
+        lCerrado.setNombre("Cerrado");
+        lCerrado.setTelefono("333");
+        lCerrado.setEtapa("CERRADO");
+        lCerrado.setProximoSeguimiento(null);
+        leadRepository.save(lCerrado);
+
+        // Lead de hoy de otro usuario
+        Lead lOtro = new Lead();
+        lOtro.setUsuario(usuarioB);
+        lOtro.setNombre("Otro Hoy");
+        lOtro.setTelefono("444");
+        lOtro.setEtapa("EN_SEGUIMIENTO");
+        lOtro.setProximoSeguimiento(hoy);
+        leadRepository.save(lOtro);
+
+        List<Lead> hoyLeads = leadRepository.findSeguimientosHoy(usuarioA.getId(), hoy);
+        assertThat(hoyLeads).hasSize(2);
+        assertThat(hoyLeads.get(0).getNombre()).isEqualTo("Alfa Lead Hoy");
+        assertThat(hoyLeads.get(1).getNombre()).isEqualTo("Zeta Lead Hoy");
+    }
+
+    @Test
+    @DisplayName("Dashboard: findSeguimientosAtrasados excluye CERRADO y ordena por fecha ASC y nombre ASC")
+    void shouldFindSeguimientosAtrasadosExcludingCerrado() {
+        LocalDate hoy = LocalDate.now();
+
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("atrasadoUserA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("atrasadoUserB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        Lead l1 = new Lead();
+        l1.setUsuario(usuarioA);
+        l1.setNombre("Beta Mas Antiguo");
+        l1.setTelefono("111");
+        l1.setEtapa("EN_SEGUIMIENTO");
+        l1.setProximoSeguimiento(hoy.minusDays(5));
+        leadRepository.save(l1);
+
+        Lead l2 = new Lead();
+        l2.setUsuario(usuarioA);
+        l2.setNombre("Alpha Mas Antiguo");
+        l2.setTelefono("222");
+        l2.setEtapa("NUEVO");
+        l2.setProximoSeguimiento(hoy.minusDays(5));
+        leadRepository.save(l2);
+
+        Lead l3 = new Lead();
+        l3.setUsuario(usuarioA);
+        l3.setNombre("Ayer");
+        l3.setTelefono("333");
+        l3.setEtapa("NUEVO");
+        l3.setProximoSeguimiento(hoy.minusDays(1));
+        leadRepository.save(l3);
+
+        // Lead de hoy (no debe estar en atrasados)
+        Lead lHoy = new Lead();
+        lHoy.setUsuario(usuarioA);
+        lHoy.setNombre("Hoy");
+        lHoy.setTelefono("444");
+        lHoy.setEtapa("NUEVO");
+        lHoy.setProximoSeguimiento(hoy);
+        leadRepository.save(lHoy);
+
+        // Lead atrasado de otro usuario
+        Lead lOtro = new Lead();
+        lOtro.setUsuario(usuarioB);
+        lOtro.setNombre("Otro Atrasado");
+        lOtro.setTelefono("555");
+        lOtro.setEtapa("NUEVO");
+        lOtro.setProximoSeguimiento(hoy.minusDays(3));
+        leadRepository.save(lOtro);
+
+        List<Lead> atrasados = leadRepository.findSeguimientosAtrasados(usuarioA.getId(), hoy);
+        assertThat(atrasados).hasSize(3);
+        assertThat(atrasados.get(0).getNombre()).isEqualTo("Alpha Mas Antiguo");
+        assertThat(atrasados.get(1).getNombre()).isEqualTo("Beta Mas Antiguo");
+        assertThat(atrasados.get(2).getNombre()).isEqualTo("Ayer");
+    }
 }

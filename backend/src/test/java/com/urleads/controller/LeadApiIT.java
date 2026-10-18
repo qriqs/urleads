@@ -399,6 +399,20 @@ class LeadApiIT {
     }
 
     @Test
+    void actualizar_conEtapaPerdido_devuelve400() throws Exception {
+        Lead lead = crearLead(owner, "Valido", "999111222", null, null);
+        flushYLimpiar();
+
+        mockMvc.perform(put("/api/leads/{id}", lead.getId())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Valido","phone":"999111222",
+                                 "stage":"PERDIDO"}"""))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void listar_filtrosStageYFollowUp_clasificacionCorrectaLima() throws Exception {
         LocalDate hoyLima = LocalDate.now(java.time.ZoneId.of("America/Lima"));
         LocalDate ayerLima = hoyLima.minusDays(1);

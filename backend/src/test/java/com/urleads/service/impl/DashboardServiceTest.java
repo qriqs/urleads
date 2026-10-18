@@ -78,19 +78,19 @@ class DashboardServiceTest {
         Lead leadHoy = new Lead();
         leadHoy.setId(10L);
         leadHoy.setNombre("Lead Contacto Hoy");
-        leadHoy.setEtapa("CONTACTADO");
+        leadHoy.setEtapa("EN_SEGUIMIENTO");
         leadHoy.setProximoSeguimiento(hoyLima);
 
         Lead leadAtrasado = new Lead();
         leadAtrasado.setId(11L);
         leadAtrasado.setNombre("Lead Seguimiento Ayer");
-        leadAtrasado.setEtapa("EN_PROCESO");
+        leadAtrasado.setEtapa("NUEVO");
         leadAtrasado.setProximoSeguimiento(hoyLima.minusDays(1));
 
         List<Object[]> agrupados = List.of(
                 new Object[]{"NUEVO", 3L},
-                new Object[]{"CONTACTADO", 1L},
-                new Object[]{"EN_PROCESO", 1L}
+                new Object[]{"EN_SEGUIMIENTO", 1L},
+                new Object[]{"CERRADO", 1L}
         );
 
         when(leadRepository.countByUsuarioId(USUARIO_ID)).thenReturn(5L);
@@ -103,19 +103,19 @@ class DashboardServiceTest {
         assertThat(response.totalLeads()).isEqualTo(5L);
         assertThat(response.leadsPorEtapa())
                 .containsEntry("NUEVO", 3L)
-                .containsEntry("CONTACTADO", 1L)
-                .containsEntry("EN_PROCESO", 1L);
+                .containsEntry("EN_SEGUIMIENTO", 1L)
+                .containsEntry("CERRADO", 1L);
 
         assertThat(response.seguimientos().hoy()).isEqualTo(1L);
         assertThat(response.seguimientos().atrasados()).isEqualTo(1L);
 
         assertThat(response.seguimientos().leadsHoy()).hasSize(1);
         assertThat(response.seguimientos().leadsHoy().get(0).id()).isEqualTo(10L);
-        assertThat(response.seguimientos().leadsHoy().get(0).etapa()).isEqualTo("CONTACTADO");
+        assertThat(response.seguimientos().leadsHoy().get(0).etapa()).isEqualTo("EN_SEGUIMIENTO");
 
         assertThat(response.seguimientos().leadsAtrasados()).hasSize(1);
         assertThat(response.seguimientos().leadsAtrasados().get(0).id()).isEqualTo(11L);
-        assertThat(response.seguimientos().leadsAtrasados().get(0).etapa()).isEqualTo("EN_PROCESO");
+        assertThat(response.seguimientos().leadsAtrasados().get(0).etapa()).isEqualTo("NUEVO");
     }
 
     @Test
