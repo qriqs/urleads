@@ -244,3 +244,173 @@ DB_USERNAME="urleads_app" \
 DB_PASSWORD="${DB_PASSWORD}" \
 java -jar backend/target/urleads-backend-0.0.1-SNAPSHOT.jar
 ```
+
+---
+
+<a id="6-implementacion-y-verificacion-de-c02-identidad-y-tokens-jwt"></a>
+## 6. Implementación y verificación de C02 (Identidad y tokens JWT)
+
+Esta sección documenta la arquitectura técnica, configuración de claves,
+comportamiento en tiempo de ejecución y resultados de validación de la tarea
+C02 (DSW-42) para el servicio CRM.
+
+### 6.1. Arquitectura de seguridad, ciclo de vida y decisiones de diseño
+
+1. **Algoritmo y formato de claves:**
+   - Se utiliza criptografía asimétrica **RS256** (RSA con SHA-256) con un tamaño
+     mínimo de clave de **2048 bits**. Claves de menor longitud son rechazadas
+     al inicio (*fail-fast*).
+   - Formatos compatibles en `JwtKeyLoader`: claves privadas en formato **PKCS#8 PEM**
+     (`-----BEGIN PRIVATE KEY-----`) y claves públicas en formato **X.509 PEM**
+     (`-----BEGIN PUBLIC KEY-----`).
+   - El servicio CRM custodia la clave privada y es el único emisor autorizado.
+
+2. **Claims y vigencia de tokens emitidos:**
+   - Emisor (`iss`): exacto `urleads-crm` como cadena de texto (sin depender de
+     descubrimiento de red ni URLs vivas).
+   - Sujeto (`sub`): cadena decimal que representa el `usuario.id` numérico
+     persistido en la base de datos (por ejemplo, `"42"`). La identidad se
+     obtiene del contexto de sesión en el servidor y nunca de parámetros del cliente.
+   - Audiencias (`aud`): lista canónica con los tres microservicios
+     `["crm-api", "comercial-api", "agenda-api"]`.
+   - Alcances (`scope`): cadena delimitada por espacios
+     `"crm.leads.read comercial.access agenda.access"`.
+   - Vigencia temporal: tiempo de vida (TTL) de **600 segundos (10 minutos)**
+     con tolerancia de reloj (*clock skew*) de hasta **30 segundos** evaluada
+     mediante el bean `Clock` inyectado.
+
+3. **Ruta de emisión de tokens (`POST /api/auth/access-token`):**
+   - Expuesta por `AccessTokenController` sobre la cadena legada de sesión.
+   - Requiere sesión web activa (`JSESSIONID`) y cabecera CSRF válida.
+   - No acepta cuerpo ni parámetros de consulta. Un token Bearer presentado en
+     este endpoint no autoriza la emisión de nuevos tokens (retorna 401).
+   - Retorna HTTP 200 con JSON exacto `{"access_token":"...","token_type":"Bearer","expires_in":600}`
+     y cabeceras `Cache-Control: no-store` y `Pragma: no-cache`.
+   - No implementa refresh tokens ni revocación distribuida. El cierre de sesión
+     (`/logout`) invalida la sesión web; los JWT ya emitidos permanecen vigentes
+     hasta su expiración técnica.
+
+4. **Separación de cadenas de seguridad:**
+   - **Cadena interna (`@Order(1)`, `/internal/**`):** Coincide con rutas
+     inter-servicio. Es estrictamente sin estado (`STATELESS`, `NullSecurityContextRepository`),
+     con CSRF desactivado, y requiere autenticación Bearer JWT con el alcance
+     `SCOPE_crm.leads.read`. Una sesión web activa sin token o con token inválido
+     recibe HTTP 401 sin fallback a la sesión. Si JWT está desactivado, la cadena
+     falla de forma cerrada devolviendo HTTP 401.
+   - **Cadena legada (`@Order(2)`):** Mantiene la autenticación basada en sesión,
+     protección CSRF para mutaciones y control de acceso a `/api/**` y assets SPA.
+
+5. **Resolución de propietario en `SecurityCurrentUserProvider`:**
+   - Si la autenticación es una instancia de `JwtAuthenticationToken`, resuelve el
+     identificador numérico a partir del claim `sub` validado sin consultar la base
+     de datos.
+   - Si la autenticación proviene de sesión web, conserva la resolución de
+     `username` hacia `usuarioRepository` con retorno 401 si no existe.
+
+### 6.2. Configuración de claves y variables de entorno
+
+La configuración de JWT se encuentra deshabilitada por defecto para permitir que
+el CRM arranque de manera autónoma en perfiles de desarrollo o pruebas sin requerir
+claves en disco.
+
+Propiedades configurables en `application.properties`:
+
+| Propiedad | Variable de entorno | Valor por defecto | Descripción |
+|---|---|:---:|---|
+| `urleads.jwt.enabled` | `JWT_ENABLED` | `false` | Habilita componentes criptográficos y emisión JWT. |
+| `urleads.jwt.issuer` | - | `urleads-crm` | Identificador de emisor esperado. |
+| `urleads.jwt.private-key-location` | `JWT_PRIVATE_KEY_LOCATION` | - | Ruta o recurso de clave privada PKCS#8. |
+| `urleads.jwt.public-key-location` | `JWT_PUBLIC_KEY_LOCATION` | - | Ruta o recurso de clave pública X.509. |
+
+Cuando `urleads.jwt.enabled=true`, la ausencia de claves válidas o claves de tamaño
+inferior a 2048 bits produce un fallo inmediato al inicio de la aplicación (*fail-fast*)
+con una excepción descriptiva sanitizada que no expone secretos.
+
+#### Ejemplo de generación de claves locales con OpenSSL (fuera del repositorio)
+
+Para desarrollo o verificación local, genera un par de claves RSA de 2048 bits
+en un directorio privado del usuario con permisos restrictivos:
+
+```bash
+# 1. Crear directorio seguro fuera del repositorio
+mkdir -p ~/.urleads/keys && chmod 700 ~/.urleads/keys
+
+# 2. Generar clave privada RSA en formato PKCS#8 PEM (2048 bits)
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out ~/.urleads/keys/crm-private.pem
+chmod 600 ~/.urleads/keys/crm-private.pem
+
+# 3. Extraer clave pública en formato X.509 PEM
+openssl rsa -pubout -in ~/.urleads/keys/crm-private.pem -out ~/.urleads/keys/crm-public.pem
+chmod 644 ~/.urleads/keys/crm-public.pem
+
+# 4. Exportar variables para arranque local (ejemplo)
+export JWT_ENABLED=true
+export JWT_PRIVATE_KEY_LOCATION="file:${HOME}/.urleads/keys/crm-private.pem"
+export JWT_PUBLIC_KEY_LOCATION="file:${HOME}/.urleads/keys/crm-public.pem"
+```
+
+### 6.3. Verificación automatizada y matriz de aceptación
+
+La suite de pruebas automatizadas de C02 utiliza principalmente claves RSA sintéticas
+de 2048 bits generadas en memoria durante la ejecución de las pruebas mediante
+`JwtTestFixtureHelper`. Para la prueba de carga desde archivo en `JwtKeyLoaderTest`,
+se crea un subdirectorio temporal aislado con permisos POSIX 0700 y clave privada
+0600 (configurable mediante `-Durleads.test.temp-dir`), con eliminación determinista
+de los archivos y subdirectorios creados en un bloque `finally`, sin dejar archivos
+residuales en disco.
+
+Para evaluar el acceso a `/internal/**` sin anticipar la lógica de negocio de leads
+(correspondiente a C03), se implementó la sonda de prueba `C02InternalProbeController`
+en `backend/src/test/java/com/urleads/controller/C02InternalProbeController.java` bajo
+la ruta `/internal/v1/c02-probe`.
+
+#### Matriz de resultados de aceptación
+
+| ID | Escenario | Prueba(s) Automatizada(s) | Resultado verificado |
+|:---:|---|---|:---:|
+| **A01** | Login de sesión real, CSRF válido, emisión sin cuerpo | `CrmJwtSecurityWebTest#a01_EmisionConSesionValidaYCsrf_RetornaTokenYClaimsR2` | HTTP 200, DTO exacto `{access_token, token_type, expires_in}`, firma RS256 válida, claims R2 correctos (`sub: "42"`). |
+| **A02** | Emisión sin sesión con CSRF | `CrmJwtSecurityWebTest#a02_EmisionSinSesion_Retorna401` | HTTP 401 Unauthorized sin token. |
+| **A03** | Sesión activa, CSRF ausente o inválido | `CrmJwtSecurityWebTest#a03_EmisionSinCsrfOInvalido_Retorna403` | HTTP 403 Forbidden en ambos casos. |
+| **A04** | Solo Bearer token en endpoint de emisión | `CrmJwtSecurityWebTest#a04_EmisionConBearerSolo_Retorna401` | HTTP 401 Unauthorized; no autoriza re-emisión. |
+| **A05** | Parámetros cliente `ownerId`/`sub`/`aud`/`scope` en request | `CrmJwtSecurityWebTest#a05_ParametrosClienteManipulados_NoAfectanClaims` | Ignorados de forma segura; los claims emitidos reflejan solo la sesión del servidor. |
+| **A06** | JWT válido en sonda interna `/internal/v1/c02-probe` | `CrmJwtSecurityWebTest#a06_TokenValidoEnSondaInterna_Retorna200JsonYPropietario` | HTTP 200 JSON con `ownerId: 42`; sin interferencia de rutas SPA HTML. |
+| **A07** | Sin JWT, malformado, clave RSA ajena o firma alterada | `CrmJwtSecurityWebTest#a07_SinJwtMalformadoClaveAjenaFirmaAlterada_Retorna401` | HTTP 401 Unauthorized en cada caso. |
+| **A08** | Emisor/audiencia ajena o ausente; audiencia múltiple con `crm-api` | `CrmJwtSecurityWebTest#a08_EmisorYAudiencia_Validaciones` y `CrmJwtValidatorTest` | HTTP 401 si no coincide; HTTP 200 si incluye `crm-api`. |
+| **A09** | Expirado fuera de margen (>30s) o sin `exp`; dentro de margen (<=30s) | `CrmJwtSecurityWebTest#a09_ExpiracionYMargenDeReloj` y `CrmJwtValidatorTest` | HTTP 401 fuera de tolerancia o sin exp; HTTP 200 dentro de tolerancia. |
+| **A10** | Sujeto inválido (texto, UUID, cero, negativo, overflow, ausente) | `CrmJwtSecurityWebTest#a10_ValidacionEstrictaDeSujeto` y `CrmJwtValidatorTest` | HTTP 401 en todos los casos negativos; HTTP 200 con cadena decimal positiva. |
+| **A11** | JWT válido pero sin `scope` o solo con scopes de otros servicios | `CrmJwtSecurityWebTest#a11_ScopeInsuficiente_Retorna403` | HTTP 403 Forbidden (falla de autorización diferenciada de autenticación). |
+| **A12** | Algoritmos `none` o simétrico `HS256` | `CrmJwtSecurityWebTest#a12_AlgoritmosNoneYHs256_Retornan401` | HTTP 401 Unauthorized (rechazo de confusión de algoritmo). |
+| **A13** | Token con `nbf` en el futuro fuera de margen de reloj | `CrmJwtSecurityWebTest#a13_NbfEnElFuturo_Retorna401` y `CrmJwtValidatorTest` | HTTP 401 Unauthorized. |
+| **A14** | Sesión sin token o sesión con token inválido en sonda interna | `CrmJwtSecurityWebTest#a14_SesionWebEnRutaInterna_SinFallback_Retorna401` | HTTP 401 Unauthorized; sin fallback a la sesión web. |
+| **A15** | Sesión difiere de `sub` del JWT; parámetro `?ownerId` en query | `CrmJwtSecurityWebTest#a15_IdentidadDeterminadaExclusivamentePorJwtSub` | Solo el `sub` del JWT validado determina la identidad (retorna 88, no sesión ni query). |
+| **A16** | Invocación interna con Bearer | `CrmJwtSecurityWebTest#a16_LlamadaInternaStateless_NoCreaSesion` | No crea ni persiste sesión HTTP/cookie; llamada posterior sin sesión da 401. |
+| **A17** | JWT desactivado; claves faltantes o corruptas con JWT activado | `JwtConfigurationTest`, `JwtDisabledSecurityTest` y `JwtKeyLoaderTest` | Con JWT desactivado rutas internas fallan cerradas (401) y emisión da 503; con JWT activado claves erróneas provocan fallo rápido (*fail-fast*) al arranque del contexto Spring. |
+| **A18** | Logout después de emisión | `CrmJwtSecurityWebTest#a18_LogoutInvalidaSesionPeroJwtConservaVigenciaTecnica` | Sesión invalidada en `/api/auth/me` (401); JWT emitido previamente continúa siendo técnicamente válido hasta su expiración técnica. |
+| **REG1** | Pruebas de `SecurityCurrentUserProvider` | `SecurityCurrentUserProviderTest` (8 pruebas) | 8 pruebas unitarias exitosas (4 de sesión legadas y 4 de JWT añadidas). |
+| **REG2** | Pruebas de seguridad web legadas (`AuthWebSecurityTest`) | `AuthWebSecurityTest` (3 pruebas) | 3 pruebas exitosas (CSRF, credenciales vacías, login). |
+| **REG3** | Suite completa no-IT (`mvn verify`) | Suite Surefire completa no-IT | 112 pruebas ejecutadas con 0 fallos, 0 errores y 0 omisiones. |
+| **DOC1** | Documentación alineada con contratos y código | Inspección cruzada de `guia-cris.md`, `contratos.md` y `api.md` | Verificado sin secretos, con enlaces validados y delimitación precisa. |
+
+#### Comandos de validación ejecutados
+
+```bash
+# 1. Configuración de entorno Java 21
+export JAVA_HOME="/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home"
+export PATH="$JAVA_HOME/bin:$PATH"
+
+# 2. Pruebas focalizadas de seguridad, configuración y JWT (61 pruebas, 0 fallos)
+cd backend
+./mvnw --batch-mode --no-transfer-progress test \
+  -Durleads.test.temp-dir=/private/var/folders/yy/mqdfwy8j0l9gz_rpfjxdcwf00000gn/T/opencode/manager-worker-dsw42-bprwjcuw \
+  -Dtest=AuthWebSecurityTest,SecurityCurrentUserProviderTest,EurekaConfigurationTest,JwtIssuanceServiceTest,CrmJwtValidatorTest,JwtKeyLoaderTest,CrmJwtSecurityWebTest,JwtDisabledSecurityTest,JwtConfigurationTest
+
+# 3. Verificación de suite completa no-IT y empaquetado JAR (112 pruebas, 0 fallos)
+./mvnw --batch-mode --no-transfer-progress verify \
+  -Durleads.test.temp-dir=/private/var/folders/yy/mqdfwy8j0l9gz_rpfjxdcwf00000gn/T/opencode/manager-worker-dsw42-bprwjcuw
+cd ..
+```
+
+*Delimitación de pruebas no ejecutadas:* La suite de integración con base de datos real
+(`*IT`), el servicio SOAP (C13), el endpoint de producción de leads (C03) y la
+verificación de registro en vivo con Eureka (C14/C15) corresponden a entregables
+posteriores y no fueron ejecutados en esta tarea.
