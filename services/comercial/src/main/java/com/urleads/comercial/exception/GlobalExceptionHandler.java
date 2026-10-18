@@ -74,4 +74,34 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
+
+    @ExceptionHandler(com.urleads.comercial.client.exception.CrmUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleCrmUnavailable(com.urleads.comercial.client.exception.CrmUnavailableException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            HttpStatus.SERVICE_UNAVAILABLE.value(),
+            "CRM_UNAVAILABLE",
+            ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+    }
+
+    @ExceptionHandler(com.urleads.comercial.client.exception.CrmForbiddenException.class)
+    public ResponseEntity<ApiErrorResponse> handleCrmForbidden(com.urleads.comercial.client.exception.CrmForbiddenException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            HttpStatus.FORBIDDEN.value(),
+            "FORBIDDEN",
+            ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
+    @ExceptionHandler(com.urleads.comercial.client.exception.CrmAuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleCrmAuthentication(com.urleads.comercial.client.exception.CrmAuthenticationException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            HttpStatus.UNAUTHORIZED.value(),
+            "UNAUTHORIZED",
+            ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
 }
