@@ -9,6 +9,7 @@ import com.urleads.comercial.dto.QuoteResponse;
 import com.urleads.comercial.dto.QuoteUpdateRequest;
 import com.urleads.comercial.dto.InstantiateQuoteRequest;
 import com.urleads.comercial.dto.QuoteRevisionRequest;
+import com.urleads.comercial.dto.CommercialOrderDetailResponse;
 import java.util.List;
 import com.urleads.comercial.entity.QuoteOutcomeReason;
 import com.urleads.comercial.entity.QuoteStatus;
@@ -35,10 +36,16 @@ public class QuoteController {
 
     private final QuoteService quoteService;
     private final QuoteTemplateService quoteTemplateService;
+    private final com.urleads.comercial.service.CommercialOrderService commercialOrderService;
 
-    public QuoteController(QuoteService quoteService, QuoteTemplateService quoteTemplateService) {
+    public QuoteController(
+        QuoteService quoteService,
+        QuoteTemplateService quoteTemplateService,
+        com.urleads.comercial.service.CommercialOrderService commercialOrderService
+    ) {
         this.quoteService = quoteService;
         this.quoteTemplateService = quoteTemplateService;
+        this.commercialOrderService = commercialOrderService;
     }
 
     @PostMapping
@@ -212,5 +219,25 @@ public class QuoteController {
         String ownerId = jwt.getSubject();
         List<QuoteResponse> revisions = quoteService.getRevisions(ownerId, id);
         return ResponseEntity.ok(revisions);
+    }
+
+    @PostMapping({"/{id}/orders", "/{id}/order"})
+    public ResponseEntity<CommercialOrderDetailResponse> createOrder(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable Long id
+    ) {
+        String ownerId = jwt.getSubject();
+        CommercialOrderDetailResponse response = commercialOrderService.generateOrderFromQuote(ownerId, id);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping({"/{id}/order", "/{id}/orders"})
+    public ResponseEntity<CommercialOrderDetailResponse> getOrder(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable Long id
+    ) {
+        String ownerId = jwt.getSubject();
+        CommercialOrderDetailResponse response = commercialOrderService.getOrderByQuoteId(ownerId, id);
+        return ResponseEntity.ok(response);
     }
 }
