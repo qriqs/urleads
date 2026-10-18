@@ -41,10 +41,10 @@ class DatabaseMigrationIT {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    @DisplayName("La migracion inicial creo el historial de Flyway y la version 3 fue aplicada")
+    @DisplayName("La migracion inicial creo el historial de Flyway y la version 6 fue aplicada")
     void initialMigrationAppliedSuccessfully() {
         assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
         assertThat(flyway.info().current().getState().isApplied()).isTrue();
 
         Integer historyCount = jdbcTemplate.queryForObject(
@@ -68,7 +68,7 @@ class DatabaseMigrationIT {
                 "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
                 String.class
         );
-        assertThat(tables).contains("flyway_schema_history", "usuario", "lead", "nota", "outbox");
+        assertThat(tables).contains("flyway_schema_history", "usuario", "lead", "nota", "outbox", "tag", "lead_tag");
 
         List<String> usuarioColumns = jdbcTemplate.queryForList(
                 "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'usuario'",
@@ -100,6 +100,18 @@ class DatabaseMigrationIT {
                 "payload", "status", "retry_count", "last_error",
                 "created_at", "sent_at", "next_retry_at"
         );
+
+        List<String> tagColumns = jdbcTemplate.queryForList(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'tag'",
+                String.class
+        );
+        assertThat(tagColumns).contains("id", "usuario_id", "nombre", "creado_en");
+
+        List<String> leadTagColumns = jdbcTemplate.queryForList(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'lead_tag'",
+                String.class
+        );
+        assertThat(leadTagColumns).contains("lead_id", "tag_id");
     }
 
     @Test
@@ -480,6 +492,129 @@ class DatabaseMigrationIT {
                 usuarioId
         );
         assertThat(userCount).isEqualTo(1);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("tag: no permite nombres duplicados para el mismo propietario case-insensitively")
+    void tagEnforcesUniqueNamePerOwnerCaseInsensitive() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+        createTestTag(usuarioId, "Prospecto");
+
+        assertThatThrownBy(() -> createTestTag(usuarioId, "  prospecto  "))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("tag: permite el mismo nombre en propietarios distintos")
+    void tagAllowsSameNameAcrossDifferentOwners() {
+        Long usuarioA = createTestUser("synthetic_user_" + UUID.randomUUID());
+        Long usuarioB = createTestUser("synthetic_user_" + UUID.randomUUID());
+
+        Long tagA = createTestTag(usuarioA, "Prospecto");
+        Long tagB = createTestTag(usuarioB, "Prospecto");
+
+        assertThat(tagA).isNotNull();
+        assertThat(tagB).isNotNull();
+        assertThat(tagA).isNotEqualTo(tagB);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("tag: rechaza nombre en blanco o solo espacios")
+    void tagRejectsBlankName() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+
+        assertThatThrownBy(() -> createTestTag(usuarioId, "   "))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("lead_tag: disparador trg_check_lead_tag_owner impide asociacion entre propietarios distintos")
+    void leadTagTriggerPreventsCrossOwnerAssociation() {
+        Long usuarioA = createTestUser("user_a_" + UUID.randomUUID());
+        Long usuarioB = createTestUser("user_b_" + UUID.randomUUID());
+
+        Long leadA = createTestLead(usuarioA, "Lead Usuario A", "999", null, "NUEVO", null);
+        Long tagB = createTestTag(usuarioB, "Tag Usuario B");
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "INSERT INTO lead_tag (lead_id, tag_id) VALUES (?, ?)",
+                leadA, tagB
+        )).isInstanceOf(org.springframework.dao.DataAccessException.class)
+          .hasMessageContaining("Cross-owner tag association not allowed");
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("lead_tag: permite asociacion valida entre lead y tag del mismo propietario")
+    void leadTagAllowsSameOwnerAssociation() {
+        Long usuario = createTestUser("user_same_" + UUID.randomUUID());
+        Long lead = createTestLead(usuario, "Lead Valido", "999", null, "NUEVO", null);
+        Long tag = createTestTag(usuario, "Tag Valido");
+
+        int inserted = jdbcTemplate.update(
+                "INSERT INTO lead_tag (lead_id, tag_id) VALUES (?, ?)",
+                lead, tag
+        );
+        assertThat(inserted).isEqualTo(1);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("lead_tag: eliminacion en cascada de lead elimina sus notas y enlaces lead_tag pero conserva las etiquetas")
+    void deletingLeadDeletesNotesAndLeadTagRowsPreservingTags() {
+        Long usuario = createTestUser("user_del_lead_" + UUID.randomUUID());
+        Long lead = createTestLead(usuario, "Lead Completo", "999", null, "NUEVO", null);
+        Long tag = createTestTag(usuario, "Etiqueta Conservada");
+
+        jdbcTemplate.update("INSERT INTO nota (lead_id, contenido) VALUES (?, ?)", lead, "Nota de prueba");
+        jdbcTemplate.update("INSERT INTO lead_tag (lead_id, tag_id) VALUES (?, ?)", lead, tag);
+
+        // Eliminar lead
+        int deleted = jdbcTemplate.update("DELETE FROM lead WHERE id = ?", lead);
+        assertThat(deleted).isEqualTo(1);
+
+        // Notas y filas en lead_tag deben haberse limpiado
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM nota WHERE lead_id = ?", Integer.class, lead)).isZero();
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM lead_tag WHERE lead_id = ?", Integer.class, lead)).isZero();
+
+        // La etiqueta original debe permanecer intacta
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM tag WHERE id = ?", Integer.class, tag)).isEqualTo(1);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("lead_tag: eliminacion de etiqueta elimina enlaces lead_tag pero conserva el lead y sus notas")
+    void deletingTagDeletesLeadTagRowsPreservingLeadAndNotes() {
+        Long usuario = createTestUser("user_del_tag_" + UUID.randomUUID());
+        Long lead = createTestLead(usuario, "Lead Conservado", "999", null, "NUEVO", null);
+        Long tag = createTestTag(usuario, "Etiqueta a Borrar");
+
+        jdbcTemplate.update("INSERT INTO nota (lead_id, contenido) VALUES (?, ?)", lead, "Nota importante");
+        jdbcTemplate.update("INSERT INTO lead_tag (lead_id, tag_id) VALUES (?, ?)", lead, tag);
+
+        // Eliminar etiqueta
+        int deleted = jdbcTemplate.update("DELETE FROM tag WHERE id = ?", tag);
+        assertThat(deleted).isEqualTo(1);
+
+        // El enlace lead_tag se eliminó en cascada
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM lead_tag WHERE tag_id = ?", Integer.class, tag)).isZero();
+
+        // El lead y su nota continuan existiendo
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM lead WHERE id = ?", Integer.class, lead)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM nota WHERE lead_id = ?", Integer.class, lead)).isEqualTo(1);
+    }
+
+    private Long createTestTag(Long usuarioId, String nombre) {
+        return jdbcTemplate.queryForObject(
+                "INSERT INTO tag (usuario_id, nombre) VALUES (?, ?) RETURNING id",
+                Long.class,
+                usuarioId,
+                nombre
+        );
     }
 
     private Long createTestUser(String username) {
