@@ -249,28 +249,28 @@ export default function LeadDetail() {
     switch (stage) {
       case "NUEVO":
         return (
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-sky-400/15 text-sky-200 border border-sky-400/30 shadow-[0_0_12px_rgba(56,189,248,0.2)] backdrop-blur-md">
-            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/10 text-sky-700 border border-sky-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
             Nuevo
           </span>
         );
       case "EN_SEGUIMIENTO":
         return (
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-400/15 text-amber-200 border border-amber-400/30 shadow-[0_0_12px_rgba(251,191,36,0.2)] backdrop-blur-md">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-700 border border-amber-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
             En seguimiento
           </span>
         );
       case "CERRADO":
         return (
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-400/15 text-emerald-200 border border-emerald-400/30 shadow-[0_0_12px_rgba(52,211,153,0.2)] backdrop-blur-md">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Cerrado
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white/80 border border-white/20">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground border border-border">
             {stage}
           </span>
         );
@@ -404,18 +404,18 @@ export default function LeadDetail() {
         <div className="flex items-center gap-3">
           <Link
             to="/app/leads"
-            className="liquid-glass-btn-secondary h-10 px-3.5 rounded-xl text-xs font-medium inline-flex items-center gap-2"
+            className="liquid-glass-btn-secondary h-10 px-3.5 rounded-xl text-xs font-medium inline-flex items-center gap-2 text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Volver a Leads</span>
           </Link>
         </div>
         <div className="liquid-glass-card rounded-3xl p-16 text-center">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-cyan-300 animate-spin">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-secondary border border-border flex items-center justify-center text-primary animate-spin">
             <RefreshCw className="h-6 w-6" />
           </div>
-          <p className="text-white font-semibold text-lg">Cargando detalles del lead...</p>
-          <p className="text-white/60 text-sm mt-1">
+          <p className="text-foreground font-semibold text-lg">Cargando detalles del lead...</p>
+          <p className="text-muted-foreground text-sm mt-1">
             Consultando la información comercial en tiempo real
           </p>
         </div>
@@ -431,20 +431,20 @@ export default function LeadDetail() {
         <div className="flex items-center gap-3">
           <Link
             to="/app/leads"
-            className="liquid-glass-btn-secondary h-10 px-3.5 rounded-xl text-xs font-medium inline-flex items-center gap-2"
+            className="liquid-glass-btn-secondary h-10 px-3.5 rounded-xl text-xs font-medium inline-flex items-center gap-2 text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Volver a Leads</span>
           </Link>
         </div>
         <div className="liquid-glass-card rounded-3xl p-12 sm:p-16 text-center flex flex-col items-center justify-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400">
+          <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
             <AlertCircle className="h-10 w-10" />
           </div>
-          <h2 className="text-2xl font-bold text-white">
+          <h2 className="text-2xl font-bold text-foreground">
             {isNotFound ? "Lead no encontrado" : "Error al sincronizar lead"}
           </h2>
-          <p className="text-base text-white/70 max-w-md mx-auto leading-relaxed">
+          <p className="text-base text-muted-foreground max-w-md mx-auto leading-relaxed">
             {isNotFound
               ? `El lead con identificador #${id} no existe o fue eliminado previamente.`
               : error?.message || "Ocurrió un error al cargar la información del prospecto."}
@@ -461,7 +461,7 @@ export default function LeadDetail() {
               <button
                 type="button"
                 onClick={fetchLead}
-                className="liquid-glass-btn-secondary h-10 px-5 rounded-xl text-sm font-medium inline-flex items-center gap-2 cursor-pointer"
+                className="liquid-glass-btn-secondary h-10 px-5 rounded-xl text-sm font-medium inline-flex items-center gap-2 cursor-pointer text-foreground"
               >
                 <RefreshCw className="h-4 w-4" />
                 <span>Reintentar</span>
@@ -481,13 +481,13 @@ export default function LeadDetail() {
           <Link
             to="/app/leads"
             aria-label="Volver al listado de leads"
-            className="liquid-glass-btn-secondary h-10 px-3.5 rounded-xl text-xs font-medium inline-flex items-center gap-2 active:scale-95 transition-all text-white/90 hover:text-white"
+            className="liquid-glass-btn-secondary h-10 px-3.5 rounded-xl text-xs font-medium inline-flex items-center gap-2 active:scale-95 transition-all text-foreground hover:text-foreground"
           >
-            <ArrowLeft className="h-4 w-4 text-cyan-300" />
+            <ArrowLeft className="h-4 w-4 text-muted-foreground" />
             <span>Volver a Leads</span>
           </Link>
-          <span className="text-white/40 text-sm hidden sm:inline">/</span>
-          <span className="text-white/70 text-xs sm:text-sm truncate max-w-[200px] hidden sm:inline">
+          <span className="text-muted-foreground/40 text-sm hidden sm:inline">/</span>
+          <span className="text-muted-foreground text-xs sm:text-sm truncate max-w-[200px] hidden sm:inline">
             {lead.name}
           </span>
         </div>
@@ -497,10 +497,10 @@ export default function LeadDetail() {
           <button
             type="button"
             onClick={handleOpenEditModal}
-            className="liquid-glass-btn-secondary h-10 px-4 rounded-xl text-xs font-medium inline-flex items-center gap-2 active:scale-95 cursor-pointer text-white/90 hover:text-white"
+            className="liquid-glass-btn-secondary h-10 px-4 rounded-xl text-xs font-medium inline-flex items-center gap-2 active:scale-95 cursor-pointer text-foreground hover:text-foreground"
             title="Editar información del lead"
           >
-            <Pencil className="h-3.5 w-3.5 text-cyan-300" />
+            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
             <span>Editar Lead</span>
           </button>
 
@@ -518,21 +518,21 @@ export default function LeadDetail() {
 
       {/* ── Header Summary Card ── */}
       <div className="liquid-glass-card rounded-2xl p-6 sm:p-8 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white drop-shadow-sm">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                 {lead.name}
               </h1>
               {renderStageBadge(lead.stage)}
             </div>
             {lead.service ? (
-              <p className="text-sm text-cyan-200/90 flex items-center gap-2">
-                <Briefcase className="h-4 w-4 text-cyan-300 shrink-0" />
-                <span>Interés en: <strong className="font-semibold text-white">{lead.service}</strong></span>
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span>Interés en: <strong className="font-semibold text-foreground">{lead.service}</strong></span>
               </p>
             ) : (
-              <p className="text-sm text-white/50 italic">
+              <p className="text-sm text-muted-foreground/60 italic">
                 Sin servicio específico asignado
               </p>
             )}
@@ -546,17 +546,17 @@ export default function LeadDetail() {
                 className="aurora-chip-btn h-10 px-4 text-xs font-medium inline-flex items-center gap-2"
                 title={`Llamar a ${lead.phone}`}
               >
-                <Phone className="h-3.5 w-3.5 text-emerald-300" />
+                <Phone className="h-3.5 w-3.5" />
                 <span>Llamar ({lead.phone})</span>
               </a>
             )}
             {lead.email && (
               <a
                 href={`mailto:${lead.email}`}
-                className="liquid-glass-btn-secondary h-10 px-4 rounded-xl text-xs font-medium inline-flex items-center gap-2 text-white/90 hover:text-white"
+                className="liquid-glass-btn-secondary h-10 px-4 rounded-xl text-xs font-medium inline-flex items-center gap-2 text-foreground"
                 title={`Enviar correo a ${lead.email}`}
               >
-                <Mail className="h-3.5 w-3.5 text-sky-400" />
+                <Mail className="h-3.5 w-3.5 text-sky-600" />
                 <span>Enviar correo</span>
               </a>
             )}
@@ -566,57 +566,57 @@ export default function LeadDetail() {
         {/* Summary Highlights Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
           {/* Item 1: Etapa Comercial */}
-          <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 space-y-1">
-            <span className="text-xs font-medium text-white/50 uppercase tracking-wider block">
+          <div className="p-4 rounded-xl bg-secondary/35 border border-border space-y-1">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">
               Etapa Comercial
             </span>
-            <div className="text-sm font-semibold text-white flex items-center gap-2 pt-0.5">
-              <span className="w-2 h-2 rounded-full bg-cyan-400" />
+            <div className="text-sm font-semibold text-foreground flex items-center gap-2 pt-0.5">
+              <span className="w-2 h-2 rounded-full bg-primary" />
               <span>{lead.stage.replace("_", " ")}</span>
             </div>
           </div>
 
           {/* Item 2: Próximo Seguimiento (sin inventar hora) */}
-          <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 space-y-1">
-            <span className="text-xs font-medium text-white/50 uppercase tracking-wider block">
+          <div className="p-4 rounded-xl bg-secondary/35 border border-border space-y-1">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">
               Próximo Seguimiento
             </span>
-            <div className="text-sm font-semibold text-white flex items-center gap-2 pt-0.5">
-              <Calendar className="h-4 w-4 text-cyan-300 shrink-0" />
+            <div className="text-sm font-semibold text-foreground flex items-center gap-2 pt-0.5">
+              <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
               <span>{formatFollowUpDate(lead.nextFollowUp)}</span>
             </div>
           </div>
 
           {/* Item 3: Teléfono de contacto */}
-          <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 space-y-1">
-            <span className="text-xs font-medium text-white/50 uppercase tracking-wider block">
+          <div className="p-4 rounded-xl bg-secondary/35 border border-border space-y-1">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">
               Teléfono Directo
             </span>
-            <div className="text-sm font-semibold text-white flex items-center gap-2 pt-0.5 truncate">
-              <Phone className="h-4 w-4 text-emerald-400 shrink-0" />
+            <div className="text-sm font-semibold text-foreground flex items-center gap-2 pt-0.5 truncate">
+              <Phone className="h-4 w-4 text-emerald-600 shrink-0" />
               {lead.phone ? (
                 <a href={`tel:${lead.phone}`} className="hover:underline truncate">
                   {lead.phone}
                 </a>
               ) : (
-                <span className="text-white/40 italic font-normal">No registrado</span>
+                <span className="text-muted-foreground/60 italic font-normal">No registrado</span>
               )}
             </div>
           </div>
 
           {/* Item 4: Correo Electrónico */}
-          <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 space-y-1">
-            <span className="text-xs font-medium text-white/50 uppercase tracking-wider block">
+          <div className="p-4 rounded-xl bg-secondary/35 border border-border space-y-1">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">
               Correo Electrónico
             </span>
-            <div className="text-sm font-semibold text-white flex items-center gap-2 pt-0.5 truncate">
-              <Mail className="h-4 w-4 text-sky-400 shrink-0" />
+            <div className="text-sm font-semibold text-foreground flex items-center gap-2 pt-0.5 truncate">
+              <Mail className="h-4 w-4 text-sky-600 shrink-0" />
               {lead.email ? (
                 <a href={`mailto:${lead.email}`} className="hover:underline truncate" title={lead.email}>
                   {lead.email}
                 </a>
               ) : (
-                <span className="text-white/40 italic font-normal">No registrado</span>
+                <span className="text-muted-foreground/60 italic font-normal">No registrado</span>
               )}
             </div>
           </div>
@@ -629,40 +629,40 @@ export default function LeadDetail() {
         <div className="lg:col-span-2 space-y-6">
           <div className="liquid-glass-card rounded-2xl p-6 sm:p-7 space-y-6">
             {/* Bitácora Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
               <div className="space-y-1">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-cyan-400/15 border border-cyan-400/30 flex items-center justify-center text-cyan-300">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                     <MessageSquare className="h-4 w-4" />
                   </div>
-                  <h2 className="text-lg font-semibold text-white">
+                  <h2 className="text-lg font-semibold text-foreground">
                     Historial y Notas Internas
                   </h2>
                 </div>
-                <p className="text-xs text-white/60">
+                <p className="text-xs text-muted-foreground">
                   Bitácora cronológica de acuerdos, conversaciones y avances comerciales.
                 </p>
               </div>
 
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-white/70 border border-white/15 shrink-0 self-start sm:self-auto">
-                <Lock className="h-3 w-3 text-cyan-300" />
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-secondary text-muted-foreground border border-border shrink-0 self-start sm:self-auto">
+                <Lock className="h-3 w-3 text-muted-foreground" />
                 <span>Solo uso interno</span>
               </div>
             </div>
 
             {/* Note Editor Area */}
-            <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md">
+            <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-secondary/25 border border-border">
               <div className="flex items-center justify-between">
-                <label htmlFor="lead-note-input" className="text-xs font-semibold text-white/80 uppercase tracking-wider block">
+                <label htmlFor="lead-note-input" className="text-xs font-semibold text-foreground uppercase tracking-wider block">
                   Registrar actualización interna
                 </label>
                 <span
                   className={`text-[11px] font-mono transition-colors ${
                     noteContent.length > 2000
-                      ? "text-rose-400 font-bold"
+                      ? "text-rose-500 font-bold"
                       : noteContent.length > 1800
-                      ? "text-amber-400 font-medium"
-                      : "text-white/40"
+                      ? "text-amber-500 font-medium"
+                      : "text-muted-foreground"
                   }`}
                   aria-live="polite"
                 >
@@ -687,15 +687,15 @@ export default function LeadDetail() {
                 }}
                 placeholder="Escribe una actualización sobre qué conversaron, qué pidió el contacto o próximos acuerdos..."
                 disabled={isSubmittingNote}
-                className={`w-full p-3.5 rounded-xl bg-white/5 border text-sm text-white placeholder-white/40 resize-none cursor-text focus:outline-none transition-all duration-200 ${
+                className={`w-full p-3.5 rounded-xl bg-white border text-sm text-foreground placeholder:text-muted-foreground resize-none cursor-text focus:outline-none transition-all duration-200 ${
                   noteContent.length > 2000
-                    ? "border-rose-400/80 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20"
-                    : "border-white/15 focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/20"
+                    ? "border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-400/20"
+                    : "border-border focus:border-primary focus:ring-2 focus:ring-primary/20"
                 }`}
               />
 
               {noteContent.length > 2000 && (
-                <p className="text-xs text-rose-400 flex items-center gap-1.5 font-medium">
+                <p className="text-xs text-rose-500 flex items-center gap-1.5 font-medium">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                   <span>El contenido de la nota no puede superar los 2.000 caracteres.</span>
                 </p>
@@ -703,16 +703,16 @@ export default function LeadDetail() {
 
               {/* Inline Submission Error with Retry */}
               {noteSubmitError && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                    <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
                     <span>{noteSubmitError}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleAddNote()}
                     disabled={isSubmittingNote}
-                    className="liquid-glass-btn-secondary px-3 py-1 rounded-lg text-xs font-medium cursor-pointer text-white hover:text-rose-200 shrink-0 self-end sm:self-auto"
+                    className="liquid-glass-btn-secondary px-3 py-1 rounded-lg text-xs font-medium cursor-pointer text-foreground hover:text-rose-600 shrink-0 self-end sm:self-auto"
                   >
                     Reintentar
                   </button>
@@ -720,8 +720,8 @@ export default function LeadDetail() {
               )}
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                <span className="text-[11px] text-white/50">
-                  Tip: Presiona <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/15 text-white/80 text-[10px] font-mono">Ctrl + Enter</kbd> o haz clic para guardar.
+                <span className="text-[11px] text-muted-foreground">
+                  Tip: Presiona <kbd className="px-1.5 py-0.5 rounded bg-secondary border border-border text-foreground text-[10px] font-mono">Ctrl + Enter</kbd> o haz clic para guardar.
                 </span>
                 <button
                   type="button"
@@ -731,7 +731,7 @@ export default function LeadDetail() {
                     !noteContent.trim() ||
                     noteContent.trim().length > 2000
                   }
-                  className="aurora-chip-btn h-9 px-5 text-xs font-medium self-end sm:self-auto disabled:opacity-40 disabled:cursor-not-allowed hover:border-emerald-400/40 hover:shadow-[0_0_15px_rgba(52,211,153,0.3)] transition-all flex items-center gap-1.5 cursor-pointer"
+                  className="aurora-chip-btn h-9 px-5 text-xs font-medium self-end sm:self-auto disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   {isSubmittingNote ? (
                     <>
@@ -747,64 +747,64 @@ export default function LeadDetail() {
 
             {/* Timeline Notes Structure (Empty State & Visual Flow) */}
             <div className="space-y-4 pt-2">
-              <div className="flex items-center justify-between text-xs font-semibold text-white/60 uppercase tracking-wider">
+              <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 <span>Línea de tiempo</span>
                 <span>{notes.length} {notes.length === 1 ? "nota" : "notas"}</span>
               </div>
 
               {isLoadingNotes ? (
-                <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 text-center flex flex-col items-center justify-center gap-3">
-                  <RefreshCw className="h-6 w-6 text-cyan-300 animate-spin" />
-                  <p className="text-xs text-white/60">Cargando notas internas...</p>
+                <div className="p-8 rounded-2xl bg-secondary/20 border border-border text-center flex flex-col items-center justify-center gap-3">
+                  <RefreshCw className="h-6 w-6 text-primary animate-spin" />
+                  <p className="text-xs text-muted-foreground">Cargando notas internas...</p>
                 </div>
               ) : notesError ? (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                    <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
                     <span>{notesError}</span>
                   </div>
                   <button
                     type="button"
                     onClick={fetchNotes}
-                    className="liquid-glass-btn-secondary px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer text-white hover:text-rose-200 shrink-0 self-end sm:self-auto"
+                    className="liquid-glass-btn-secondary px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer text-foreground hover:text-rose-600 shrink-0 self-end sm:self-auto"
                   >
                     Reintentar
                   </button>
                 </div>
               ) : notes.length === 0 ? (
                 /* Empty state for Notes */
-                <div className="p-8 sm:p-10 rounded-2xl bg-white/[0.02] border border-white/10 text-center flex flex-col items-center justify-center gap-3">
-                  <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40">
-                    <Clock className="h-6 w-6 text-cyan-300/70" />
+                <div className="p-8 sm:p-10 rounded-2xl bg-secondary/20 border border-border text-center flex flex-col items-center justify-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-secondary border border-border flex items-center justify-center text-muted-foreground">
+                    <Clock className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <h3 className="text-base font-semibold text-white">
+                  <h3 className="text-base font-semibold text-foreground">
                     Aún no hay notas registradas
                   </h3>
-                  <p className="text-xs sm:text-sm text-white/60 max-w-md mx-auto leading-relaxed">
+                  <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
                     Las notas internas permiten guardar un historial confidencial de llamadas,
                     reuniones y acuerdos sin enviar notificaciones al cliente.
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3 relative before:absolute before:inset-0 before:left-3 before:w-0.5 before:bg-gradient-to-b before:from-emerald-400/60 before:via-white/15 before:to-transparent">
+                <div className="space-y-3 relative before:absolute before:inset-0 before:left-3 before:w-0.5 before:bg-border">
                   {notes.map((n) => (
                     <div key={n.id} className="relative pl-7 group transition-all">
-                      <div className="absolute left-1.5 top-3.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#04121b] shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                      <div className="p-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 transition-colors space-y-2">
+                      <div className="absolute left-1.5 top-3.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-xs" />
+                      <div className="p-4 rounded-xl bg-secondary/35 hover:bg-secondary/50 border border-border transition-colors space-y-2">
                         <div className="flex items-center justify-between gap-2 text-xs">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-white">
+                            <span className="font-semibold text-foreground">
                               {user?.username || "Usuario"}
                             </span>
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-300 border border-emerald-400/20 font-medium">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 font-medium">
                               Interno
                             </span>
                           </div>
-                          <span className="text-[11px] text-white/50">
+                          <span className="text-[11px] text-muted-foreground">
                             {formatDateTime(n.createdAt)}
                           </span>
                         </div>
-                        <p className="text-xs sm:text-sm text-white/90 whitespace-pre-wrap break-words leading-relaxed">
+                        <p className="text-xs sm:text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed">
                           {n.content}
                         </p>
                       </div>
@@ -820,11 +820,11 @@ export default function LeadDetail() {
         {/* Right Column (1 col): Ficha Técnica de Datos */}
         <div className="space-y-6">
           <div className="liquid-glass-card rounded-2xl p-6 sm:p-7 space-y-6">
-            <div className="flex items-center gap-2.5 pb-4 border-b border-white/10">
-              <div className="w-8 h-8 rounded-lg bg-emerald-400/15 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
+            <div className="flex items-center gap-2.5 pb-4 border-b border-border">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600">
                 <User className="h-4 w-4" />
               </div>
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-foreground">
                 Ficha del Prospecto
               </h2>
             </div>
@@ -832,57 +832,57 @@ export default function LeadDetail() {
             <div className="space-y-4 text-xs">
               {/* Field: Nombre */}
               <div className="space-y-1">
-                <span className="text-white/50 font-medium">Nombre Completo</span>
-                <p className="text-sm font-semibold text-white">{lead.name}</p>
+                <span className="text-muted-foreground font-medium">Nombre Completo</span>
+                <p className="text-sm font-semibold text-foreground">{lead.name}</p>
               </div>
 
               {/* Field: Etapa */}
-              <div className="space-y-1 pt-2 border-t border-white/[0.08]">
-                <span className="text-white/50 font-medium">Etapa Comercial Actual</span>
+              <div className="space-y-1 pt-2 border-t border-border">
+                <span className="text-muted-foreground font-medium">Etapa Comercial Actual</span>
                 <div className="pt-1">{renderStageBadge(lead.stage)}</div>
               </div>
 
               {/* Field: Próximo Seguimiento */}
-              <div className="space-y-1 pt-2 border-t border-white/[0.08]">
-                <span className="text-white/50 font-medium">Fecha de Seguimiento</span>
-                <p className="text-sm font-semibold text-white">
+              <div className="space-y-1 pt-2 border-t border-border">
+                <span className="text-muted-foreground font-medium">Fecha de Seguimiento</span>
+                <p className="text-sm font-semibold text-foreground">
                   {formatFollowUpDate(lead.nextFollowUp)}
                 </p>
               </div>
 
               {/* Field: Servicio de Interés */}
-              <div className="space-y-1 pt-2 border-t border-white/[0.08]">
-                <span className="text-white/50 font-medium">Servicio Requerido</span>
-                <p className="text-sm text-white/90">
-                  {lead.service || <span className="text-white/40 italic">Sin especificar</span>}
+              <div className="space-y-1 pt-2 border-t border-border">
+                <span className="text-muted-foreground font-medium">Servicio Requerido</span>
+                <p className="text-sm text-foreground">
+                  {lead.service || <span className="text-muted-foreground/60 italic">Sin especificar</span>}
                 </p>
               </div>
 
               {/* Field: Registro en el sistema */}
-              <div className="space-y-1 pt-2 border-t border-white/[0.08]">
-                <span className="text-white/50 font-medium">Fecha de Registro</span>
-                <p className="text-xs text-white/80">
+              <div className="space-y-1 pt-2 border-t border-border">
+                <span className="text-muted-foreground font-medium">Fecha de Registro</span>
+                <p className="text-xs text-muted-foreground">
                   {formatDateTime(lead.createdAt)}
                 </p>
               </div>
 
               {/* Field: Última actualización */}
-              <div className="space-y-1 pt-2 border-t border-white/[0.08]">
-                <span className="text-white/50 font-medium">Última Modificación</span>
-                <p className="text-xs text-white/80">
+              <div className="space-y-1 pt-2 border-t border-border">
+                <span className="text-muted-foreground font-medium">Última Modificación</span>
+                <p className="text-xs text-muted-foreground">
                   {formatDateTime(lead.updatedAt)}
                 </p>
               </div>
             </div>
 
             {/* Quick Action in Card */}
-            <div className="pt-4 border-t border-white/10 flex flex-col gap-2">
+            <div className="pt-4 border-t border-border flex flex-col gap-2">
               <button
                 type="button"
                 onClick={handleOpenEditModal}
-                className="w-full liquid-glass-btn-secondary h-10 rounded-xl text-xs font-medium flex items-center justify-center gap-2 cursor-pointer text-white/90 hover:text-white"
+                className="w-full liquid-glass-btn-secondary h-10 rounded-xl text-xs font-medium flex items-center justify-center gap-2 cursor-pointer text-foreground hover:text-foreground"
               >
-                <Pencil className="h-3.5 w-3.5 text-cyan-300" />
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>Modificar datos</span>
               </button>
             </div>

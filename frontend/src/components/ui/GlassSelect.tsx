@@ -97,8 +97,8 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
             ? "h-10 px-3.5 rounded-xl text-xs sm:text-sm"
             : "h-[52px] px-5 rounded-2xl text-[15px]"
         } liquid-glass-input flex items-center justify-between text-left transition-all cursor-pointer ${
-          disabled ? "opacity-40 cursor-not-allowed" : "hover:border-white/40"
-        } ${isOpen ? "border-white/60 ring-2 ring-white/20" : ""}`}
+          disabled ? "opacity-40 cursor-not-allowed" : "hover:border-primary/50"
+        } ${isOpen ? "border-primary ring-2 ring-primary/20" : ""}`}
       >
         <div className="flex items-center gap-2 min-w-0">
           {selectedOption?.colorDot && (
@@ -107,17 +107,17 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
             />
           )}
           <span
-            className={`font-medium truncate ${
+            className={`truncate ${
               isSmall ? "text-xs sm:text-sm" : "text-[15px]"
-            } ${selectedOption ? "text-white" : "text-white/60"}`}
+            } ${selectedOption ? "text-foreground font-medium" : "text-muted-foreground"}`}
           >
             {selectedOption ? selectedOption.label : placeholder}
           </span>
         </div>
 
         <ChevronDown
-          className={`h-3.5 w-3.5 text-white/70 shrink-0 transition-transform duration-200 ml-1.5 ${
-            isOpen ? "rotate-180 text-white" : ""
+          className={`h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform duration-200 ml-1.5 ${
+            isOpen ? "rotate-180 text-foreground" : ""
           }`}
         />
       </button>
@@ -132,15 +132,6 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
               ? "top-[calc(100%+6px)] min-w-[210px]"
               : "top-[calc(100%+8px)] p-2"
           }`}
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.08) 100%)",
-            backdropFilter: "blur(28px) saturate(130%)",
-            WebkitBackdropFilter: "blur(28px) saturate(130%)",
-            border: "1px solid rgba(255, 255, 255, 0.28)",
-            boxShadow:
-              "0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35)",
-          }}
         >
           {options.map((option) => {
             const isSelected = option.value === value;
@@ -154,8 +145,8 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
                   isSmall ? "px-3 py-2 rounded-lg" : "px-4 py-3 rounded-xl"
                 } flex items-center justify-between transition-all cursor-pointer ${
                   isSelected
-                    ? "bg-white/25 border border-white/35 text-white font-semibold shadow-sm"
-                    : "text-white/85 hover:bg-white/15 hover:text-white"
+                    ? "bg-secondary border border-border text-foreground font-semibold shadow-xs"
+                    : "text-foreground hover:bg-secondary/70"
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -166,7 +157,7 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
                   )}
                   <div className="min-w-0">
                     <div
-                      className={`leading-tight text-white font-medium ${
+                      className={`leading-tight text-foreground font-medium ${
                         isSmall ? "text-xs sm:text-sm" : "text-[14px]"
                       }`}
                     >
@@ -174,7 +165,7 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
                     </div>
                     {option.description && (
                       <div
-                        className={`text-white/60 mt-0.5 truncate ${
+                        className={`text-muted-foreground mt-0.5 truncate ${
                           isSmall ? "text-[10px]" : "text-[11px]"
                         }`}
                       >
@@ -185,7 +176,7 @@ export const GlassSelect: React.FC<GlassSelectProps> = ({
                 </div>
 
                 {isSelected && (
-                  <Check className="h-3.5 w-3.5 text-white shrink-0 ml-2" />
+                  <Check className="h-3.5 w-3.5 text-foreground shrink-0 ml-2" />
                 )}
               </div>
             );

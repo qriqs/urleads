@@ -129,7 +129,15 @@ export default function LeadsList() {
     setSelectedFollowUp(followUpParam);
     setSearchInput(searchParam);
     setDebouncedSearch(searchParam);
-  }, [searchParams]);
+    if (searchParams.get("new") === "true") {
+      setIsModalOpen(true);
+      setEditingLead(null);
+      setSearchParams((prev) => {
+        prev.delete("new");
+        return prev;
+      });
+    }
+  }, [searchParams, setSearchParams]);
 
 
   // Loading & error states
@@ -416,28 +424,28 @@ export default function LeadsList() {
     switch (stage) {
       case "NUEVO":
         return (
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-sky-400/15 text-sky-200 border border-sky-400/30 shadow-[0_0_12px_rgba(56,189,248,0.2)] backdrop-blur-md">
-            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/10 text-sky-700 border border-sky-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
             Nuevo
           </span>
         );
       case "EN_SEGUIMIENTO":
         return (
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-400/15 text-amber-200 border border-amber-400/30 shadow-[0_0_12px_rgba(251,191,36,0.2)] backdrop-blur-md">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-700 border border-amber-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
             En seguimiento
           </span>
         );
       case "CERRADO":
         return (
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-400/15 text-emerald-200 border border-emerald-400/30 shadow-[0_0_12px_rgba(52,211,153,0.2)] backdrop-blur-md">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Cerrado
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white/80 border border-white/20">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground border border-border">
             {stage}
           </span>
         );
@@ -450,15 +458,15 @@ export default function LeadsList() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white drop-shadow-sm">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Leads
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 border border-white/15 text-white/80 backdrop-blur-md">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#00c988]" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary border border-border text-muted-foreground">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               {totalElements} {totalElements === 1 ? "contacto" : "contactos"}
             </span>
           </div>
-          <p className="text-sm text-white/70 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Consulta, busca y gestiona oportunidades comerciales en tiempo real.
           </p>
         </div>
@@ -466,7 +474,7 @@ export default function LeadsList() {
         <div className="flex items-center gap-3 w-full sm:w-auto">
           {/* Search bar with perfect icon alignment */}
           <div className="relative flex-1 sm:w-72">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50 pointer-events-none" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <input
               type="text"
               id="lead-search-input"
@@ -481,7 +489,7 @@ export default function LeadsList() {
                 type="button"
                 onClick={() => setSearchInput("")}
                 aria-label="Limpiar búsqueda"
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-white/50 hover:text-white rounded-full transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-full transition-colors"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -501,10 +509,10 @@ export default function LeadsList() {
       </div>
 
       {/* ── Filter Bar ── */}
-      <div className="relative z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 sm:py-3 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-md">
+      <div className="relative z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 sm:py-3 rounded-2xl bg-secondary/35 border border-border">
         <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
-          <div className="flex items-center gap-2 text-xs font-semibold text-white/70 uppercase tracking-wider shrink-0 mr-1">
-            <Filter className="h-3.5 w-3.5 text-cyan-300" />
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0 mr-1">
+            <Filter className="h-3.5 w-3.5 text-foreground" />
             <span>Filtros:</span>
           </div>
 
@@ -543,24 +551,24 @@ export default function LeadsList() {
             <button
               type="button"
               onClick={handleClearFilters}
-              className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/15 text-white/80 hover:text-white border border-white/15 transition-all cursor-pointer active:scale-95 shrink-0"
+              className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-xl text-xs font-medium bg-secondary hover:bg-secondary/80 text-foreground border border-border transition-all cursor-pointer active:scale-95 shrink-0"
               title="Restablecer todos los filtros"
             >
-              <FilterX className="h-3.5 w-3.5 text-cyan-300" />
+              <FilterX className="h-3.5 w-3.5 text-muted-foreground" />
               <span>Limpiar filtros</span>
             </button>
           )}
         </div>
 
         {/* Active Filters Summary */}
-        <div className="flex items-center gap-2 text-xs text-white/60">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {hasActiveFilters ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-400/10 text-cyan-200 border border-cyan-400/25">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               Filtros activos
             </span>
           ) : (
-            <span className="text-white/40 hidden md:inline">Mostrando todos los registros</span>
+            <span className="text-muted-foreground/60 hidden md:inline">Mostrando todos los registros</span>
           )}
         </div>
       </div>
@@ -570,24 +578,24 @@ export default function LeadsList() {
         {/* Loading State */}
         {isLoading ? (
           <div className="liquid-glass-card rounded-3xl p-12 sm:p-16 text-center">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-cyan-300 animate-spin">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-secondary border border-border flex items-center justify-center text-primary animate-spin">
               <RefreshCw className="h-6 w-6" />
             </div>
-            <p className="text-white font-semibold text-lg">Cargando leads...</p>
-            <p className="text-white/60 text-xs sm:text-sm mt-1">
+            <p className="text-foreground font-semibold text-lg">Cargando leads...</p>
+            <p className="text-muted-foreground text-xs sm:text-sm mt-1">
               Obteniendo prospectos comerciales en tiempo real
             </p>
           </div>
         ) : error && leads.length === 0 ? (
           /* Connection Error State */
-          <div className="leads-empty-state w-full min-h-[440px] p-10 sm:p-16 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md flex flex-col items-center justify-center text-center gap-4">
-            <div className="w-20 h-20 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0">
+          <div className="leads-empty-state w-full min-h-[440px] p-10 sm:p-16 flex flex-col items-center justify-center text-center gap-4">
+            <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 shrink-0">
               <AlertCircle className="h-10 w-10" />
             </div>
-            <h3 className="text-xl font-semibold text-white">
+            <h3 className="text-xl font-semibold text-foreground">
               No se pudieron sincronizar los leads
             </h3>
-            <p className="text-base text-white/70 max-w-md mx-auto leading-relaxed">
+            <p className="text-base text-muted-foreground max-w-md mx-auto leading-relaxed">
               {error.message || "Ocurrió un error al consultar el servidor."}
             </p>
             <button
@@ -601,16 +609,16 @@ export default function LeadsList() {
           </div>
         ) : leads.length === 0 ? (
           /* Empty State */
-          <div className="leads-empty-state w-full min-h-[440px] p-10 sm:p-16 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+          <div className="leads-empty-state w-full min-h-[440px] p-10 sm:p-16">
             {hasActiveFilters ? (
               <div className="flex flex-col items-center justify-center text-center max-w-lg mx-auto gap-4">
-                <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center text-white/90 border border-white/20 shadow-lg shadow-black/10 shrink-0">
-                  <FilterX className="h-10 w-10 text-cyan-300" />
+                <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center text-muted-foreground border border-border shadow-xs shrink-0">
+                  <FilterX className="h-10 w-10 text-muted-foreground" />
                 </div>
-                <h3 className="text-xl font-semibold text-white">
+                <h3 className="text-xl font-semibold text-foreground">
                   No se encontraron resultados
                 </h3>
-                <p className="text-base text-white/70 text-center leading-relaxed">
+                <p className="text-base text-muted-foreground text-center leading-relaxed">
                   {debouncedSearch
                     ? `No hay ningún lead que coincida con "${debouncedSearch}" con los filtros seleccionados.`
                     : "No hay ningún lead que coincida con los filtros seleccionados."}
@@ -627,10 +635,10 @@ export default function LeadsList() {
             ) : (
               <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto gap-6">
                 {/* User Icon: enlarged and centered */}
-                <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center text-white/90 border border-white/20 shadow-lg shadow-black/10 shrink-0">
-                  <User className="h-12 w-12 text-white/90" />
+                <div className="w-24 h-24 rounded-full bg-secondary flex items-center justify-center text-muted-foreground border border-border shadow-xs shrink-0">
+                  <User className="h-12 w-12 text-muted-foreground" />
                 </div>
-                <p className="text-lg sm:text-xl text-white/90 font-normal text-center leading-relaxed">
+                <p className="text-lg sm:text-xl text-foreground font-normal text-center leading-relaxed">
                   Registra tu primer lead para comenzar a gestionar tu pipeline
                   <br className="hidden sm:inline" /> comercial y hacer seguimiento a tus ventas.
                 </p>
@@ -651,8 +659,8 @@ export default function LeadsList() {
             {/* 1. Desktop Liquid Glass Table */}
             <div className="hidden md:block liquid-glass-card rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-white/90">
-                  <thead className="bg-white/[0.08] text-white/60 text-xs font-semibold uppercase tracking-wider border-b border-white/15">
+                <table className="w-full text-left text-sm text-foreground">
+                  <thead className="bg-secondary/60 text-muted-foreground text-xs font-semibold uppercase tracking-wider border-b border-border">
                     <tr>
                       <th scope="col" className="py-4 px-6">
                         Nombre / Servicio
@@ -671,24 +679,24 @@ export default function LeadsList() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/[0.08]">
+                  <tbody className="divide-y divide-border">
                     {leads.map((lead) => (
                       <tr
                         key={lead.id}
-                        className="hover:bg-white/[0.06] transition-colors group"
+                        className="hover:bg-secondary/35 transition-colors group"
                       >
                         {/* Name & Service with generous spacing */}
                         <td className="py-5 px-6">
-                          <div className="font-semibold text-white text-sm group-hover:text-cyan-300 transition-colors">
+                          <div className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors">
                             {lead.name}
                           </div>
                           {lead.service ? (
-                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mt-1 rounded-md bg-white/[0.06] text-white/70 text-xs border border-white/10">
-                              <Briefcase className="h-3 w-3 text-cyan-300/70" />
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mt-1 rounded-md bg-secondary text-muted-foreground text-xs border border-border">
+                              <Briefcase className="h-3 w-3 text-muted-foreground" />
                               <span className="truncate max-w-[220px]">{lead.service}</span>
                             </div>
                           ) : (
-                            <span className="text-xs text-white/40 italic block mt-0.5">
+                            <span className="text-xs text-muted-foreground/60 italic block mt-0.5">
                               Sin servicio especificado
                             </span>
                           )}
@@ -698,21 +706,21 @@ export default function LeadsList() {
                         <td className="py-5 px-6">
                           <div className="space-y-1">
                             {lead.phone && (
-                              <div className="flex items-center gap-2 text-xs text-white/80">
-                                <Phone className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                              <div className="flex items-center gap-2 text-xs text-foreground">
+                                <Phone className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                                 <span>{lead.phone}</span>
                               </div>
                             )}
                             {lead.email && (
-                              <div className="flex items-center gap-2 text-xs text-white/80">
-                                <Mail className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+                              <div className="flex items-center gap-2 text-xs text-foreground">
+                                <Mail className="h-3.5 w-3.5 text-sky-600 shrink-0" />
                                 <span className="truncate max-w-[200px]" title={lead.email}>
                                   {lead.email}
                                 </span>
                               </div>
                             )}
                             {!lead.phone && !lead.email && (
-                              <span className="text-xs text-white/40 italic">
+                              <span className="text-xs text-muted-foreground/60 italic">
                                 Sin datos de contacto
                               </span>
                             )}
@@ -727,12 +735,12 @@ export default function LeadsList() {
                         {/* Next Follow Up */}
                         <td className="py-5 px-6 whitespace-nowrap">
                           {lead.nextFollowUp ? (
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full liquid-glass-pill text-xs text-white/90">
-                              <Calendar className="h-3.5 w-3.5 text-cyan-300" />
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full liquid-glass-pill text-xs text-foreground font-medium">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                               <span>{lead.nextFollowUp}</span>
                             </div>
                           ) : (
-                            <span className="text-xs text-white/40 italic">
+                            <span className="text-xs text-muted-foreground/60 italic">
                               Sin fecha programada
                             </span>
                           )}
@@ -743,21 +751,21 @@ export default function LeadsList() {
                           <div className="inline-flex items-center gap-2">
                             <Link
                               to={`/app/leads/${lead.id}`}
-                              className="liquid-glass-btn-secondary px-3 py-1.5 rounded-xl text-xs font-medium inline-flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                              className="liquid-glass-btn-secondary px-3 py-1.5 rounded-xl text-xs font-medium inline-flex items-center gap-1.5 active:scale-95 cursor-pointer text-foreground"
                               title="Ver detalle del lead"
                             >
                               <span>Ver detalle</span>
-                              <ChevronRight className="h-3.5 w-3.5 text-white/60" />
+                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                             </Link>
 
                             <button
                               type="button"
                               onClick={() => handleOpenEditModal(lead)}
-                              className="liquid-glass-btn-secondary px-2.5 py-1.5 rounded-xl text-xs font-medium inline-flex items-center gap-1.5 active:scale-95 cursor-pointer text-white/90 hover:text-white"
+                              className="liquid-glass-btn-secondary px-2.5 py-1.5 rounded-xl text-xs font-medium inline-flex items-center gap-1.5 active:scale-95 cursor-pointer text-foreground hover:text-foreground"
                               title="Editar este lead"
                               aria-label={`Editar lead ${lead.name}`}
                             >
-                              <Pencil className="h-3.5 w-3.5 text-cyan-300" />
+                              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                               <span>Editar</span>
                             </button>
 
@@ -789,12 +797,12 @@ export default function LeadsList() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <h2 className="font-semibold text-white text-base truncate">
+                      <h2 className="font-semibold text-foreground text-base truncate">
                         {lead.name}
                       </h2>
                       {lead.service && (
-                        <p className="text-xs text-white/65 flex items-center gap-1.5 mt-0.5 truncate">
-                          <Briefcase className="h-3 w-3 text-cyan-300 shrink-0" />
+                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5 truncate">
+                          <Briefcase className="h-3 w-3 text-muted-foreground shrink-0" />
                           <span>{lead.service}</span>
                         </p>
                       )}
@@ -803,26 +811,26 @@ export default function LeadsList() {
                   </div>
 
                   {/* Contact Info */}
-                  <div className="space-y-1.5 pt-2 border-t border-white/10 text-xs text-white/80">
+                  <div className="space-y-1.5 pt-2 border-t border-border text-xs text-muted-foreground">
                     {lead.phone && (
                       <div className="flex items-center gap-2">
-                        <Phone className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                        <a href={`tel:${lead.phone}`} className="hover:underline text-white/90">
+                        <Phone className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <a href={`tel:${lead.phone}`} className="hover:underline text-foreground">
                           {lead.phone}
                         </a>
                       </div>
                     )}
                     {lead.email && (
                       <div className="flex items-center gap-2">
-                        <Mail className="h-3.5 w-3.5 text-sky-400 shrink-0" />
-                        <a href={`mailto:${lead.email}`} className="hover:underline text-white/90 truncate">
+                        <Mail className="h-3.5 w-3.5 text-sky-600 shrink-0" />
+                        <a href={`mailto:${lead.email}`} className="hover:underline text-foreground truncate">
                           {lead.email}
                         </a>
                       </div>
                     )}
                     {lead.nextFollowUp && (
-                      <div className="flex items-center gap-2 text-white/70">
-                        <Calendar className="h-3.5 w-3.5 text-cyan-300 shrink-0" />
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <span>Seguimiento: {lead.nextFollowUp}</span>
                       </div>
                     )}
@@ -832,19 +840,19 @@ export default function LeadsList() {
                   <div className="pt-2 flex items-center gap-2">
                     <Link
                       to={`/app/leads/${lead.id}`}
-                      className="flex-1 liquid-glass-btn-secondary py-2 px-3 rounded-xl text-xs font-medium text-center flex items-center justify-center gap-1.5"
+                      className="flex-1 liquid-glass-btn-secondary py-2 px-3 rounded-xl text-xs font-medium text-center flex items-center justify-center gap-1.5 text-foreground"
                     >
                       <span>Ver detalle</span>
-                      <ChevronRight className="h-3.5 w-3.5" />
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                     </Link>
 
                     <button
                       type="button"
                       onClick={() => handleOpenEditModal(lead)}
-                      className="liquid-glass-btn-secondary py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer text-white/90"
+                      className="liquid-glass-btn-secondary py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer text-foreground"
                       aria-label={`Editar lead ${lead.name}`}
                     >
-                      <Pencil className="h-3.5 w-3.5 text-cyan-300" />
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>Editar</span>
                     </button>
 
@@ -864,7 +872,7 @@ export default function LeadsList() {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-white/70">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-muted-foreground">
                 <span>
                   Página {page + 1} de {totalPages} ({totalElements} leads en total)
                 </span>
