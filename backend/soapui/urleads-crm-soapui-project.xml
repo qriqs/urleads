@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<con:soapui-project id="c13-soapui-urleads-crm" activeEnvironment="Default" name="UrLeads-CRM-SOAP-GetLead" resourceRoot="" soapui-version="5.7.2" xmlns:con="http://eviware.com/soapui/config">
+    <con:settings/>
+    <con:properties>
+        <con:property>
+            <con:name>crm_endpoint</con:name>
+            <con:value>http://localhost:8080/ws/leads</con:value>
+        </con:property>
+        <con:property>
+            <con:name>wsdl_url</con:name>
+            <con:value>http://localhost:8080/ws/leads.wsdl</con:value>
+        </con:property>
+        <con:property>
+            <con:name>jwt_token_valid_owner_42</con:name>
+            <con:value>${#Project#jwt_token_valid_owner_42}</con:value>
+        </con:property>
+        <con:property>
+            <con:name>jwt_token_insufficient_scope</con:name>
+            <con:value>${#Project#jwt_token_insufficient_scope}</con:value>
+        </con:property>
+        <con:property>
+            <con:name>lead_id_success</con:name>
+            <con:value>105</con:value>
+        </con:property>
+        <con:property>
+            <con:name>lead_id_cerrado</con:name>
+            <con:value>106</con:value>
+        </con:property>
+        <con:property>
+            <con:name>lead_id_not_found</con:name>
+            <con:value>99999</con:value>
+        </con:property>
+        <con:property>
+            <con:name>lead_id_foreign</con:name>
+            <con:value>200</con:value>
+        </con:property>
+    </con:properties>
+    <con:interface xsi:type="con:WsdlInterface" id="leads-wsdl-interface" wsdlUrl="http://localhost:8080/ws/leads.wsdl" name="LeadsPortSoap11" type="wsdl" bindingName="{urn:urleads:crm:leads:v1}LeadsPortSoap11" soapVersion="1_1" anonymous="optional" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <con:settings/>
+        <con:definitionCache type="TEXT" rootPart="http://localhost:8080/ws/leads.wsdl">
+            <con:part>
+                <con:url>http://localhost:8080/ws/leads.wsdl</con:url>
+                <con:content><![CDATA[<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:sch="urn:urleads:crm:leads:v1" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="urn:urleads:crm:leads:v1" targetNamespace="urn:urleads:crm:leads:v1">
+  <wsdl:types>
+    <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" targetNamespace="urn:urleads:crm:leads:v1">
+    <xs:element name="GetLeadRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="leadId">
+                    <xs:simpleType>
+                        <xs:restriction base="xs:long">
+                            <xs:minInclusive value="1"/>
+                        </xs:restriction>
+                    </xs:simpleType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="GetLeadResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="id" type="xs:long"/>
+                <xs:element name="stage" type="tns:StageType"/>
+                <xs:element minOccurs="0" name="nextFollowUp" nillable="true" type="xs:date"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    <xs:simpleType name="StageType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="NUEVO"/>
+            <xs:enumeration value="EN_SEGUIMIENTO"/>
+            <xs:enumeration value="CERRADO"/>
+        </xs:restriction>
+    </xs:simpleType>
+</xs:schema>
+  </wsdl:types>
+  <wsdl:message name="GetLeadRequest">
+    <wsdl:part element="tns:GetLeadRequest" name="GetLeadRequest"/>
+  </wsdl:message>
+  <wsdl:message name="GetLeadResponse">
+    <wsdl:part element="tns:GetLeadResponse" name="GetLeadResponse"/>
+  </wsdl:message>
+  <wsdl:portType name="LeadsPort">
+    <wsdl:operation name="GetLead">
+      <wsdl:input message="tns:GetLeadRequest" name="GetLeadRequest"/>
+      <wsdl:output message="tns:GetLeadResponse" name="GetLeadResponse"/>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="LeadsPortSoap11" type="tns:LeadsPort">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="GetLead">
+      <soap:operation soapAction="urn:urleads:crm:leads:v1:GetLead"/>
+      <wsdl:input name="GetLeadRequest">
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="GetLeadResponse">
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="LeadsPortService">
+    <wsdl:port binding="tns:LeadsPortSoap11" name="LeadsPortSoap11">
+      <soap:address location="http://localhost:8080/ws/leads"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>]]></con:content>
+                <con:type>http://schemas.xmlsoap.org/wsdl/</con:type>
+            </con:part>
+        </con:definitionCache>
+        <con:endpoints>
+            <con:endpoint>${#Project#crm_endpoint}</con:endpoint>
+        </con:endpoints>
+        <con:operation id="op-GetLead" isOneWay="false" action="urn:urleads:crm:leads:v1:GetLead" name="GetLead" bindingOperationName="GetLead" type="Request-Response" inputName="GetLeadRequest" sendsAttachments="false" anonymous="optional">
+            <con:settings/>
+        </con:operation>
+    </con:interface>
+    <con:testSuite id="ts-GetLeadTestSuite" name="GetLeadTestSuite">
+        <con:settings/>
+        <con:runType>SEQUENTIAL</con:runType>
+
+        <!-- TC01: Exitoso con JWT valido -->
+        <con:testCase id="tc01-valid-lead" failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="TC01 - Valid GetLead Request" searchProperties="true">
+            <con:settings/>
+            <con:testStep type="request" id="step-valid-lead" name="GetLead Valid Request">
+                <con:settings/>
+                <con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                    <con:interface>LeadsPortSoap11</con:interface>
+                    <con:operation>GetLead</con:operation>
+                    <con:request name="GetLead Valid Request" outgoingWss="" incomingWss="" timeout="" sslKeystore="" useWsAddressing="false" useWsReliableMessaging="false" wssPasswordType="">
+                        <con:settings>
+                            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config"&gt;
+  &lt;con:entry key="Authorization" value="Bearer ${#Project#jwt_token_valid_owner_42}"/&gt;
+  &lt;con:entry key="SOAPAction" value="urn:urleads:crm:leads:v1:GetLead"/&gt;
+&lt;/xml-fragment&gt;</con:setting>
+                        </con:settings>
+                        <con:encoding>UTF-8</con:encoding>
+                        <con:endpoint>${#Project#crm_endpoint}</con:endpoint>
+                        <con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="urn:urleads:crm:leads:v1">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <v1:GetLeadRequest>
+         <v1:leadId>${#Project#lead_id_success}</v1:leadId>
+      </v1:GetLeadRequest>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request>
+                        <con:assertion type="SOAP Response" id="assert-soap-resp"/>
+                        <con:assertion type="Valid HTTP Status Codes" id="assert-http-200">
+                            <con:configuration>
+                                <codes>200</codes>
+                            </con:configuration>
+                        </con:assertion>
+                        <con:assertion type="XPath Match" id="assert-has-stage">
+                            <con:configuration>
+                                <path>count(//*[local-name()='GetLeadResponse']/*[local-name()='stage'])</path>
+                                <content>1</content>
+                                <allowWildcards>false</allowWildcards>
+                                <ignoreNamspaceDifferences>true</ignoreNamspaceDifferences>
+                                <ignoreComments>false</ignoreComments>
+                            </con:configuration>
+                        </con:assertion>
+                        <con:assertion type="Simple NotContains" id="assert-no-pii-name">
+                            <con:configuration>
+                                <token>nombre</token>
+                                <ignoreCase>true</ignoreCase>
+                                <useRegEx>false</useRegEx>
+                            </con:configuration>
+                        </con:assertion>
+                        <con:assertion type="Simple NotContains" id="assert-no-pii-email">
+                            <con:configuration>
+                                <token>correo</token>
+                                <ignoreCase>true</ignoreCase>
+                                <useRegEx>false</useRegEx>
+                            </con:configuration>
+                        </con:assertion>
+                    </con:request>
+                </con:config>
+            </con:testStep>
+        </con:testCase>
+
+        <!-- TC02: Esquema XSD invalido -->
+        <con:testCase id="tc02-invalid-xsd" failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="TC02 - Schema Invalid XML Request" searchProperties="true">
+            <con:settings/>
+            <con:testStep type="request" id="step-invalid-xsd" name="GetLead Invalid Schema Request">
+                <con:settings/>
+                <con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                    <con:interface>LeadsPortSoap11</con:interface>
+                    <con:operation>GetLead</con:operation>
+                    <con:request name="GetLead Invalid Schema Request">
+                        <con:settings>
+                            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config"&gt;
+  &lt;con:entry key="Authorization" value="Bearer ${#Project#jwt_token_valid_owner_42}"/&gt;
+  &lt;con:entry key="SOAPAction" value="urn:urleads:crm:leads:v1:GetLead"/&gt;
+&lt;/xml-fragment&gt;</con:setting>
+                        </con:settings>
+                        <con:encoding>UTF-8</con:encoding>
+                        <con:endpoint>${#Project#crm_endpoint}</con:endpoint>
+                        <con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="urn:urleads:crm:leads:v1">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <v1:GetLeadRequest>
+         <v1:leadId>-5</v1:leadId>
+      </v1:GetLeadRequest>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request>
+                        <con:assertion type="Not SOAP Fault Assertion" id="assert-soap-fault-schema"/>
+                        <con:assertion type="Valid HTTP Status Codes" id="assert-http-500-schema">
+                            <con:configuration>
+                                <codes>500</codes>
+                            </con:configuration>
+                        </con:assertion>
+                        <con:assertion type="Simple Contains" id="assert-fault-client">
+                            <con:configuration>
+                                <token>Client</token>
+                                <ignoreCase>false</ignoreCase>
+                                <useRegEx>false</useRegEx>
+                            </con:configuration>
+                        </con:assertion>
+                    </con:request>
+                </con:config>
+            </con:testStep>
+        </con:testCase>
+
+        <!-- TC03: Token ausente o invalido (HTTP 401) -->
+        <con:testCase id="tc03-unauthorized" failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="TC03 - Missing or Invalid Bearer Token (HTTP 401)" searchProperties="true">
+            <con:settings/>
+            <con:testStep type="request" id="step-unauthorized" name="GetLead Missing Auth Request">
+                <con:settings/>
+                <con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                    <con:interface>LeadsPortSoap11</con:interface>
+                    <con:operation>GetLead</con:operation>
+                    <con:request name="GetLead Missing Auth Request">
+                        <con:settings>
+                            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config"/&gt;</con:setting>
+                        </con:settings>
+                        <con:encoding>UTF-8</con:encoding>
+                        <con:endpoint>${#Project#crm_endpoint}</con:endpoint>
+                        <con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="urn:urleads:crm:leads:v1">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <v1:GetLeadRequest>
+         <v1:leadId>105</v1:leadId>
+      </v1:GetLeadRequest>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request>
+                        <con:assertion type="Valid HTTP Status Codes" id="assert-http-401">
+                            <con:configuration>
+                                <codes>401</codes>
+                            </con:configuration>
+                        </con:assertion>
+                    </con:request>
+                </con:config>
+            </con:testStep>
+        </con:testCase>
+
+        <!-- TC04: Token sin scope crm.leads.read (HTTP 403) -->
+        <con:testCase id="tc04-forbidden-scope" failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="TC04 - Token Lacking Required Scope (HTTP 403)" searchProperties="true">
+            <con:settings/>
+            <con:testStep type="request" id="step-forbidden-scope" name="GetLead Wrong Scope Request">
+                <con:settings/>
+                <con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                    <con:interface>LeadsPortSoap11</con:interface>
+                    <con:operation>GetLead</con:operation>
+                    <con:request name="GetLead Wrong Scope Request">
+                        <con:settings>
+                            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config"&gt;
+  &lt;con:entry key="Authorization" value="Bearer ${#Project#jwt_token_insufficient_scope}"/&gt;
+  &lt;con:entry key="SOAPAction" value="urn:urleads:crm:leads:v1:GetLead"/&gt;
+&lt;/xml-fragment&gt;</con:setting>
+                        </con:settings>
+                        <con:encoding>UTF-8</con:encoding>
+                        <con:endpoint>${#Project#crm_endpoint}</con:endpoint>
+                        <con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="urn:urleads:crm:leads:v1">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <v1:GetLeadRequest>
+         <v1:leadId>105</v1:leadId>
+      </v1:GetLeadRequest>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request>
+                        <con:assertion type="Valid HTTP Status Codes" id="assert-http-403">
+                            <con:configuration>
+                                <codes>403</codes>
+                            </con:configuration>
+                        </con:assertion>
+                    </con:request>
+                </con:config>
+            </con:testStep>
+        </con:testCase>
+
+        <!-- TC05: Indistinguibilidad entre lead inexistente y ajeno (LEAD_NOT_FOUND 500) -->
+        <con:testCase id="tc05-indistinguishable-not-found" failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="TC05 - Indistinguishable Missing and Foreign Lead" searchProperties="true">
+            <con:settings/>
+            <con:testStep type="request" id="step-absent-lead" name="GetLead Absent Lead Request">
+                <con:settings/>
+                <con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                    <con:interface>LeadsPortSoap11</con:interface>
+                    <con:operation>GetLead</con:operation>
+                    <con:request name="GetLead Absent Lead Request">
+                        <con:settings>
+                            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config"&gt;
+  &lt;con:entry key="Authorization" value="Bearer ${#Project#jwt_token_valid_owner_42}"/&gt;
+  &lt;con:entry key="SOAPAction" value="urn:urleads:crm:leads:v1:GetLead"/&gt;
+&lt;/xml-fragment&gt;</con:setting>
+                        </con:settings>
+                        <con:encoding>UTF-8</con:encoding>
+                        <con:endpoint>${#Project#crm_endpoint}</con:endpoint>
+                        <con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="urn:urleads:crm:leads:v1">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <v1:GetLeadRequest>
+         <v1:leadId>${#Project#lead_id_not_found}</v1:leadId>
+      </v1:GetLeadRequest>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request>
+                        <con:assertion type="Not SOAP Fault Assertion" id="assert-fault-absent"/>
+                        <con:assertion type="Valid HTTP Status Codes" id="assert-500-absent">
+                            <con:configuration>
+                                <codes>500</codes>
+                            </con:configuration>
+                        </con:assertion>
+                        <con:assertion type="Simple Contains" id="assert-code-absent">
+                            <con:configuration>
+                                <token>LEAD_NOT_FOUND</token>
+                                <ignoreCase>false</ignoreCase>
+                                <useRegEx>false</useRegEx>
+                            </con:configuration>
+                        </con:assertion>
+                    </con:request>
+                </con:config>
+            </con:testStep>
+            <con:testStep type="request" id="step-foreign-lead" name="GetLead Foreign Lead Request">
+                <con:settings/>
+                <con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                    <con:interface>LeadsPortSoap11</con:interface>
+                    <con:operation>GetLead</con:operation>
+                    <con:request name="GetLead Foreign Lead Request">
+                        <con:settings>
+                            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config"&gt;
+  &lt;con:entry key="Authorization" value="Bearer ${#Project#jwt_token_valid_owner_42}"/&gt;
+  &lt;con:entry key="SOAPAction" value="urn:urleads:crm:leads:v1:GetLead"/&gt;
+&lt;/xml-fragment&gt;</con:setting>
+                        </con:settings>
+                        <con:encoding>UTF-8</con:encoding>
+                        <con:endpoint>${#Project#crm_endpoint}</con:endpoint>
+                        <con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="urn:urleads:crm:leads:v1">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <v1:GetLeadRequest>
+         <v1:leadId>${#Project#lead_id_foreign}</v1:leadId>
+      </v1:GetLeadRequest>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request>
+                        <con:assertion type="Not SOAP Fault Assertion" id="assert-fault-foreign"/>
+                        <con:assertion type="Valid HTTP Status Codes" id="assert-500-foreign">
+                            <con:configuration>
+                                <codes>500</codes>
+                            </con:configuration>
+                        </con:assertion>
+                        <con:assertion type="Simple Contains" id="assert-code-foreign">
+                            <con:configuration>
+                                <token>LEAD_NOT_FOUND</token>
+                                <ignoreCase>false</ignoreCase>
+                                <useRegEx>false</useRegEx>
+                            </con:configuration>
+                        </con:assertion>
+                    </con:request>
+                </con:config>
+            </con:testStep>
+        </con:testCase>
+
+        <!-- TC06: Rechazo seguro ante vector XXE -->
+        <con:testCase id="tc06-xxe-rejection" failOnError="true" failTestCaseOnErrors="true" keepSession="false" maxResults="0" name="TC06 - XXE and External DTD Injection Rejection" searchProperties="true">
+            <con:settings/>
+            <con:testStep type="request" id="step-xxe" name="GetLead XXE Injection Request">
+                <con:settings/>
+                <con:config xsi:type="con:RequestStep" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                    <con:interface>LeadsPortSoap11</con:interface>
+                    <con:operation>GetLead</con:operation>
+                    <con:request name="GetLead XXE Injection Request">
+                        <con:settings>
+                            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config"&gt;
+  &lt;con:entry key="Authorization" value="Bearer ${#Project#jwt_token_valid_owner_42}"/&gt;
+  &lt;con:entry key="SOAPAction" value="urn:urleads:crm:leads:v1:GetLead"/&gt;
+&lt;/xml-fragment&gt;</con:setting>
+                        </con:settings>
+                        <con:encoding>UTF-8</con:encoding>
+                        <con:endpoint>${#Project#crm_endpoint}</con:endpoint>
+                        <con:request><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE foo [
+  <!ELEMENT foo ANY >
+  <!ENTITY xxe SYSTEM "file:///etc/passwd" >
+]>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="urn:urleads:crm:leads:v1">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <v1:GetLeadRequest>
+         <v1:leadId>&xxe;</v1:leadId>
+      </v1:GetLeadRequest>
+   </soapenv:Body>
+</soapenv:Envelope>]]></con:request>
+                        <con:assertion type="Valid HTTP Status Codes" id="assert-status-xxe-rejected">
+                            <con:configuration>
+                                <codes>400,500</codes>
+                            </con:configuration>
+                        </con:assertion>
+                        <con:assertion type="Simple NotContains" id="assert-not-contain-root">
+                            <con:configuration>
+                                <token>root:</token>
+                                <ignoreCase>false</ignoreCase>
+                                <useRegEx>false</useRegEx>
+                            </con:configuration>
+                        </con:assertion>
+                    </con:request>
+                </con:config>
+            </con:testStep>
+        </con:testCase>
+    </con:testSuite>
+</con:soapui-project>

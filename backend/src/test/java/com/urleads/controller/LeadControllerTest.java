@@ -17,10 +17,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
+import jakarta.persistence.RollbackException;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -28,17 +31,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.transaction.TransactionSystemException;
 
 import com.urleads.dto.CreateLeadRequest;
+import com.urleads.dto.LeadAuditResponse;
 import com.urleads.dto.LeadResponse;
 import com.urleads.dto.PageResponse;
 import com.urleads.dto.UpdateLeadRequest;
 import com.urleads.exception.LeadNotFoundException;
+import com.urleads.exception.LeadValidationException;
 import com.urleads.security.CurrentUserProvider;
 import com.urleads.security.SecurityConfig;
 import com.urleads.security.UserDetailsServiceImpl;
@@ -234,6 +241,136 @@ class LeadControllerTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
+    @Test
+    void crear_conCorreoDuplicado_devuelve400ConErrorSeguroSinFugas() throws Exception {
+        when(leadService.crear(eq(USUARIO_ACTUAL), any(CreateLeadRequest.class)))
+                .thenThrow(new LeadValidationException("Ya existe un lead con este correo"));
+
+        enviar("POST", "/api/leads", BODY_VALIDO)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este correo"))
+                .andExpect(jsonPath("$.sql").doesNotExist())
+                .andExpect(jsonPath("$.stackTrace").doesNotExist())
+                .andExpect(jsonPath("$.exception").doesNotExist());
+    }
+
+    @Test
+    void crear_conTelefonoDuplicado_devuelve400ConErrorSeguroSinFugas() throws Exception {
+        when(leadService.crear(eq(USUARIO_ACTUAL), any(CreateLeadRequest.class)))
+                .thenThrow(new LeadValidationException("Ya existe un lead con este teléfono"));
+
+        enviar("POST", "/api/leads", BODY_VALIDO)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este teléfono"));
+    }
+
+    @Test
+    void actualizar_conContactoDuplicado_devuelve400ConErrorSeguro() throws Exception {
+        when(leadService.actualizar(eq(10L), eq(USUARIO_ACTUAL), any(UpdateLeadRequest.class)))
+                .thenThrow(new LeadValidationException("Ya existe un lead con este correo"));
+
+        enviar("PUT", "/api/leads/10", BODY_VALIDO)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este correo"));
+    }
+
+    @Test
+    void crear_dataIntegrityViolationConConstraintCorreo_devuelve400ConMensajeCorreo() throws Exception {
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "duplicate key",
+                new SQLException("duplicate"),
+                "uq_lead_owner_correo_norm"
+        );
+        when(leadService.crear(eq(USUARIO_ACTUAL), any(CreateLeadRequest.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate error", cve));
+
+        enviar("POST", "/api/leads", BODY_VALIDO)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este correo"));
+    }
+
+    @Test
+    void crear_dataIntegrityViolationConConstraintTelefono_devuelve400ConMensajeTelefono() throws Exception {
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "duplicate key",
+                new SQLException("duplicate"),
+                "uq_lead_owner_telefono_norm"
+        );
+        when(leadService.crear(eq(USUARIO_ACTUAL), any(CreateLeadRequest.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate error", cve));
+
+        enviar("POST", "/api/leads", BODY_VALIDO)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este teléfono"));
+    }
+
+    @Test
+    void crear_dataIntegrityViolationAjena_devuelve500SinFugaDeSqlNiMensajesInternos() throws Exception {
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "foreign key violation in schema internal detail",
+                new SQLException("insert into lead ... violates foreign key"),
+                "fk_lead_usuario"
+        );
+        when(leadService.crear(eq(USUARIO_ACTUAL), any(CreateLeadRequest.class)))
+                .thenThrow(new DataIntegrityViolationException("FK failure", cve));
+
+        enviar("POST", "/api/leads", BODY_VALIDO)
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
+                .andExpect(jsonPath("$.message").value("Error interno del servidor."))
+                .andExpect(jsonPath("$.sql").doesNotExist())
+                .andExpect(jsonPath("$.constraint").doesNotExist())
+                .andExpect(jsonPath("$.stackTrace").doesNotExist());
+    }
+
+    @Test
+    void actualizar_transactionSystemExceptionConConstraintTelefono_devuelve400ConMensajeTelefono() throws Exception {
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "duplicate key",
+                new SQLException("duplicate"),
+                "uq_lead_owner_telefono_norm"
+        );
+        RollbackException rollbackEx = new RollbackException("commit failed", cve);
+        TransactionSystemException tse = new TransactionSystemException("JPA commit error", rollbackEx);
+
+        when(leadService.actualizar(eq(10L), eq(USUARIO_ACTUAL), any(UpdateLeadRequest.class)))
+                .thenThrow(tse);
+
+        enviar("PUT", "/api/leads/10", BODY_VALIDO)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este teléfono"));
+    }
+
+    @Test
+    void actualizar_transactionSystemExceptionAjena_devuelve500SinFuga() throws Exception {
+        RollbackException rollbackEx = new RollbackException("commit failed due to timeout");
+        TransactionSystemException tse = new TransactionSystemException("JPA commit error", rollbackEx);
+
+        when(leadService.actualizar(eq(10L), eq(USUARIO_ACTUAL), any(UpdateLeadRequest.class)))
+                .thenThrow(tse);
+
+        enviar("PUT", "/api/leads/10", BODY_VALIDO)
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
+                .andExpect(jsonPath("$.message").value("Error interno del servidor."))
+                .andExpect(jsonPath("$.sql").doesNotExist())
+                .andExpect(jsonPath("$.stackTrace").doesNotExist());
+    }
+
     // ---------- GET ----------
 
     @Test
@@ -351,5 +488,351 @@ class LeadControllerTest {
                 .andExpect(jsonPath("$.totalElements").value(1));
 
         verify(leadService).listarPaginado(USUARIO_ACTUAL, null, "today", "NUEVO", 0);
+    }
+
+    // =========================================================================
+    // TESTS C08: ETIQUETAS Y RELACIONES (DSW-48)
+    // =========================================================================
+
+    @Test
+    void actualizarTags_devuelve200() throws Exception {
+        when(leadService.actualizarTags(eq(10L), eq(USUARIO_ACTUAL), eq(List.of(1L, 2L))))
+                .thenReturn(respuesta());
+
+        mockMvc.perform(put("/api/leads/10/tags")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tagIds":[1, 2]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Ana Torres"));
+
+        verify(leadService).actualizarTags(10L, USUARIO_ACTUAL, List.of(1L, 2L));
+    }
+
+    @Test
+    void actualizarTags_sinCsrf_devuelve403() throws Exception {
+        mockMvc.perform(put("/api/leads/10/tags")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tagIds":[1, 2]}"""))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void actualizarTags_leadOEtiquetaInexistente_devuelve404() throws Exception {
+        when(leadService.actualizarTags(eq(10L), eq(USUARIO_ACTUAL), any()))
+                .thenThrow(new com.urleads.exception.TagNotFoundException("Etiqueta no encontrada"));
+
+        mockMvc.perform(put("/api/leads/10/tags")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tagIds":[999]}"""))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void actualizarTags_cuerpoNulo_devuelve400() throws Exception {
+        mockMvc.perform(put("/api/leads/10/tags")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void listar_conTagIds_pasaFiltroAlServicio() throws Exception {
+        when(leadService.listarPaginado(USUARIO_ACTUAL, null, "all", null, null, null, List.of(1L, 2L), 0))
+                .thenReturn(new PageResponse<>(List.of(respuesta()), 0, 20, 1, 1));
+
+        mockMvc.perform(get("/api/leads")
+                        .param("tagIds", "1")
+                        .param("tagIds", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(leadService).listarPaginado(USUARIO_ACTUAL, null, "all", null, null, null, List.of(1L, 2L), 0);
+    }
+
+    // C09 audit endpoint regressions
+
+    @Test
+    void listarAuditoria_conSesionValida_retorna200ConPageResponseDelContrato() throws Exception {
+        OffsetDateTime timestamp = OffsetDateTime.parse("2026-10-18T10:15:30Z");
+        LeadAuditResponse delta1 = new LeadAuditResponse(101L, 10L, "stage", "NUEVO", "EN_SEGUIMIENTO", timestamp);
+        LeadAuditResponse delta2 = new LeadAuditResponse(102L, 10L, "phone", "999111222", "999333444", timestamp);
+
+        PageResponse<LeadAuditResponse> pageResponse = new PageResponse<>(
+                List.of(delta1, delta2),
+                0,
+                20,
+                2,
+                1
+        );
+
+        when(leadService.listarAuditoria(10L, USUARIO_ACTUAL, 0)).thenReturn(pageResponse);
+
+        mockMvc.perform(get("/api/leads/10/audit"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(101))
+                .andExpect(jsonPath("$.content[0].leadId").value(10))
+                .andExpect(jsonPath("$.content[0].field").value("stage"))
+                .andExpect(jsonPath("$.content[0].oldValue").value("NUEVO"))
+                .andExpect(jsonPath("$.content[0].newValue").value("EN_SEGUIMIENTO"))
+                .andExpect(jsonPath("$.content[0].createdAt").value("2026-10-18T10:15:30Z"))
+                .andExpect(jsonPath("$.content[1].id").value(102))
+                .andExpect(jsonPath("$.content[1].field").value("phone"))
+                .andExpect(jsonPath("$.content[1].oldValue").value("999111222"))
+                .andExpect(jsonPath("$.content[1].newValue").value("999333444"))
+                // R6: No expone campos ajenos a la auditoría
+                .andExpect(jsonPath("$.content[0].password").doesNotExist())
+                .andExpect(jsonPath("$.content[0].passwordHash").doesNotExist())
+                .andExpect(jsonPath("$.content[0].notes").doesNotExist())
+                .andExpect(jsonPath("$.content[0].contenido").doesNotExist());
+
+        verify(leadService).listarAuditoria(10L, USUARIO_ACTUAL, 0);
+    }
+
+    @Test
+    void listarAuditoria_pasaParametroPageAlServicio_eIgnoraParametrosSizeYOwnerId() throws Exception {
+        when(leadService.listarAuditoria(10L, USUARIO_ACTUAL, 2))
+                .thenReturn(new PageResponse<>(List.of(), 2, 20, 45, 3));
+
+        mockMvc.perform(get("/api/leads/10/audit")
+                        .param("page", "2")
+                        .param("size", "100") // Manipulación de tamaño intentada por el cliente
+                        .param("ownerId", "999")) // Intento de suplantación de propietario
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(45));
+
+        // Verifica que se invoca con el usuario real y el tamaño fijo no se altera
+        verify(leadService).listarAuditoria(10L, USUARIO_ACTUAL, 2);
+    }
+
+    @Test
+    void listarAuditoria_leadInexistente_devuelve404() throws Exception {
+        when(leadService.listarAuditoria(99L, USUARIO_ACTUAL, 0))
+                .thenThrow(new LeadNotFoundException("Lead no encontrado"));
+
+        mockMvc.perform(get("/api/leads/99/audit"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Lead no encontrado"));
+    }
+
+    @Test
+    void listarAuditoria_leadDeOtroPropietario_devuelve404Identico() throws Exception {
+        when(leadService.listarAuditoria(10L, USUARIO_ACTUAL, 0))
+                .thenThrow(new LeadNotFoundException("Lead no encontrado"));
+
+        mockMvc.perform(get("/api/leads/10/audit"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Lead no encontrado"));
+    }
+
+    @Test
+    @WithAnonymousUser
+    void listarAuditoria_sinSesion_devuelve401() throws Exception {
+        mockMvc.perform(get("/api/leads/10/audit"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("No autorizado"));
+
+        verifyNoInteractions(leadService);
+    }
+
+    // =========================================================================
+    // TESTS C12: ARCHIVO Y RESTAURACION LOGICA DE LEADS (DSW-52)
+    // =========================================================================
+
+    @Test
+    void archivar_conSesionYCsrf_devuelve200ConLeadActualizado() throws Exception {
+        LeadResponse leadArchivado = respuesta();
+        leadArchivado.setArchivedAt(OffsetDateTime.parse("2026-10-18T12:00:00Z"));
+
+        when(leadService.archivar(10L, USUARIO_ACTUAL)).thenReturn(leadArchivado);
+
+        mockMvc.perform(post("/api/leads/10/archive")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(10))
+                .andExpect(jsonPath("$.name").value("Ana Torres"))
+                .andExpect(jsonPath("$.archivedAt").value("2026-10-18T12:00:00Z"));
+
+        verify(leadService).archivar(10L, USUARIO_ACTUAL);
+    }
+
+    @Test
+    @WithAnonymousUser
+    void archivar_sinSesion_devuelve401() throws Exception {
+        mockMvc.perform(post("/api/leads/10/archive")
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("No autorizado"));
+
+        verifyNoInteractions(leadService);
+    }
+
+    @Test
+    void archivar_sinCsrf_devuelve403() throws Exception {
+        mockMvc.perform(post("/api/leads/10/archive"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(leadService);
+    }
+
+    @Test
+    void archivar_inexistenteOYaArchivadoOAjeno_devuelve404() throws Exception {
+        when(leadService.archivar(99L, USUARIO_ACTUAL))
+                .thenThrow(new LeadNotFoundException("Lead no encontrado"));
+
+        mockMvc.perform(post("/api/leads/99/archive")
+                        .with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Lead no encontrado"));
+
+        verify(leadService).archivar(99L, USUARIO_ACTUAL);
+    }
+
+    @Test
+    void archivar_ignoraUsuarioIdDelCliente() throws Exception {
+        LeadResponse leadArchivado = respuesta();
+        leadArchivado.setArchivedAt(OffsetDateTime.parse("2026-10-18T12:00:00Z"));
+
+        when(leadService.archivar(10L, USUARIO_ACTUAL)).thenReturn(leadArchivado);
+
+        mockMvc.perform(post("/api/leads/10/archive")
+                        .with(csrf())
+                        .param("usuarioId", "999")
+                        .param("ownerId", "888"))
+                .andExpect(status().isOk());
+
+        verify(leadService).archivar(10L, USUARIO_ACTUAL);
+        verify(leadService, never()).archivar(eq(10L), eq(999L));
+    }
+
+    @Test
+    void restaurar_conSesionYCsrf_devuelve200ConLeadReactivado() throws Exception {
+        LeadResponse leadReactivado = respuesta();
+        leadReactivado.setArchivedAt(null);
+
+        when(leadService.restaurar(10L, USUARIO_ACTUAL)).thenReturn(leadReactivado);
+
+        mockMvc.perform(post("/api/leads/10/restore")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(10))
+                .andExpect(jsonPath("$.name").value("Ana Torres"))
+                .andExpect(jsonPath("$.archivedAt").doesNotExist());
+
+        verify(leadService).restaurar(10L, USUARIO_ACTUAL);
+    }
+
+    @Test
+    @WithAnonymousUser
+    void restaurar_sinSesion_devuelve401() throws Exception {
+        mockMvc.perform(post("/api/leads/10/restore")
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("No autorizado"));
+
+        verifyNoInteractions(leadService);
+    }
+
+    @Test
+    void restaurar_sinCsrf_devuelve403() throws Exception {
+        mockMvc.perform(post("/api/leads/10/restore"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(leadService);
+    }
+
+    @Test
+    void restaurar_inexistenteOActivoOAjeno_devuelve404() throws Exception {
+        when(leadService.restaurar(99L, USUARIO_ACTUAL))
+                .thenThrow(new LeadNotFoundException("Lead no encontrado"));
+
+        mockMvc.perform(post("/api/leads/99/restore")
+                        .with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Lead no encontrado"));
+
+        verify(leadService).restaurar(99L, USUARIO_ACTUAL);
+    }
+
+    @Test
+    void restaurar_ignoraUsuarioIdDelCliente() throws Exception {
+        LeadResponse leadReactivado = respuesta();
+        leadReactivado.setArchivedAt(null);
+
+        when(leadService.restaurar(10L, USUARIO_ACTUAL)).thenReturn(leadReactivado);
+
+        mockMvc.perform(post("/api/leads/10/restore")
+                        .with(csrf())
+                        .param("usuarioId", "999")
+                        .param("ownerId", "888"))
+                .andExpect(status().isOk());
+
+        verify(leadService).restaurar(10L, USUARIO_ACTUAL);
+        verify(leadService, never()).restaurar(eq(10L), eq(999L));
+    }
+
+    @Test
+    void listarArchivados_conSesionValida_devuelve200ConPageResponseDelContrato() throws Exception {
+        LeadResponse item = respuesta();
+        item.setArchivedAt(OffsetDateTime.parse("2026-10-18T12:00:00Z"));
+        PageResponse<LeadResponse> pageResponse = new PageResponse<>(List.of(item), 0, 20, 1, 1);
+
+        when(leadService.listarArchivados(USUARIO_ACTUAL, 0)).thenReturn(pageResponse);
+
+        mockMvc.perform(get("/api/leads/archived"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(10))
+                .andExpect(jsonPath("$.content[0].archivedAt").value("2026-10-18T12:00:00Z"));
+
+        verify(leadService).listarArchivados(USUARIO_ACTUAL, 0);
+    }
+
+    @Test
+    @WithAnonymousUser
+    void listarArchivados_sinSesion_devuelve401() throws Exception {
+        mockMvc.perform(get("/api/leads/archived"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("No autorizado"));
+
+        verifyNoInteractions(leadService);
+    }
+
+    @Test
+    void listarArchivados_pasaParametroPage_eIgnoraOwnerId() throws Exception {
+        when(leadService.listarArchivados(USUARIO_ACTUAL, 3))
+                .thenReturn(new PageResponse<>(List.of(), 3, 20, 65, 4));
+
+        mockMvc.perform(get("/api/leads/archived")
+                        .param("page", "3")
+                        .param("size", "50")
+                        .param("ownerId", "999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(3))
+                .andExpect(jsonPath("$.totalElements").value(65));
+
+        verify(leadService).listarArchivados(USUARIO_ACTUAL, 3);
     }
 }

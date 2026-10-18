@@ -34,8 +34,11 @@ public class NotaService {
     public List<NotaResponse> listarNotas(Long leadId, String username) {
         Usuario usuario = obtenerUsuario(username);
 
-        leadRepository.findByIdAndUsuarioId(leadId, usuario.getId())
+        Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuario.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Lead no encontrado"));
+        if (lead.isArchived()) {
+            throw new ResourceNotFoundException("Lead no encontrado");
+        }
 
         return notaRepository.findByLeadIdOrderByCreadoEnAsc(leadId)
                 .stream()
@@ -53,6 +56,9 @@ public class NotaService {
 
         Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuario.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Lead no encontrado"));
+        if (lead.isArchived()) {
+            throw new ResourceNotFoundException("Lead no encontrado");
+        }
 
         Nota nota = new Nota();
         nota.setLead(lead);

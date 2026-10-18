@@ -76,6 +76,9 @@ configuración local.
 6. **Ruta de emisión en tiempo de ejecución (Tarea C02):**
    - `POST /api/auth/access-token`: Endpoint expuesto por CRM sobre la sesión
      Spring Security existente con cookie `HttpOnly` y validación CSRF.
+   - *Nota de implementación (C02):* Implementado en CRM (`backend/`) mediante
+     `AccessTokenController`, `JwtIssuanceService` y validación estricta en
+     `/internal/**`. Consulta detalles en [guia-cris.md](guia-cris.md#6-implementacion-y-verificacion-de-c02-identidad-y-tokens-jwt).
    - No recibe parámetros de usuario; deriva la identidad y scopes de la sesión.
    - Retorna:
 ```json
@@ -127,6 +130,14 @@ de cotizar o agendar actividades.
 - **401 Unauthorized:** Token ausente, firma inválida, expirado o audiencia distinta de `crm-api`.
 - **403 Forbidden:** Token válido pero sin scope `crm.leads.read`.
 - **404 Not Found:** El lead no existe, pertenece a otro usuario o está archivado.
+
+> **Nota de implementación (C03):** Endpoint implementado en CRM (`backend/`) mediante
+> `InternalLeadController`, `LeadService.obtenerInterno` y el DTO inmutable `InternalLeadResponse`.
+> La consulta se encuentra acotada por propietario (`findByIdAndUsuarioId`) derivado del `sub` del
+> JWT verificado, retornando exclusivamente `id`, `stage` y `nextFollowUp` (o `null`).
+> *Dependencia de archivo:* La exclusión de leads archivados es un requisito de integración
+> dependiente de la tarea C12 (DSW-52), ya que el modelo actual no contiene campos de archivo.
+> Consulta detalles en [guia-cris.md](guia-cris.md#7-implementacion-y-verificacion-de-c03-consulta-interna-de-leads).
 
 ---
 
@@ -429,8 +440,9 @@ para evitar duplicidades operativas innecesarias.
 - **WSDL publicado:** `GET /ws/leads.wsdl` (disponible localmente de forma explícita).
 - **Target Namespace (TNS):** `urn:urleads:crm:leads:v1`
 - **SOAPAction HTTP Header:** `urn:urleads:crm:leads:v1:GetLead`
-- **Ubicación de artefactos:** Los contratos XSD/WSDL residirán en
-  `backend/src/main/resources/` bajo la convención establecida por Spring-WS.
+- **Ubicación de artefactos:** El contrato XSD reside en
+  `backend/src/main/resources/xsd/leads-v1.xsd` y la definición WSDL se expone
+  dinámicamente en `/ws/leads.wsdl` mediante `DefaultWsdl11Definition`.
 
 #### Estructura de elementos XML
 
@@ -488,7 +500,8 @@ para evitar duplicidades operativas innecesarias.
    - Se debe deshabilitar de forma explícita el procesamiento de entidades externas
      (XXE) y declaraciones DTD externas en el parser XML.
    - Se aplica validación estricta del esquema XSD sobre las solicitudes recibidas y
-     límite máximo en el tamaño de carga XML para prevenir ataques de denegación de
+     límite máximo de 16 KB en el tamaño de carga XML mediante `SoapSizeLimitingFilter`
+     a nivel HTTP antes del análisis XML para prevenir ataques de denegación de
      servicio (XML Bomb / Billion Laughs).
 
 3. **Privacidad y ausencia de colisión de rutas:**

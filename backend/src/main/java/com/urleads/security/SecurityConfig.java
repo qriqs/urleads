@@ -1,11 +1,14 @@
 package com.urleads.security;
 
+import com.urleads.soap.filter.SoapSizeLimitingFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
@@ -15,10 +18,20 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.NullSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
@@ -26,20 +39,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Optional;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     private final UserDetailsServiceImpl userDetailsService;
-    private final JwtService jwtService;
 
-    public SecurityConfig(
-            UserDetailsServiceImpl userDetailsService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) JwtService jwtService
-    ) {
+    public SecurityConfig(UserDetailsServiceImpl userDetailsService) {
         this.userDetailsService = userDetailsService;
-        this.jwtService = jwtService;
     }
 
     @Bean
@@ -66,6 +75,142 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Order(1)
+    public SecurityFilterChain internalFilterChain(HttpSecurity http, Optional<JwtDecoder> jwtDecoderOptional) throws Exception {
+        http
+            .securityMatcher("/internal/**")
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .securityContext(context -> context.securityContextRepository(new NullSecurityContextRepository()))
+            .requestCache(cache -> cache.disable())
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
+                .accessDeniedHandler(new BearerTokenAccessDeniedHandler())
+            );
+
+        if (jwtDecoderOptional.isPresent()) {
+            http
+                .oauth2ResourceServer(oauth2 -> oauth2
+                    .jwt(jwt -> jwt
+                        .decoder(jwtDecoderOptional.get())
+                        .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                    )
+                    .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
+                    .accessDeniedHandler(new BearerTokenAccessDeniedHandler())
+                )
+                .authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/internal/**").hasAuthority("SCOPE_crm.leads.read")
+                    .anyRequest().authenticated()
+                );
+        } else {
+            http.authorizeHttpRequests(auth -> auth
+                .anyRequest().authenticated()
+            );
+        }
+
+        return http.build();
+    }
+
+    private JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        grantedAuthoritiesConverter.setAuthorityPrefix("SCOPE_");
+        grantedAuthoritiesConverter.setAuthoritiesClaimName("scope");
+
+        JwtAuthenticationConverter jwtConverter = new JwtAuthenticationConverter();
+        jwtConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+        return jwtConverter;
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain wsFilterChain(HttpSecurity http, Optional<JwtDecoder> jwtDecoderOptional) throws Exception {
+        http
+            .securityMatcher(new org.springframework.security.web.util.matcher.OrRequestMatcher(AntPathRequestMatcher.antMatcher("/ws/leads"),
+                    AntPathRequestMatcher.antMatcher("/ws/*.wsdl"),
+                    AntPathRequestMatcher.antMatcher("/ws/*.xsd")))
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .securityContext(context -> context.securityContextRepository(new NullSecurityContextRepository()))
+            .requestCache(cache -> cache.disable())
+            .addFilterBefore(new SoapSizeLimitingFilter(), SecurityContextHolderFilter.class)
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
+                .accessDeniedHandler(new BearerTokenAccessDeniedHandler())
+            );
+
+        if (jwtDecoderOptional.isPresent()) {
+            http
+                .oauth2ResourceServer(oauth2 -> oauth2
+                    .jwt(jwt -> jwt
+                        .decoder(jwtDecoderOptional.get())
+                        .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                    )
+                    .bearerTokenResolver(bearerTokenResolver())
+                    .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
+                    .accessDeniedHandler(new BearerTokenAccessDeniedHandler())
+                )
+                .authorizeHttpRequests(auth -> auth
+                    .requestMatchers(
+                        AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/ws/leads.wsdl"),
+                        AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/ws/*.wsdl"),
+                        AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/ws/*.xsd")
+                    ).permitAll()
+                    .requestMatchers(
+                        AntPathRequestMatcher.antMatcher(HttpMethod.POST, "/ws/leads"),
+                        AntPathRequestMatcher.antMatcher(HttpMethod.POST, "/ws/**")
+                    ).hasAuthority("SCOPE_crm.leads.read")
+                    .anyRequest().authenticated()
+                );
+        } else {
+            http.authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/ws/leads.wsdl"),
+                    AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/ws/*.wsdl"),
+                    AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/ws/*.xsd")
+                ).permitAll()
+                .anyRequest().authenticated()
+            );
+        }
+
+        return http.build();
+    }
+
+    private BearerTokenResolver bearerTokenResolver() {
+        DefaultBearerTokenResolver resolver = new DefaultBearerTokenResolver();
+        resolver.setAllowUriQueryParameter(false);
+        return resolver;
+    }
+
+    @Bean
+    @Order(3)
+    public SecurityFilterChain agendaFilterChain(HttpSecurity http,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) JwtService legacyJwtService,
+            Optional<JwtDecoder> decoder) throws Exception {
+        http.securityMatcher(new org.springframework.security.web.util.matcher.OrRequestMatcher(
+                        AntPathRequestMatcher.antMatcher("/api/v1/**"),
+                        AntPathRequestMatcher.antMatcher("/ws/notifications"),
+                        AntPathRequestMatcher.antMatcher("/ws/notifications/**")))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .securityContext(context -> context.securityContextRepository(new NullSecurityContextRepository()))
+                .requestCache(cache -> cache.disable())
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint()))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(AntPathRequestMatcher.antMatcher("/api/v1/health"),
+                                AntPathRequestMatcher.antMatcher("/ws/notifications"),
+                                AntPathRequestMatcher.antMatcher("/ws/notifications/**")).permitAll()
+                        .anyRequest().authenticated());
+        if (decoder.isPresent()) {
+            http.oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.decoder(decoder.get())));
+        } else if (legacyJwtService != null) {
+            http.addFilterBefore(new JwtAuthenticationFilter(legacyJwtService, userDetailsService),
+                    org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+        }
+        return http.build();
+    }
+
+    @Bean
+    @Order(4)
     public SecurityFilterChain filterChain(HttpSecurity http, SecurityContextRepository securityContextRepo) throws Exception {
         CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
         requestHandler.setCsrfRequestAttributeName(null);
@@ -74,15 +219,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(requestHandler)
-                .ignoringRequestMatchers("/api/health", "/api/v1/**", "/internal/**", "/ws/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs")
+                .ignoringRequestMatchers("/api/health")
             )
-            .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class);
-
-        if (jwtService != null) {
-            http.addFilterBefore(new JwtAuthenticationFilter(jwtService, userDetailsService), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
-        }
-
-        http
+            .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
             .securityContext(context -> context.securityContextRepository(securityContextRepo))
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
@@ -90,12 +229,10 @@ public class SecurityConfig {
                 .maximumSessions(1)
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/health", "/api/v1/health", "/api/auth/csrf").permitAll()
+                .requestMatchers("/api/health", "/api/auth/csrf").permitAll()
                 .requestMatchers("/api/auth/login").permitAll()
-                .requestMatchers("/ws/**").permitAll()
-                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/api/**").authenticated()
-                .requestMatchers("/internal/**").authenticated()
                 .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/robots.txt", "/{*path}").permitAll()
                 .requestMatchers("/api/auth/session", "/api/auth/me").authenticated()
                 .anyRequest().authenticated()

@@ -103,7 +103,7 @@ git worktree add ../urleads-comercial feat/comercial
    - El PR se fusiona mediante un merge commit que preserve el historial.
 
 3. **Integración final a `main`:**
-   - La rama `integration/backend-v2` se fusionará a `main` únicamente tras la
-     finalización y validación de las tareas de integración técnica (C14, C15,
-     S15, A15). No se realizan fusiones directas individuales de ramas de
-     servicio hacia `main`.
+    - Integra primero cada servicio en `integration/backend-v2` y ejecuta las
+      comprobaciones combinadas. Cuando el usuario autorice publicar el proyecto,
+      abre o usa una revisión de integración para fusionar ese resultado en
+      `main`. No elimines las carpetas de otros servicios al integrar CRM.

@@ -3,9 +3,12 @@ package com.urleads.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
@@ -14,6 +17,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.urleads.entity.Usuario;
@@ -81,5 +86,97 @@ class SecurityCurrentUserProviderTest {
 
         Long id = provider.getCurrentUserId();
         assertThat(id).isEqualTo(42L);
+    }
+
+    @Test
+    void getCurrentUserId_conJwtValido_retornaIdSinConsultarBD() {
+        Jwt jwt = new Jwt(
+                "token-value",
+                Instant.now(),
+                Instant.now().plusSeconds(600),
+                Map.of("alg", "RS256"),
+                Map.of("sub", "42", "iss", "urleads-crm")
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new JwtAuthenticationToken(jwt, Collections.emptyList())
+        );
+
+        Long id = provider.getCurrentUserId();
+        assertThat(id).isEqualTo(42L);
+        verifyNoInteractions(usuarioRepository);
+    }
+
+    @Test
+    void getCurrentUserId_conJwtSujetoNoNumerico_lanza401() {
+        Jwt jwt = new Jwt(
+                "token-value",
+                Instant.now(),
+                Instant.now().plusSeconds(600),
+                Map.of("alg", "RS256"),
+                Map.of("sub", "admin", "iss", "urleads-crm")
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new JwtAuthenticationToken(jwt, Collections.emptyList())
+        );
+
+        assertThatThrownBy(() -> provider.getCurrentUserId())
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.UNAUTHORIZED));
+        verifyNoInteractions(usuarioRepository);
+    }
+
+    @Test
+    void getCurrentUserId_conJwtSujetoCeroONegativo_lanza401() {
+        Jwt jwtZero = new Jwt(
+                "token-value",
+                Instant.now(),
+                Instant.now().plusSeconds(600),
+                Map.of("alg", "RS256"),
+                Map.of("sub", "0", "iss", "urleads-crm")
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new JwtAuthenticationToken(jwtZero, Collections.emptyList())
+        );
+
+        assertThatThrownBy(() -> provider.getCurrentUserId())
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.UNAUTHORIZED));
+
+        Jwt jwtNegative = new Jwt(
+                "token-value",
+                Instant.now(),
+                Instant.now().plusSeconds(600),
+                Map.of("alg", "RS256"),
+                Map.of("sub", "-42", "iss", "urleads-crm")
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new JwtAuthenticationToken(jwtNegative, Collections.emptyList())
+        );
+
+        assertThatThrownBy(() -> provider.getCurrentUserId())
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.UNAUTHORIZED));
+    }
+
+    @Test
+    void getCurrentUserId_conJwtSujetoDesbordado_lanza401() {
+        Jwt jwtOverflow = new Jwt(
+                "token-value",
+                Instant.now(),
+                Instant.now().plusSeconds(600),
+                Map.of("alg", "RS256"),
+                Map.of("sub", "99999999999999999999999999999", "iss", "urleads-crm")
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new JwtAuthenticationToken(jwtOverflow, Collections.emptyList())
+        );
+
+        assertThatThrownBy(() -> provider.getCurrentUserId())
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.UNAUTHORIZED));
     }
 }

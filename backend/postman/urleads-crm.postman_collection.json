@@ -1,0 +1,613 @@
+{
+  "info": {
+    "_postman_id": "c05-urleads-crm-collection-v2-1",
+    "name": "UrLeads CRM API (Backend V2)",
+    "description": "Colección oficial Postman v2.1 para UrLeads CRM (Backend V2 C05).\nIncluye endpoints de salud, autenticación por sesión web y CSRF, emisión de tokens JWT interservicios, gestión completa de leads y notas, métricas de dashboard y consulta interna protegida por Bearer JWT RS256.\n\nTodos los valores utilizan variables de entorno seguras y datos ficticios.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "usuario_ejemplo",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "contrasena_segura_ejemplo",
+      "type": "string"
+    },
+    {
+      "key": "csrfToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "leadId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Salud",
+      "item": [
+        {
+          "name": "Verificar salud del servicio",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Endpoint público para verificar disponibilidad del backend CRM."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02. Autenticación y Sesión",
+      "item": [
+        {
+          "name": "Obtener Token CSRF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.token) {",
+                  "    pm.collectionVariables.set('csrfToken', jsonData.token);",
+                  "    pm.environment.set('csrfToken', jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/csrf",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "csrf"]
+            },
+            "description": "Obtiene el token CSRF necesario para peticiones POST, PUT o DELETE."
+          },
+          "response": []
+        },
+        {
+          "name": "Iniciar Sesión (Login)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Login exitoso\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Autentica credenciales y establece cookie de sesión HttpOnly JSESSIONID."
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar usuario actual (/api/auth/me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Retorna datos de usuario de la sesión web activa."
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar sesión actual (/api/auth/session)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/session",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "session"]
+            },
+            "description": "Ruta alias para consultar usuario autenticado."
+          },
+          "response": []
+        },
+        {
+          "name": "Cerrar Sesión (Logout)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrfToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Invalida la sesión activa y elimina la cookie JSESSIONID."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03. Tokens de Acceso Interservicios",
+      "item": [
+        {
+          "name": "Emitir Token de Acceso JWT (C02)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    if (json.access_token) {",
+                  "        pm.collectionVariables.set('accessToken', json.access_token);",
+                  "        pm.environment.set('accessToken', json.access_token);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrfToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/access-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "access-token"]
+            },
+            "description": "Emite token Bearer JWT RS256 con audiencia crm-api y scope crm.leads.read."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04. Leads",
+      "item": [
+        {
+          "name": "Listar Leads (Paginado)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/leads?page=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leads"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Obtiene la lista de leads paginada del usuario autenticado."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Leads con Filtros",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/leads?search=ejemplo&followUp=all&stage=NUEVO&page=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leads"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "ejemplo"
+                },
+                {
+                  "key": "followUp",
+                  "value": "all"
+                },
+                {
+                  "key": "stage",
+                  "value": "NUEVO"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Filtra leads por término de búsqueda, seguimiento y etapa."
+          },
+          "response": []
+        },
+        {
+          "name": "Crear Lead",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    if (json.id) {",
+                  "        pm.collectionVariables.set('leadId', String(json.id));",
+                  "        pm.environment.set('leadId', String(json.id));",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cliente Ejemplo SAC\",\n  \"phone\": \"+51987654321\",\n  \"email\": \"contacto@ejemplo.pe\",\n  \"stage\": \"NUEVO\",\n  \"nextFollowUp\": \"2026-10-25\",\n  \"service\": \"Consultoría CRM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/leads",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leads"]
+            },
+            "description": "Crea un lead asignado al usuario autenticado."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener Lead por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/leads/{{leadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leads", "{{leadId}}"]
+            },
+            "description": "Obtiene el detalle completo de un lead del usuario."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar Lead",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cliente Ejemplo SAC Actualizado\",\n  \"phone\": \"+51987654321\",\n  \"email\": \"contacto@ejemplo.pe\",\n  \"stage\": \"EN_SEGUIMIENTO\",\n  \"nextFollowUp\": \"2026-10-30\",\n  \"service\": \"Consultoría CRM Avanzada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/leads/{{leadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leads", "{{leadId}}"]
+            },
+            "description": "Actualiza la información y etapa de un lead existente."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar Lead",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrfToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/leads/{{leadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leads", "{{leadId}}"]
+            },
+            "description": "Elimina un lead del usuario autenticado."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05. Notas de Lead",
+      "item": [
+        {
+          "name": "Listar Notas de Lead",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/leads/{{leadId}}/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leads", "{{leadId}}", "notes"]
+            },
+            "description": "Obtiene la bitácora cronológica interna del lead."
+          },
+          "response": []
+        },
+        {
+          "name": "Crear Nota en Lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Contacto inicial realizado. El cliente solicitó propuesta comercial de demostración.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/leads/{{leadId}}/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leads", "{{leadId}}", "notes"]
+            },
+            "description": "Agrega una nueva nota a la bitácora interna del lead."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06. Dashboard",
+      "item": [
+        {
+          "name": "Obtener Métricas del Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard"]
+            },
+            "description": "Consulta métricas consolidadas: total de leads, etapas y seguimientos de hoy y atrasados."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "07. Consulta Interna Inter-Servicios (Backend V2 C03)",
+      "item": [
+        {
+          "name": "Consultar Lead Interno (Bearer JWT)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/internal/v1/leads/{{leadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["internal", "v1", "leads", "{{leadId}}"]
+            },
+            "description": "Consulta interna entre microservicios sin PII. Requiere Bearer JWT RS256 con audiencia crm-api y scope crm.leads.read."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "08. OpenAPI & Swagger UI",
+      "item": [
+        {
+          "name": "Obtener Especificación OpenAPI 3 (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v3/api-docs",
+              "host": ["{{baseUrl}}"],
+              "path": ["v3", "api-docs"]
+            },
+            "description": "Documentación OpenAPI 3 en formato JSON estándar."
+          },
+          "response": []
+        },
+        {
+          "name": "Acceder a Swagger UI (HTML)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/swagger-ui.html",
+              "host": ["{{baseUrl}}"],
+              "path": ["swagger-ui.html"]
+            },
+            "description": "Interfaz visual Swagger UI en el navegador."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
