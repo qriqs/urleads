@@ -91,9 +91,22 @@ class AgendaIntegrationRealIT {
 
     @BeforeEach
     void setUp() {
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+                isServiceAvailable("localhost", 8761) && isServiceAvailable("localhost", 5672),
+                "Saltando AgendaIntegrationRealIT: requiere Eureka Server (8761) y RabbitMQ (5672) activos (C14 Compose)."
+        );
         testUser = usuarioRepository.findByUsername("sebas")
                 .orElseGet(() -> usuarioRepository.save(new Usuario("sebas", "$2a$10$abcdefghijklmnopqrstuvwxyz123456")));
         jwtToken = jwtService.generateToken(testUser.getUsername());
+    }
+
+    private static boolean isServiceAvailable(String host, int port) {
+        try (java.net.Socket socket = new java.net.Socket()) {
+            socket.connect(new java.net.InetSocketAddress(host, port), 400);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Test
