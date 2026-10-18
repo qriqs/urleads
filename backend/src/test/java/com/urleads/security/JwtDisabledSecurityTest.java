@@ -79,6 +79,10 @@ class JwtDisabledSecurityTest {
         // Ruta interna sin configuración falla cerrada devolviendo 401
         mockMvc.perform(get("/internal/v1/c02-probe"))
                 .andExpect(status().isUnauthorized());
+
+        // Endpoint interno de leads C03 falla cerrado devolviendo 401
+        mockMvc.perform(get("/internal/v1/leads/105"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
