@@ -27,6 +27,9 @@ class ProcessedEventRepositoryIT {
     @Autowired
     private ProcessedEventRepository processedEventRepository;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @Test
     @DisplayName("Deduplicación en BD: existe por eventId y previene duplicados en clave primaria")
     void deduplication_persistsAndEnforcesUniqueEventId() {
@@ -43,15 +46,10 @@ class ProcessedEventRepositoryIT {
 
         assertThat(processedEventRepository.existsByEventId(eventId)).isTrue();
 
-        // Intento de duplicado debe lanzar violación de integridad
-        ProcessedEvent duplicateEvent = ProcessedEvent.builder()
-                .eventId(eventId)
-                .eventType("quotation.accepted.v1")
-                .processedAt(Instant.now())
-                .build();
-
+        // Intento de duplicado en BD debe lanzar violación de clave primaria / integridad
         assertThrows(DataIntegrityViolationException.class, () -> {
-            processedEventRepository.saveAndFlush(duplicateEvent);
+            jdbcTemplate.update("INSERT INTO processed_event (event_id, event_type, processed_at) VALUES (?, ?, ?)",
+                    eventId, "quotation.accepted.v1", java.sql.Timestamp.from(Instant.now()));
         });
     }
 }
