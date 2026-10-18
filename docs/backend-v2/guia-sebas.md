@@ -70,7 +70,7 @@ cd services/comercial
 | **S12** | Generación idempotente de órdenes a partir de cotización aceptada | Ampliación | `Backlog` | S05 | [DSW-67](https://linear.app/enmanuelprojects/issue/DSW-67) |
 | **S13** | Métricas y totales comerciales agrupados por moneda | Ampliación | `Backlog` | S05, S06 | [DSW-68](https://linear.app/enmanuelprojects/issue/DSW-68) |
 | **S14** | Swagger UI, Postman y suite de pruebas de Comercial | Integración | `Todo` | S01, S05 | [DSW-69](https://linear.app/enmanuelprojects/issue/DSW-69) |
-| **S15** | Integración real con CRM, RabbitMQ y Agenda | Integración | `Todo` | S05, S14, C03, A03, C14 | [DSW-70](https://linear.app/enmanuelprojects/issue/DSW-70) |
+| **S15** | Integración real con CRM, RabbitMQ y Agenda | Integración | `Done` | S05, S14, C03, A03, C14 | [DSW-70](https://linear.app/enmanuelprojects/issue/DSW-70) |
 
 ---
 
@@ -110,3 +110,31 @@ cd services/comercial
    Verifica el comportamiento del Circuit Breaker ante caída de CRM sabiendo que
    Eureka conserva leases y no detecta caídas de forma instantánea. Corrige defectos
    propios de Comercial y valida la entrega de eventos hacia Agenda.
+
+---
+
+## 5. Implementación y verificación de S15 (DSW-70: Integración real)
+
+### 5.1. Hallazgos y corrección de defectos inter-servicio
+1. **Doble serialización de payload Outbox en RabbitMQ:**
+   - *Defecto:* `RabbitTemplate` configurado con `Jackson2JsonMessageConverter` serializaba cadenas `String` (el JSON ya generado por el Outbox) como literales de cadena escapados (`"\"{\\\"eventId\\\":...}\""`), lo cual provocaba fallo de deserialización en el consumidor de Agenda (`QuotationAcceptedConsumer`) enviando mensajes a la DLQ.
+   - *Corrección:* Se especializó `Jackson2JsonMessageConverter` en `RabbitMqConfig` para emitir los bytes UTF-8 limpios de cadenas JSON pre-serializadas con `contentType = application/json`, garantizando compatibilidad 100% con el consumidor de Agenda y con los tests unitarios existentes.
+2. **Registro explícito en Eureka y parámetros de leases:**
+   - Se incorporó `@EnableDiscoveryClient` en `ComercialApplication`.
+   - Se configuraron los parámetros de ciclo de vida de leases: `eureka.instance.lease-renewal-interval-in-seconds=5` y `eureka.instance.lease-expiration-duration-in-seconds=10` en `application.properties`.
+3. **Resiliencia ante caída de CRM y retención de leases en Eureka:**
+   - La retención de leases en Eureka Server mantiene temporalmente las instancias caídas en el registro. Se comprobó que el Circuit Breaker de Resilience4j (`sliding-window-size=5`, `minimum-number-of-calls=3`, `failure-rate-threshold=50%`, `connect-timeout=2000ms`) pasa a estado `OPEN` aislando el fallo y respondiendo con HTTP 503 (`CrmUnavailableException`) en <100ms de forma fail-fast sin bloqueo de hilos.
+
+### 5.2. Suite de pruebas automatizadas S15 (`ComercialIntegrationRealTests`)
+Se implementó `ComercialIntegrationRealTests.java` con 4 casos de verificación:
+- **Criterio 1:** Verificación de contrato y registro en Eureka (`comercial-service`).
+- **Criterio 2:** Consulta Feign hacia `crm-service` resuelta dinámicamente con propagación de token JWT (`crm.leads.read`).
+- **Criterio 3:** Publicación de `quotation.accepted.v1` en `urleads.events.v1` compatible con el esquema de Agenda (sin PII, JSON puro).
+- **Criterio 4:** Resiliencia de Circuit Breaker ante caída de CRM y retención de leases en Eureka (fail-fast en estado `OPEN` y recuperación en `HALF_OPEN`).
+
+```bash
+# Ejecución de la suite completa de Comercial (125 tests pasando, 0 fallos)
+cd services/comercial
+./mvnw test
+```
+
