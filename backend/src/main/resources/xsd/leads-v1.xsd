@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:urleads:crm:leads:v1"
+           xmlns:tns="urn:urleads:crm:leads:v1"
+           elementFormDefault="qualified">
+
+    <xs:element name="GetLeadRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="leadId">
+                    <xs:simpleType>
+                        <xs:restriction base="xs:long">
+                            <xs:minInclusive value="1"/>
+                        </xs:restriction>
+                    </xs:simpleType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="GetLeadResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="id" type="xs:long"/>
+                <xs:element name="stage" type="tns:StageType"/>
+                <xs:element name="nextFollowUp" type="xs:date" minOccurs="0" nillable="true"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:simpleType name="StageType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="NUEVO"/>
+            <xs:enumeration value="EN_SEGUIMIENTO"/>
+            <xs:enumeration value="CERRADO"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+</xs:schema>

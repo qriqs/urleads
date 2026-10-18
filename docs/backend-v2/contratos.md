@@ -440,8 +440,9 @@ para evitar duplicidades operativas innecesarias.
 - **WSDL publicado:** `GET /ws/leads.wsdl` (disponible localmente de forma explícita).
 - **Target Namespace (TNS):** `urn:urleads:crm:leads:v1`
 - **SOAPAction HTTP Header:** `urn:urleads:crm:leads:v1:GetLead`
-- **Ubicación de artefactos:** Los contratos XSD/WSDL residirán en
-  `backend/src/main/resources/` bajo la convención establecida por Spring-WS.
+- **Ubicación de artefactos:** El contrato XSD reside en
+  `backend/src/main/resources/xsd/leads-v1.xsd` y la definición WSDL se expone
+  dinámicamente en `/ws/leads.wsdl` mediante `DefaultWsdl11Definition`.
 
 #### Estructura de elementos XML
 
@@ -499,7 +500,8 @@ para evitar duplicidades operativas innecesarias.
    - Se debe deshabilitar de forma explícita el procesamiento de entidades externas
      (XXE) y declaraciones DTD externas en el parser XML.
    - Se aplica validación estricta del esquema XSD sobre las solicitudes recibidas y
-     límite máximo en el tamaño de carga XML para prevenir ataques de denegación de
+     límite máximo de 16 KB en el tamaño de carga XML mediante `SoapSizeLimitingFilter`
+     a nivel HTTP antes del análisis XML para prevenir ataques de denegación de
      servicio (XML Bomb / Billion Laughs).
 
 3. **Privacidad y ausencia de colisión de rutas:**

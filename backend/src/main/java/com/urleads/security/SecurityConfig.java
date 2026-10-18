@@ -1,5 +1,6 @@
 package com.urleads.security;
 
+import com.urleads.soap.filter.SoapSizeLimitingFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -7,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
@@ -20,12 +22,16 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.NullSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
@@ -117,6 +123,64 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
+    public SecurityFilterChain wsFilterChain(HttpSecurity http, Optional<JwtDecoder> jwtDecoderOptional) throws Exception {
+        http
+            .securityMatcher(AntPathRequestMatcher.antMatcher("/ws/**"))
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .securityContext(context -> context.securityContextRepository(new NullSecurityContextRepository()))
+            .requestCache(cache -> cache.disable())
+            .addFilterBefore(new SoapSizeLimitingFilter(), SecurityContextHolderFilter.class)
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
+                .accessDeniedHandler(new BearerTokenAccessDeniedHandler())
+            );
+
+        if (jwtDecoderOptional.isPresent()) {
+            http
+                .oauth2ResourceServer(oauth2 -> oauth2
+                    .jwt(jwt -> jwt
+                        .decoder(jwtDecoderOptional.get())
+                        .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                    )
+                    .bearerTokenResolver(bearerTokenResolver())
+                    .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
+                    .accessDeniedHandler(new BearerTokenAccessDeniedHandler())
+                )
+                .authorizeHttpRequests(auth -> auth
+                    .requestMatchers(
+                        AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/ws/leads.wsdl"),
+                        AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/ws/*.wsdl"),
+                        AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/ws/*.xsd")
+                    ).permitAll()
+                    .requestMatchers(
+                        AntPathRequestMatcher.antMatcher(HttpMethod.POST, "/ws/leads"),
+                        AntPathRequestMatcher.antMatcher(HttpMethod.POST, "/ws/**")
+                    ).hasAuthority("SCOPE_crm.leads.read")
+                    .anyRequest().authenticated()
+                );
+        } else {
+            http.authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/ws/leads.wsdl"),
+                    AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/ws/*.wsdl"),
+                    AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/ws/*.xsd")
+                ).permitAll()
+                .anyRequest().authenticated()
+            );
+        }
+
+        return http.build();
+    }
+
+    private BearerTokenResolver bearerTokenResolver() {
+        DefaultBearerTokenResolver resolver = new DefaultBearerTokenResolver();
+        resolver.setAllowUriQueryParameter(false);
+        return resolver;
+    }
+
+    @Bean
+    @Order(3)
     public SecurityFilterChain filterChain(HttpSecurity http, SecurityContextRepository securityContextRepo) throws Exception {
         CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
         requestHandler.setCsrfRequestAttributeName(null);
