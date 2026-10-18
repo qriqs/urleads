@@ -234,8 +234,32 @@ If the lead has no scheduled follow-up (such as in stage `CERRADO` or `NUEVO` wi
 los valores conservados además de los modificados. No se introduce PATCH solo
 para el cambio de etapa.
 
-## Postman
+## Documentación OpenAPI 3 y Swagger UI (Backend V2 C05)
 
-La colección deberá ejecutar CSRF, login, `GET`, `POST`, `PUT` y `DELETE` con
-cookies de sesión. Incluirá pruebas de credenciales incorrectas, ruta sin
-sesión y validación inválida. No incluirá una contraseña real.
+El servicio expone la documentación interactiva y el contrato formal OpenAPI 3:
+
+| Método | Ruta | Formato | Descripción |
+|---|---|---|---|
+| GET | `/v3/api-docs` | JSON | Especificación OpenAPI 3 formal con contratos, esquemas y seguridad. |
+| GET | `/swagger-ui.html` | HTML | Interfaz Swagger UI interactiva (redirige a `/swagger-ui/index.html`). |
+
+Esquemas de seguridad y cabeceras documentadas:
+- `cookieAuth` (`JSESSIONID` vía cookie): Autenticación web para rutas bajo `/api/**`.
+- `X-XSRF-TOKEN` (cabecera HTTP obligatoria en mutaciones): Requerido en métodos que mutan estado (`POST`, `PUT`, `DELETE`). Las mutaciones autenticadas requieren sesión web activa (`cookieAuth`) Y cabecera `X-XSRF-TOKEN`. El inicio de sesión (`POST /api/auth/login`) es público pero requiere la cabecera `X-XSRF-TOKEN`.
+- `bearerJwt` (`Authorization: Bearer <token>`): Token Bearer JWT RS256 con audiencia `crm-api` y alcance `crm.leads.read` para `/internal/**`.
+
+## Colección Postman (Backend V2 C05)
+
+La colección oficial importable se encuentra en `backend/postman/urleads-crm.postman_collection.json` (formato Postman v2.1) acompañada de su entorno `backend/postman/urleads-crm.postman_environment.json`.
+
+Cubre:
+1. Salud del servicio (`GET /api/health`).
+2. Autenticación, CSRF, login, consulta de usuario (`/api/auth/me`, `/api/auth/session`) y logout.
+3. Emisión de tokens de acceso JWT (`POST /api/auth/access-token`).
+4. Operaciones CRUD y filtros de leads (`GET`, `POST`, `PUT`, `DELETE /api/leads`).
+5. Bitácora interna de notas de lead (`GET`, `POST /api/leads/{id}/notes`).
+6. Métricas del dashboard (`GET /api/dashboard`).
+7. Consulta interna inter-servicios (`GET /internal/v1/leads/{id}`) con autenticación Bearer JWT.
+8. Verificación de documentación OpenAPI (`GET /v3/api-docs` y `/swagger-ui.html`).
+
+Todos los valores utilizan variables de entorno seguras (`{{baseUrl}}`, `{{username}}`, `{{password}}`, `{{csrfToken}}`, `{{accessToken}}`, `{{leadId}}`) sin credenciales reales ni URLs de producción.
