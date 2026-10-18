@@ -23,7 +23,7 @@ public class SpaController {
 
     @GetMapping(value = "/{*path}", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<Resource> forwardClientRoutes(@PathVariable String path) {
-        if (path.equals("/api") || path.startsWith("/api/") || path.contains(".")) {
+        if (path.equals("/api") || path.startsWith("/api/") || path.equals("/ws") || path.startsWith("/ws/") || path.contains(".")) {
             return ResponseEntity.notFound().build();
         }
         return resource("index.html", MediaType.TEXT_HTML);

@@ -56,6 +56,13 @@ public class JwtService {
     }
 
     /**
+     * Genera un token JWT para pruebas y autenticación con duración predeterminada de 60 minutos.
+     */
+    public String generateToken(String username) {
+        return generateToken(username, 60);
+    }
+
+    /**
      * Genera un token JWT para pruebas y autenticación.
      */
     public String generateToken(String username, long durationMinutes) {
