@@ -42,6 +42,9 @@ class UrLeadsApplicationTests {
     private UsuarioRepository usuarioRepository;
 
     @MockBean
+    private com.urleads.repository.NotificationRepository notificationRepository;
+
+    @MockBean
     private CurrentUserProvider currentUserProvider;
 
     @Test

@@ -32,9 +32,14 @@ import java.util.Collections;
 public class SecurityConfig {
 
     private final UserDetailsServiceImpl userDetailsService;
+    private final JwtService jwtService;
 
-    public SecurityConfig(UserDetailsServiceImpl userDetailsService) {
+    public SecurityConfig(
+            UserDetailsServiceImpl userDetailsService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) JwtService jwtService
+    ) {
         this.userDetailsService = userDetailsService;
+        this.jwtService = jwtService;
     }
 
     @Bean
@@ -69,9 +74,15 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(requestHandler)
-                .ignoringRequestMatchers("/api/health")
+                .ignoringRequestMatchers("/api/health", "/api/v1/**", "/ws/**")
             )
-            .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
+            .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class);
+
+        if (jwtService != null) {
+            http.addFilterBefore(new JwtAuthenticationFilter(jwtService, userDetailsService), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+        }
+
+        http
             .securityContext(context -> context.securityContextRepository(securityContextRepo))
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
@@ -79,8 +90,9 @@ public class SecurityConfig {
                 .maximumSessions(1)
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/health", "/api/auth/csrf").permitAll()
+                .requestMatchers("/api/health", "/api/v1/health", "/api/auth/csrf").permitAll()
                 .requestMatchers("/api/auth/login").permitAll()
+                .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/robots.txt", "/{*path}").permitAll()
                 .requestMatchers("/api/auth/session", "/api/auth/me").authenticated()
