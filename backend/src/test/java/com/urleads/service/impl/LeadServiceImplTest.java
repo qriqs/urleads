@@ -25,9 +25,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import com.urleads.dto.CreateLeadRequest;
+import com.urleads.dto.InternalLeadResponse;
 import com.urleads.dto.UpdateLeadRequest;
 import com.urleads.entity.Lead;
 import com.urleads.entity.Usuario;
+import com.urleads.exception.LeadNotFoundException;
 import com.urleads.exception.LeadValidationException;
 import com.urleads.repository.LeadRepository;
 import com.urleads.repository.UsuarioRepository;
@@ -239,5 +241,76 @@ class LeadServiceImplTest {
 
         // Debe ser 2026-10-11 (Lima), NO 2026-10-12 (UTC)
         assertThat(fechaCaptor.getValue()).isEqualTo(LocalDate.of(2026, 10, 11));
+    }
+
+    // =========================================================================
+    // TESTS C03: CONSULTA INTERNA DE LEADS (obtenerInterno)
+    // =========================================================================
+
+    @Test
+    @DisplayName("C03: obtenerInterno con lead existente y propietario correcto retorna DTO mínimo sin PII")
+    void obtenerInterno_conLeadExistenteYPropietarioCorrecto_retornaDtoMinimoSinPii() {
+        Lead lead = new Lead();
+        lead.setId(105L);
+        lead.setNombre("Lead Privado Con PII");
+        lead.setTelefono("+51999888777");
+        lead.setCorreo("privado@example.com");
+        lead.setService("Plan Premium");
+        lead.setEtapa("EN_SEGUIMIENTO");
+        lead.setProximoSeguimiento(LocalDate.of(2026, 10, 25));
+
+        when(leadRepository.findByIdAndUsuarioId(105L, 42L)).thenReturn(Optional.of(lead));
+
+        InternalLeadResponse response = service.obtenerInterno(105L, 42L);
+
+        assertThat(response).isNotNull();
+        assertThat(response.id()).isEqualTo(105L);
+        assertThat(response.stage()).isEqualTo("EN_SEGUIMIENTO");
+        assertThat(response.nextFollowUp()).isEqualTo(LocalDate.of(2026, 10, 25));
+        verify(leadRepository).findByIdAndUsuarioId(105L, 42L);
+    }
+
+    @Test
+    @DisplayName("C03: obtenerInterno con lead inexistente lanza LeadNotFoundException")
+    void obtenerInterno_conLeadInexistente_lanzaLeadNotFoundException() {
+        when(leadRepository.findByIdAndUsuarioId(999L, 42L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.obtenerInterno(999L, 42L))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository).findByIdAndUsuarioId(999L, 42L);
+    }
+
+    @Test
+    @DisplayName("C03: obtenerInterno con otro propietario lanza LeadNotFoundException sin filtrar existencia")
+    void obtenerInterno_conOtroPropietario_lanzaLeadNotFoundException() {
+        when(leadRepository.findByIdAndUsuarioId(105L, 88L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.obtenerInterno(105L, 88L))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository).findByIdAndUsuarioId(105L, 88L);
+    }
+
+    @Test
+    @DisplayName("C03: obtenerInterno con lead CERRADO retorna DTO con nextFollowUp null")
+    void obtenerInterno_conLeadCerradoSinSeguimiento_retornaDtoConProximoSeguimientoNull() {
+        Lead leadCerrado = new Lead();
+        leadCerrado.setId(200L);
+        leadCerrado.setNombre("Lead Cerrado");
+        leadCerrado.setEtapa("CERRADO");
+        leadCerrado.setProximoSeguimiento(null);
+
+        when(leadRepository.findByIdAndUsuarioId(200L, 42L)).thenReturn(Optional.of(leadCerrado));
+
+        InternalLeadResponse response = service.obtenerInterno(200L, 42L);
+
+        assertThat(response).isNotNull();
+        assertThat(response.id()).isEqualTo(200L);
+        assertThat(response.stage()).isEqualTo("CERRADO");
+        assertThat(response.nextFollowUp()).isNull();
+        verify(leadRepository).findByIdAndUsuarioId(200L, 42L);
     }
 }
