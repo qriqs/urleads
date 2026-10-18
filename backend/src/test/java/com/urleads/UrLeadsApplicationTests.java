@@ -13,6 +13,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.urleads.repository.LeadAuditLogRepository;
 import com.urleads.repository.LeadRepository;
 import com.urleads.repository.UsuarioRepository;
 import com.urleads.security.CurrentUserProvider;
@@ -34,6 +35,9 @@ class UrLeadsApplicationTests {
 
     @MockBean
     private LeadRepository leadRepository;
+
+    @MockBean
+    private LeadAuditLogRepository leadAuditLogRepository;
 
     @MockBean
     private NotaRepository notaRepository;

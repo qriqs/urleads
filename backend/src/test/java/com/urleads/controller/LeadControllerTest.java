@@ -35,6 +35,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import com.urleads.dto.CreateLeadRequest;
+import com.urleads.dto.LeadAuditResponse;
 import com.urleads.dto.LeadResponse;
 import com.urleads.dto.PageResponse;
 import com.urleads.dto.UpdateLeadRequest;
@@ -351,5 +352,101 @@ class LeadControllerTest {
                 .andExpect(jsonPath("$.totalElements").value(1));
 
         verify(leadService).listarPaginado(USUARIO_ACTUAL, null, "today", "NUEVO", 0);
+    }
+
+    // =========================================================================
+    // TESTS C09: AUDITORÍA DE LEADS (GET /api/leads/{id}/audit)
+    // =========================================================================
+
+    @Test
+    void listarAuditoria_conSesionValida_retorna200ConPageResponseDelContrato() throws Exception {
+        OffsetDateTime timestamp = OffsetDateTime.parse("2026-10-18T10:15:30Z");
+        LeadAuditResponse delta1 = new LeadAuditResponse(101L, 10L, "stage", "NUEVO", "EN_SEGUIMIENTO", timestamp);
+        LeadAuditResponse delta2 = new LeadAuditResponse(102L, 10L, "phone", "999111222", "999333444", timestamp);
+
+        PageResponse<LeadAuditResponse> pageResponse = new PageResponse<>(
+                List.of(delta1, delta2),
+                0,
+                20,
+                2,
+                1
+        );
+
+        when(leadService.listarAuditoria(10L, USUARIO_ACTUAL, 0)).thenReturn(pageResponse);
+
+        mockMvc.perform(get("/api/leads/10/audit"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(101))
+                .andExpect(jsonPath("$.content[0].leadId").value(10))
+                .andExpect(jsonPath("$.content[0].field").value("stage"))
+                .andExpect(jsonPath("$.content[0].oldValue").value("NUEVO"))
+                .andExpect(jsonPath("$.content[0].newValue").value("EN_SEGUIMIENTO"))
+                .andExpect(jsonPath("$.content[0].createdAt").value("2026-10-18T10:15:30Z"))
+                .andExpect(jsonPath("$.content[1].id").value(102))
+                .andExpect(jsonPath("$.content[1].field").value("phone"))
+                .andExpect(jsonPath("$.content[1].oldValue").value("999111222"))
+                .andExpect(jsonPath("$.content[1].newValue").value("999333444"))
+                // R6: No expone campos ajenos a la auditoría
+                .andExpect(jsonPath("$.content[0].password").doesNotExist())
+                .andExpect(jsonPath("$.content[0].passwordHash").doesNotExist())
+                .andExpect(jsonPath("$.content[0].notes").doesNotExist())
+                .andExpect(jsonPath("$.content[0].contenido").doesNotExist());
+
+        verify(leadService).listarAuditoria(10L, USUARIO_ACTUAL, 0);
+    }
+
+    @Test
+    void listarAuditoria_pasaParametroPageAlServicio_eIgnoraParametrosSizeYOwnerId() throws Exception {
+        when(leadService.listarAuditoria(10L, USUARIO_ACTUAL, 2))
+                .thenReturn(new PageResponse<>(List.of(), 2, 20, 45, 3));
+
+        mockMvc.perform(get("/api/leads/10/audit")
+                        .param("page", "2")
+                        .param("size", "100") // Manipulación de tamaño intentada por el cliente
+                        .param("ownerId", "999")) // Intento de suplantación de propietario
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(45));
+
+        // Verifica que se invoca con el usuario real y el tamaño fijo no se altera
+        verify(leadService).listarAuditoria(10L, USUARIO_ACTUAL, 2);
+    }
+
+    @Test
+    void listarAuditoria_leadInexistente_devuelve404() throws Exception {
+        when(leadService.listarAuditoria(99L, USUARIO_ACTUAL, 0))
+                .thenThrow(new LeadNotFoundException("Lead no encontrado"));
+
+        mockMvc.perform(get("/api/leads/99/audit"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Lead no encontrado"));
+    }
+
+    @Test
+    void listarAuditoria_leadDeOtroPropietario_devuelve404Identico() throws Exception {
+        when(leadService.listarAuditoria(10L, USUARIO_ACTUAL, 0))
+                .thenThrow(new LeadNotFoundException("Lead no encontrado"));
+
+        mockMvc.perform(get("/api/leads/10/audit"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Lead no encontrado"));
+    }
+
+    @Test
+    @WithAnonymousUser
+    void listarAuditoria_sinSesion_devuelve401() throws Exception {
+        mockMvc.perform(get("/api/leads/10/audit"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("No autorizado"));
+
+        verifyNoInteractions(leadService);
     }
 }

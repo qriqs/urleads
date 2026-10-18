@@ -11,7 +11,9 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -26,11 +28,15 @@ import org.springframework.data.domain.Pageable;
 
 import com.urleads.dto.CreateLeadRequest;
 import com.urleads.dto.InternalLeadResponse;
+import com.urleads.dto.LeadAuditResponse;
+import com.urleads.dto.PageResponse;
 import com.urleads.dto.UpdateLeadRequest;
 import com.urleads.entity.Lead;
+import com.urleads.entity.LeadAuditLog;
 import com.urleads.entity.Usuario;
 import com.urleads.exception.LeadNotFoundException;
 import com.urleads.exception.LeadValidationException;
+import com.urleads.repository.LeadAuditLogRepository;
 import com.urleads.repository.LeadRepository;
 import com.urleads.repository.UsuarioRepository;
 
@@ -43,11 +49,14 @@ class LeadServiceImplTest {
     @Mock
     private UsuarioRepository usuarioRepository;
 
+    @Mock
+    private LeadAuditLogRepository leadAuditLogRepository;
+
     private LeadServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new LeadServiceImpl(leadRepository, usuarioRepository);
+        service = new LeadServiceImpl(leadRepository, usuarioRepository, leadAuditLogRepository);
     }
 
     @Test
@@ -229,7 +238,7 @@ class LeadServiceImplTest {
         // En UTC la fecha es 2026-10-12.
         // En Lima (UTC-5) son las 21:00 del 2026-10-11.
         Clock clockFijo = Clock.fixed(Instant.parse("2026-10-12T02:00:00Z"), ZoneOffset.UTC);
-        LeadServiceImpl serviceConReloj = new LeadServiceImpl(leadRepository, usuarioRepository, clockFijo);
+        LeadServiceImpl serviceConReloj = new LeadServiceImpl(leadRepository, usuarioRepository, leadAuditLogRepository, clockFijo);
 
         when(leadRepository.buscar(eq(1L), eq(""), eq("%%"), eq("today"), any(LocalDate.class), any(Pageable.class)))
                 .thenReturn(Page.empty());
@@ -312,5 +321,86 @@ class LeadServiceImplTest {
         assertThat(response.stage()).isEqualTo("CERRADO");
         assertThat(response.nextFollowUp()).isNull();
         verify(leadRepository).findByIdAndUsuarioId(200L, 42L);
+    }
+
+    // =========================================================================
+    // TESTS C09: AUDITORÍA DE LEADS (listarAuditoria y compatibilidad)
+    // =========================================================================
+
+    @Test
+    @DisplayName("C09: listarAuditoria con lead inexistente lanza LeadNotFoundException")
+    void listarAuditoria_conLeadInexistente_lanzaLeadNotFoundException() {
+        when(leadRepository.findByIdAndUsuarioId(999L, 42L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.listarAuditoria(999L, 42L, 0))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository).findByIdAndUsuarioId(999L, 42L);
+    }
+
+    @Test
+    @DisplayName("C09: listarAuditoria con otro propietario lanza LeadNotFoundException sin filtrar existencia")
+    void listarAuditoria_conOtroPropietario_lanzaLeadNotFoundException() {
+        when(leadRepository.findByIdAndUsuarioId(105L, 88L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.listarAuditoria(105L, 88L, 0))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository).findByIdAndUsuarioId(105L, 88L);
+    }
+
+    @Test
+    @DisplayName("C09: construccion de LeadServiceImpl requiere obligatoriamente LeadAuditLogRepository")
+    void construccion_sinRepositorioAuditoria_lanzaNullPointerException() {
+        assertThatThrownBy(() -> new LeadServiceImpl(leadRepository, usuarioRepository, (LeadAuditLogRepository) null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("leadAuditLogRepository must not be null");
+    }
+
+    @Test
+    @DisplayName("C09: listarAuditoria con lead propio delega directamente en LeadAuditLogRepository")
+    void listarAuditoria_conLeadPropio_delegaEnRepositorioYRetornaPageResponse() {
+        Lead lead = new Lead();
+        lead.setId(105L);
+        when(leadRepository.findByIdAndUsuarioId(105L, 42L)).thenReturn(Optional.of(lead));
+
+        LeadAuditLog log = new LeadAuditLog(105L, 42L, "stage", "NUEVO", "CERRADO", OffsetDateTime.now());
+        log.setId(1L);
+        when(leadAuditLogRepository.findByLeadIdAndUsuarioId(eq(105L), eq(42L), any(Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(log), org.springframework.data.domain.PageRequest.of(0, 20), 1));
+
+        PageResponse<LeadAuditResponse> res = service.listarAuditoria(105L, 42L, 0);
+
+        assertThat(res).isNotNull();
+        assertThat(res.totalElements()).isEqualTo(1);
+        assertThat(res.content()).hasSize(1);
+        assertThat(res.content().get(0).field()).isEqualTo("stage");
+        verify(leadAuditLogRepository).findByLeadIdAndUsuarioId(eq(105L), eq(42L), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("C09: actualizar con campos modificados siempre persiste deltas en LeadAuditLogRepository")
+    void actualizar_conCamposModificados_persisteDeltasObligatoriamente() {
+        Lead lead = new Lead();
+        lead.setId(10L);
+        lead.setNombre("Carlos");
+        lead.setTelefono("999111222");
+        lead.setEtapa("NUEVO");
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 42L)).thenReturn(Optional.of(lead));
+        when(leadRepository.save(any(Lead.class))).thenAnswer(i -> i.getArgument(0));
+
+        UpdateLeadRequest request = new UpdateLeadRequest();
+        request.setNombre("Carlos Nuevo");
+        request.setTelefono("999111222");
+        request.setEtapa("NUEVO");
+
+        var response = service.actualizar(10L, 42L, request);
+
+        assertThat(response.getNombre()).isEqualTo("Carlos Nuevo");
+        verify(leadRepository).save(any(Lead.class));
+        verify(leadAuditLogRepository).saveAll(any());
     }
 }
