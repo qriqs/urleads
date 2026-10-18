@@ -88,11 +88,14 @@ class TagApiIT {
         return usuarioRepository.saveAndFlush(u);
     }
 
+    private static final java.util.concurrent.atomic.AtomicLong TELEFONO_SEQ =
+            new java.util.concurrent.atomic.AtomicLong(990000000L);
+
     private Lead crearLead(Usuario dueno, String nombre) {
         Lead lead = new Lead();
         lead.setUsuario(dueno);
         lead.setNombre(nombre);
-        lead.setTelefono("999111222");
+        lead.setTelefono(String.valueOf(TELEFONO_SEQ.incrementAndGet()));
         lead.setEtapa("NUEVO");
         return leadRepository.saveAndFlush(lead);
     }

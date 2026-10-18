@@ -621,4 +621,186 @@ class LeadRepositoryIT {
             entityManager.flush();
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
+
+    // =========================================================================
+    // TESTS C12: ARCHIVO Y RESTAURACION LOGICA (DSW-52)
+    // =========================================================================
+
+    @Test
+    @DisplayName("C12 Repository: consultas activas y de dashboard excluyen estrictamente leads archivados")
+    void shouldExcludeArchivedLeadsFromActiveQueries() {
+        LocalDate hoy = LocalDate.now();
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("c12UserA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("c12UserB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        // Lead activo para usuario A
+        Lead leadActivo = new Lead();
+        leadActivo.setUsuario(usuarioA);
+        leadActivo.setNombre("Lead Activo");
+        leadActivo.setTelefono("999111001");
+        leadActivo.setEtapa("EN_SEGUIMIENTO");
+        leadActivo.setProximoSeguimiento(hoy);
+        leadActivo = leadRepository.save(leadActivo);
+
+        // Lead archivado para usuario A
+        Lead leadArchivado = new Lead();
+        leadArchivado.setUsuario(usuarioA);
+        leadArchivado.setNombre("Lead Archivado");
+        leadArchivado.setTelefono("999111002");
+        leadArchivado.setEtapa("EN_SEGUIMIENTO");
+        leadArchivado.setProximoSeguimiento(hoy);
+        leadArchivado.setArchivedAt(java.time.OffsetDateTime.now());
+        leadArchivado = leadRepository.save(leadArchivado);
+
+        // Lead archivado para usuario B
+        Lead leadArchivadoB = new Lead();
+        leadArchivadoB.setUsuario(usuarioB);
+        leadArchivadoB.setNombre("Lead B Archivado");
+        leadArchivadoB.setTelefono("999111003");
+        leadArchivadoB.setEtapa("EN_SEGUIMIENTO");
+        leadArchivadoB.setProximoSeguimiento(hoy);
+        leadArchivadoB.setArchivedAt(java.time.OffsetDateTime.now());
+        leadRepository.save(leadArchivadoB);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // 1. findByUsuarioId excluye archivados
+        List<Lead> activos = leadRepository.findByUsuarioId(usuarioA.getId());
+        assertThat(activos).hasSize(1);
+        assertThat(activos.get(0).getId()).isEqualTo(leadActivo.getId());
+
+        // 2. findByIdAndUsuarioId retorna empty para lead archivado
+        assertThat(leadRepository.findByIdAndUsuarioId(leadArchivado.getId(), usuarioA.getId())).isEmpty();
+
+        // 3. buscar excluye archivados
+        var resultadoBuscar = leadRepository.buscar(usuarioA.getId(), "", "", "", "%%", "all", hoy, pageable);
+        assertThat(resultadoBuscar.getTotalElements()).isEqualTo(1);
+        assertThat(resultadoBuscar.getContent().get(0).getId()).isEqualTo(leadActivo.getId());
+
+        // 4. countByUsuarioId excluye archivados
+        assertThat(leadRepository.countByUsuarioId(usuarioA.getId())).isEqualTo(1);
+
+        // 5. countLeadsPorEtapa excluye archivados
+        List<Object[]> porEtapa = leadRepository.countLeadsPorEtapa(usuarioA.getId());
+        assertThat(porEtapa).hasSize(1);
+        assertThat(porEtapa.get(0)[0]).isEqualTo("EN_SEGUIMIENTO");
+        assertThat((Long) porEtapa.get(0)[1]).isEqualTo(1L);
+
+        // 6. findSeguimientosHoy excluye archivados
+        List<Lead> hoyLeads = leadRepository.findSeguimientosHoy(usuarioA.getId(), hoy);
+        assertThat(hoyLeads).hasSize(1);
+        assertThat(hoyLeads.get(0).getId()).isEqualTo(leadActivo.getId());
+    }
+
+    @Test
+    @DisplayName("C12 Repository: listado de archivados incluye únicamente archivados del propietario")
+    void shouldListArchivedLeadsScopedToOwner() {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("c12ListArchA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("c12ListArchB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        Lead activoA = new Lead();
+        activoA.setUsuario(usuarioA);
+        activoA.setNombre("Activo A");
+        activoA.setTelefono("999222001");
+        activoA.setEtapa("NUEVO");
+        leadRepository.save(activoA);
+
+        Lead archivadoA = new Lead();
+        archivadoA.setUsuario(usuarioA);
+        archivadoA.setNombre("Archivado A");
+        archivadoA.setTelefono("999222002");
+        archivadoA.setEtapa("NUEVO");
+        archivadoA.setArchivedAt(java.time.OffsetDateTime.now());
+        archivadoA = leadRepository.save(archivadoA);
+
+        Lead archivadoB = new Lead();
+        archivadoB.setUsuario(usuarioB);
+        archivadoB.setNombre("Archivado B");
+        archivadoB.setTelefono("999222003");
+        archivadoB.setEtapa("NUEVO");
+        archivadoB.setArchivedAt(java.time.OffsetDateTime.now());
+        leadRepository.save(archivadoB);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        var pageArchivadosA = leadRepository.findArchivedByUsuarioId(usuarioA.getId(), pageable);
+        assertThat(pageArchivadosA.getTotalElements()).isEqualTo(1);
+        assertThat(pageArchivadosA.getContent().get(0).getId()).isEqualTo(archivadoA.getId());
+        assertThat(pageArchivadosA.getContent().get(0).getNombre()).isEqualTo("Archivado A");
+    }
+
+    @Test
+    @DisplayName("C12 Repository: recupera lead archivado para restauración y reactiva visibilidad al limpiar timestamp")
+    void shouldFindArchivedLeadForRestoreAndReactivate() {
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("c12RestUserA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("c12RestUserB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        Lead activo = new Lead();
+        activo.setUsuario(usuarioA);
+        activo.setNombre("Lead Inicial Activo");
+        activo.setTelefono("999333001");
+        activo.setEtapa("NUEVO");
+        activo = leadRepository.save(activo);
+
+        Lead archivado = new Lead();
+        archivado.setUsuario(usuarioA);
+        archivado.setNombre("Lead Para Restaurar");
+        archivado.setTelefono("999333002");
+        archivado.setEtapa("NUEVO");
+        archivado.setArchivedAt(java.time.OffsetDateTime.now());
+        archivado = leadRepository.save(archivado);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // 1. findByIdAndUsuarioIdAndArchivedAtIsNotNull encuentra el lead archivado propio
+        Optional<Lead> paraRestaurar = leadRepository.findByIdAndUsuarioIdAndArchivedAtIsNotNull(archivado.getId(), usuarioA.getId());
+        assertThat(paraRestaurar).isPresent();
+
+        // 2. Usuario B no tiene acceso al lead archivado de Usuario A
+        assertThat(leadRepository.findByIdAndUsuarioIdAndArchivedAtIsNotNull(archivado.getId(), usuarioB.getId())).isEmpty();
+
+        // 3. Lead activo no se encuentra en consulta de archivados
+        assertThat(leadRepository.findByIdAndUsuarioIdAndArchivedAtIsNotNull(activo.getId(), usuarioA.getId())).isEmpty();
+
+        // 4. Restauración: limpiar timestamp y guardar
+        Lead aRestaurar = paraRestaurar.get();
+        aRestaurar.setArchivedAt(null);
+        leadRepository.save(aRestaurar);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // 5. Tras restauración, ambos leads aparecen como activos
+        List<Lead> reloadedActivos = leadRepository.findByUsuarioId(usuarioA.getId());
+        assertThat(reloadedActivos).hasSize(2);
+        assertThat(leadRepository.findByIdAndUsuarioId(archivado.getId(), usuarioA.getId())).isPresent();
+    }
 }
