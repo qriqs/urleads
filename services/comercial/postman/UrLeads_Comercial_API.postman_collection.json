@@ -1,0 +1,351 @@
+{
+  "info": {
+    "_postman_id": "a9d8e7c6-b5a4-4f3e-2d1c-0b9a8f7e6d5c",
+    "name": "UrLeads - Servicio Comercial API",
+    "description": "Colección completa de pruebas manuales y automatizadas para el microservicio Comercial (UrLeads Backend V2, puerto 8081). Incluye catálogo, cotizaciones con precisión monetaria, plantillas, ciclo de vida, versionado, órdenes comerciales y métricas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwtToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health & Documentación OpenAPI",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/health", "host": ["{{baseUrl}}"], "path": ["api", "v1", "health"] }
+          }
+        },
+        {
+          "name": "OpenAPI Specification (JSON)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v3/api-docs", "host": ["{{baseUrl}}"], "path": ["v3", "api-docs"] }
+          }
+        },
+        {
+          "name": "Swagger UI HTML",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/swagger-ui.html", "host": ["{{baseUrl}}"], "path": ["swagger-ui.html"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Catálogo de Productos y Servicios",
+      "item": [
+        {
+          "name": "Listar Ítems de Catálogo",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/catalog?active=true&currency=USD&page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "catalog"],
+              "query": [
+                { "key": "active", "value": "true" },
+                { "key": "currency", "value": "USD" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear Ítem de Catálogo (USD)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"SRV-DEV-01\",\n  \"name\": \"Desarrollo FullStack\",\n  \"description\": \"Horas de ingeniería de software senior\",\n  \"unitPrice\": 120.00,\n  \"currency\": \"USD\",\n  \"active\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/catalog", "host": ["{{baseUrl}}"], "path": ["api", "v1", "catalog"] }
+          }
+        },
+        {
+          "name": "Obtener Ítem por ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/catalog/{{catalogItemId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "catalog", "{{catalogItemId}}"] }
+          }
+        },
+        {
+          "name": "Actualizar Ítem de Catálogo",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"SRV-DEV-01\",\n  \"name\": \"Desarrollo FullStack Senior\",\n  \"description\": \"Horas de ingeniería de software senior con soporte 24/7\",\n  \"unitPrice\": 135.00,\n  \"currency\": \"USD\",\n  \"active\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/catalog/{{catalogItemId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "catalog", "{{catalogItemId}}"] }
+          }
+        },
+        {
+          "name": "Eliminar Ítem de Catálogo",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/v1/catalog/{{catalogItemId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "catalog", "{{catalogItemId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Cotizaciones",
+      "item": [
+        {
+          "name": "Listar Cotizaciones (Filtros Avanzados y Paginación)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quotes?status=DRAFT&currency=USD&page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "quotes"],
+              "query": [
+                { "key": "status", "value": "DRAFT" },
+                { "key": "currency", "value": "USD" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear Cotización en DRAFT con Cálculo Exacto",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leadId\": 105,\n  \"currency\": \"USD\",\n  \"taxRate\": 0.1800,\n  \"notes\": \"Cotización inicial formal para proyecto corporativo\",\n  \"items\": [\n    {\n      \"catalogItemId\": null,\n      \"code\": \"SRV-01\",\n      \"name\": \"Arquitectura Cloud\",\n      \"description\": \"Diseño y despliegue\",\n      \"quantity\": 10.00,\n      \"unitPrice\": 150.00\n    },\n    {\n      \"catalogItemId\": null,\n      \"code\": \"SRV-02\",\n      \"name\": \"Soporte Mensual\",\n      \"description\": \"Monitoreo preventivo\",\n      \"quantity\": 2.00,\n      \"unitPrice\": 300.00\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes"] }
+          }
+        },
+        {
+          "name": "Obtener Detalle de Cotización",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "{{quoteId}}"] }
+          }
+        },
+        {
+          "name": "Actualizar Cotización (Borrador)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"taxRate\": 0.1500,\n  \"notes\": \"Notas actualizadas con descuento negociado\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "{{quoteId}}"] }
+          }
+        },
+        {
+          "name": "Agregar Línea a Cotización",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"SRV-EXTRA\",\n  \"name\": \"Horas Adicionales\",\n  \"description\": \"Testing de seguridad\",\n  \"quantity\": 5.00,\n  \"unitPrice\": 100.00\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}/items", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "{{quoteId}}", "items"] }
+          }
+        },
+        {
+          "name": "Eliminar Línea de Cotización",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}/items/{{quoteItemId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "{{quoteId}}", "items", "{{quoteItemId}}"] }
+          }
+        },
+        {
+          "name": "Eliminar Cotización",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "{{quoteId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Ciclo de Vida y Transiciones",
+      "item": [
+        {
+          "name": "Enviar Cotización (DRAFT -> SENT)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}/send", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "{{quoteId}}", "send"] }
+          }
+        },
+        {
+          "name": "Rechazar Cotización con Motivo Comercial",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"PRECIO\",\n  \"notes\": \"Presupuesto del cliente superado por costos de licenciamiento\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}/reject", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "{{quoteId}}", "reject"] }
+          }
+        },
+        {
+          "name": "Aceptación Atómica con Publicación Outbox a RabbitMQ",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}/accept", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "{{quoteId}}", "accept"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Plantillas Reutilizables de Cotización",
+      "item": [
+        {
+          "name": "Listar Plantillas del Usuario",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/quote-templates", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quote-templates"] }
+          }
+        },
+        {
+          "name": "Crear Plantilla",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Plantilla Pyme Estándar\",\n  \"description\": \"Paquete para implementación de comercio electrónico\",\n  \"currency\": \"USD\",\n  \"taxRate\": 0.1800,\n  \"notes\": \"Términos estándar a 30 días\",\n  \"items\": [\n    {\n      \"code\": \"ECOM-01\",\n      \"name\": \"Tienda Online\",\n      \"description\": \"Configuración de pasarela\",\n      \"quantity\": 1.00,\n      \"unitPrice\": 1200.00\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/quote-templates", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quote-templates"] }
+          }
+        },
+        {
+          "name": "Instanciar Cotización desde Plantilla (Copia Profunda)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leadId\": 205,\n  \"taxRate\": 0.1800,\n  \"notes\": \"Cotización generada automáticamente desde plantilla\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/from-template/{{templateId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "from-template", "{{templateId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Control de Versiones y Revisiones",
+      "item": [
+        {
+          "name": "Crear Nueva Revisión Vinculada v(N+1)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Revisión v2 renegociada con ajuste de precio\",\n  \"taxRate\": 0.1500\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}/revisions", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "{{quoteId}}", "revisions"] }
+          }
+        },
+        {
+          "name": "Listar Historial Genealógico de Revisiones",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}/revisions", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "{{quoteId}}", "revisions"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Órdenes Comerciales Idempotentes",
+      "item": [
+        {
+          "name": "Generar Orden desde Cotización Aceptada (Idempotente)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}/orders", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "{{quoteId}}", "orders"] }
+          }
+        },
+        {
+          "name": "Consultar Orden de la Cotización",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}/order", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "{{quoteId}}", "order"] }
+          }
+        },
+        {
+          "name": "Consultar Orden Comercial por ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/{{orderId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "orders", "{{orderId}}"] }
+          }
+        },
+        {
+          "name": "Listar Órdenes Comerciales (Paginado)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "orders"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Métricas Comerciales por Moneda",
+      "item": [
+        {
+          "name": "Consultar Métricas Generales (Segregadas por Moneda)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/metrics", "host": ["{{baseUrl}}"], "path": ["api", "v1", "metrics"] }
+          }
+        },
+        {
+          "name": "Consultar Métricas Filtradas por Moneda (USD)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/metrics?currency=USD",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "metrics"],
+              "query": [{ "key": "currency", "value": "USD" }]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
