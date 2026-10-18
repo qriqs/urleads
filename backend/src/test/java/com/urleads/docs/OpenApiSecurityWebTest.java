@@ -136,6 +136,9 @@ class OpenApiSecurityWebTest {
                 "/api/leads",
                 "/api/leads/{id}",
                 "/api/leads/{id}/notes",
+                "/api/leads/archived",
+                "/api/leads/{id}/archive",
+                "/api/leads/{id}/restore",
                 "/api/dashboard",
                 "/internal/v1/leads/{id}"
         );
@@ -203,6 +206,24 @@ class OpenApiSecurityWebTest {
         assertThat(logoutOp.isMissingNode()).isFalse();
         assertThat(getSingleSecurityScheme(logoutOp)).isEqualTo("cookieAuth");
         assertThat(hasHeaderParam(logoutOp, "X-XSRF-TOKEN")).isTrue();
+
+        // 7. GET /api/leads/archived: requiere cookieAuth, no X-XSRF-TOKEN
+        JsonNode listArchivedOp = paths.path("/api/leads/archived").path("get");
+        assertThat(listArchivedOp.isMissingNode()).isFalse();
+        assertThat(getSingleSecurityScheme(listArchivedOp)).isEqualTo("cookieAuth");
+        assertThat(hasHeaderParam(listArchivedOp, "X-XSRF-TOKEN")).isFalse();
+
+        // 8. POST /api/leads/{id}/archive: requiere cookieAuth Y cabecera X-XSRF-TOKEN
+        JsonNode archiveOp = paths.path("/api/leads/{id}/archive").path("post");
+        assertThat(archiveOp.isMissingNode()).isFalse();
+        assertThat(getSingleSecurityScheme(archiveOp)).isEqualTo("cookieAuth");
+        assertThat(hasHeaderParam(archiveOp, "X-XSRF-TOKEN")).isTrue();
+
+        // 9. POST /api/leads/{id}/restore: requiere cookieAuth Y cabecera X-XSRF-TOKEN
+        JsonNode restoreOp = paths.path("/api/leads/{id}/restore").path("post");
+        assertThat(restoreOp.isMissingNode()).isFalse();
+        assertThat(getSingleSecurityScheme(restoreOp)).isEqualTo("cookieAuth");
+        assertThat(hasHeaderParam(restoreOp, "X-XSRF-TOKEN")).isTrue();
     }
 
     private boolean hasHeaderParam(JsonNode operationNode, String headerName) {

@@ -651,4 +651,188 @@ class LeadControllerTest {
 
         verifyNoInteractions(leadService);
     }
+
+    // =========================================================================
+    // TESTS C12: ARCHIVO Y RESTAURACION LOGICA DE LEADS (DSW-52)
+    // =========================================================================
+
+    @Test
+    void archivar_conSesionYCsrf_devuelve200ConLeadActualizado() throws Exception {
+        LeadResponse leadArchivado = respuesta();
+        leadArchivado.setArchivedAt(OffsetDateTime.parse("2026-10-18T12:00:00Z"));
+
+        when(leadService.archivar(10L, USUARIO_ACTUAL)).thenReturn(leadArchivado);
+
+        mockMvc.perform(post("/api/leads/10/archive")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(10))
+                .andExpect(jsonPath("$.name").value("Ana Torres"))
+                .andExpect(jsonPath("$.archivedAt").value("2026-10-18T12:00:00Z"));
+
+        verify(leadService).archivar(10L, USUARIO_ACTUAL);
+    }
+
+    @Test
+    @WithAnonymousUser
+    void archivar_sinSesion_devuelve401() throws Exception {
+        mockMvc.perform(post("/api/leads/10/archive")
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("No autorizado"));
+
+        verifyNoInteractions(leadService);
+    }
+
+    @Test
+    void archivar_sinCsrf_devuelve403() throws Exception {
+        mockMvc.perform(post("/api/leads/10/archive"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(leadService);
+    }
+
+    @Test
+    void archivar_inexistenteOYaArchivadoOAjeno_devuelve404() throws Exception {
+        when(leadService.archivar(99L, USUARIO_ACTUAL))
+                .thenThrow(new LeadNotFoundException("Lead no encontrado"));
+
+        mockMvc.perform(post("/api/leads/99/archive")
+                        .with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Lead no encontrado"));
+
+        verify(leadService).archivar(99L, USUARIO_ACTUAL);
+    }
+
+    @Test
+    void archivar_ignoraUsuarioIdDelCliente() throws Exception {
+        LeadResponse leadArchivado = respuesta();
+        leadArchivado.setArchivedAt(OffsetDateTime.parse("2026-10-18T12:00:00Z"));
+
+        when(leadService.archivar(10L, USUARIO_ACTUAL)).thenReturn(leadArchivado);
+
+        mockMvc.perform(post("/api/leads/10/archive")
+                        .with(csrf())
+                        .param("usuarioId", "999")
+                        .param("ownerId", "888"))
+                .andExpect(status().isOk());
+
+        verify(leadService).archivar(10L, USUARIO_ACTUAL);
+        verify(leadService, never()).archivar(eq(10L), eq(999L));
+    }
+
+    @Test
+    void restaurar_conSesionYCsrf_devuelve200ConLeadReactivado() throws Exception {
+        LeadResponse leadReactivado = respuesta();
+        leadReactivado.setArchivedAt(null);
+
+        when(leadService.restaurar(10L, USUARIO_ACTUAL)).thenReturn(leadReactivado);
+
+        mockMvc.perform(post("/api/leads/10/restore")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(10))
+                .andExpect(jsonPath("$.name").value("Ana Torres"))
+                .andExpect(jsonPath("$.archivedAt").doesNotExist());
+
+        verify(leadService).restaurar(10L, USUARIO_ACTUAL);
+    }
+
+    @Test
+    @WithAnonymousUser
+    void restaurar_sinSesion_devuelve401() throws Exception {
+        mockMvc.perform(post("/api/leads/10/restore")
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("No autorizado"));
+
+        verifyNoInteractions(leadService);
+    }
+
+    @Test
+    void restaurar_sinCsrf_devuelve403() throws Exception {
+        mockMvc.perform(post("/api/leads/10/restore"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(leadService);
+    }
+
+    @Test
+    void restaurar_inexistenteOActivoOAjeno_devuelve404() throws Exception {
+        when(leadService.restaurar(99L, USUARIO_ACTUAL))
+                .thenThrow(new LeadNotFoundException("Lead no encontrado"));
+
+        mockMvc.perform(post("/api/leads/99/restore")
+                        .with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Lead no encontrado"));
+
+        verify(leadService).restaurar(99L, USUARIO_ACTUAL);
+    }
+
+    @Test
+    void restaurar_ignoraUsuarioIdDelCliente() throws Exception {
+        LeadResponse leadReactivado = respuesta();
+        leadReactivado.setArchivedAt(null);
+
+        when(leadService.restaurar(10L, USUARIO_ACTUAL)).thenReturn(leadReactivado);
+
+        mockMvc.perform(post("/api/leads/10/restore")
+                        .with(csrf())
+                        .param("usuarioId", "999")
+                        .param("ownerId", "888"))
+                .andExpect(status().isOk());
+
+        verify(leadService).restaurar(10L, USUARIO_ACTUAL);
+        verify(leadService, never()).restaurar(eq(10L), eq(999L));
+    }
+
+    @Test
+    void listarArchivados_conSesionValida_devuelve200ConPageResponseDelContrato() throws Exception {
+        LeadResponse item = respuesta();
+        item.setArchivedAt(OffsetDateTime.parse("2026-10-18T12:00:00Z"));
+        PageResponse<LeadResponse> pageResponse = new PageResponse<>(List.of(item), 0, 20, 1, 1);
+
+        when(leadService.listarArchivados(USUARIO_ACTUAL, 0)).thenReturn(pageResponse);
+
+        mockMvc.perform(get("/api/leads/archived"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(10))
+                .andExpect(jsonPath("$.content[0].archivedAt").value("2026-10-18T12:00:00Z"));
+
+        verify(leadService).listarArchivados(USUARIO_ACTUAL, 0);
+    }
+
+    @Test
+    @WithAnonymousUser
+    void listarArchivados_sinSesion_devuelve401() throws Exception {
+        mockMvc.perform(get("/api/leads/archived"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("No autorizado"));
+
+        verifyNoInteractions(leadService);
+    }
+
+    @Test
+    void listarArchivados_pasaParametroPage_eIgnoraOwnerId() throws Exception {
+        when(leadService.listarArchivados(USUARIO_ACTUAL, 3))
+                .thenReturn(new PageResponse<>(List.of(), 3, 20, 65, 4));
+
+        mockMvc.perform(get("/api/leads/archived")
+                        .param("page", "3")
+                        .param("size", "50")
+                        .param("ownerId", "999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(3))
+                .andExpect(jsonPath("$.totalElements").value(65));
+
+        verify(leadService).listarArchivados(USUARIO_ACTUAL, 3);
+    }
 }

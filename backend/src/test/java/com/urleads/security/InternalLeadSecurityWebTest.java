@@ -348,6 +348,32 @@ class InternalLeadSecurityWebTest {
     }
 
     // =========================================================================
+    // C12/DSW-52: Lead archivado -> 404 idéntico a inexistente
+    // =========================================================================
+    @Test
+    @DisplayName("C12: Lead archivado devuelve 404 idéntico al de lead inexistente")
+    void c12_LeadArchivado_Retorna404Identico() throws Exception {
+        Lead leadArchivado = new Lead();
+        leadArchivado.setId(109L);
+        leadArchivado.setNombre("Lead Archivado");
+        leadArchivado.setEtapa("NUEVO");
+        leadArchivado.setArchivedAt(OffsetDateTime.parse("2026-10-18T10:00:00Z"));
+
+        when(leadRepository.findByIdAndUsuarioId(109L, 42L)).thenReturn(Optional.of(leadArchivado));
+
+        String token42 = createValidToken("42", "crm.leads.read");
+
+        mockMvc.perform(get("/internal/v1/leads/109")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token42))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Lead no encontrado"));
+
+        verify(leadRepository).findByIdAndUsuarioId(109L, 42L);
+    }
+
+    // =========================================================================
     // R6: Token ausente, malformado, clave ajena o audiencia ajena -> 401; sin invocar repo
     // =========================================================================
     @Test
