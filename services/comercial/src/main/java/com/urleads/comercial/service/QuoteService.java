@@ -130,6 +130,40 @@ public class QuoteService {
         return QuoteDetailResponse.fromEntity(saved);
     }
 
+    public QuoteDetailResponse sendQuote(String ownerId, Long id) {
+        Quote quote = findQuoteByOwner(ownerId, id);
+
+        // Idempotencia: si ya fue enviada, retornar sin error
+        if (quote.getStatus() == QuoteStatus.SENT) {
+            return QuoteDetailResponse.fromEntity(quote);
+        }
+
+        if (quote.isFinal()) {
+            throw new IllegalStateException("No se puede enviar una cotización en estado final (" + quote.getStatus() + ")");
+        }
+
+        quote.transitionTo(QuoteStatus.SENT);
+        Quote saved = quoteRepository.save(quote);
+        return QuoteDetailResponse.fromEntity(saved);
+    }
+
+    public QuoteDetailResponse rejectQuote(String ownerId, Long id) {
+        Quote quote = findQuoteByOwner(ownerId, id);
+
+        // Idempotencia: si ya fue rechazada, retornar sin error
+        if (quote.getStatus() == QuoteStatus.REJECTED) {
+            return QuoteDetailResponse.fromEntity(quote);
+        }
+
+        if (quote.getStatus() == QuoteStatus.ACCEPTED) {
+            throw new IllegalStateException("No se puede rechazar una cotización que ya fue aceptada");
+        }
+
+        quote.transitionTo(QuoteStatus.REJECTED);
+        Quote saved = quoteRepository.save(quote);
+        return QuoteDetailResponse.fromEntity(saved);
+    }
+
     public QuoteDetailResponse acceptQuote(String ownerId, Long id) {
         Quote quote = findQuoteByOwner(ownerId, id);
 
@@ -146,7 +180,7 @@ public class QuoteService {
         crmLeadService.getLeadById(quote.getLeadId());
 
         // Transición de estado a ACCEPTED
-        quote.setStatus(QuoteStatus.ACCEPTED);
+        quote.transitionTo(QuoteStatus.ACCEPTED);
         Quote savedQuote = quoteRepository.save(quote);
 
         // Registro atómico de evento en tabla outbox_events (sin PII)
@@ -176,6 +210,9 @@ public class QuoteService {
     }
 
     private void ensureDraftStatus(Quote quote, String action) {
+        if (quote.isFinal()) {
+            throw new IllegalStateException("No se puede " + action + " una cotización en estado final (" + quote.getStatus() + ")");
+        }
         if (quote.getStatus() != QuoteStatus.DRAFT) {
             throw new IllegalStateException("Solo se pueden " + action + " cotizaciones en estado DRAFT");
         }

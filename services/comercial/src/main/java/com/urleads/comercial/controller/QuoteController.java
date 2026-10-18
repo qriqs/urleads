@@ -110,6 +110,26 @@ public class QuoteController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/{id}/send")
+    public ResponseEntity<QuoteDetailResponse> send(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable Long id
+    ) {
+        String ownerId = jwt.getSubject();
+        QuoteDetailResponse response = quoteService.sendQuote(ownerId, id);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/reject")
+    public ResponseEntity<QuoteDetailResponse> reject(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable Long id
+    ) {
+        String ownerId = jwt.getSubject();
+        QuoteDetailResponse response = quoteService.rejectQuote(ownerId, id);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/{id}/accept")
     public ResponseEntity<QuoteDetailResponse> accept(
         @AuthenticationPrincipal Jwt jwt,
