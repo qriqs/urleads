@@ -160,4 +160,69 @@ class AgendaControllerTest {
                         .param("hasta", "2026-10-10"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @DisplayName("GET /api/v1/agenda/daily-pending retorna 200 OK con resumen diario de tareas y citas")
+    void getDailyPending_authenticated_returns200WithSummary() throws Exception {
+        com.urleads.dto.DailyPendingResponse response = com.urleads.dto.DailyPendingResponse.builder()
+                .fecha(LocalDate.of(2026, 10, 25))
+                .zonaHoraria("America/Lima")
+                .totalPendientes(2)
+                .totalTareasPendientes(1)
+                .totalCitasProgramadas(1)
+                .tareas(List.of(com.urleads.dto.TaskResponse.builder()
+                        .id(1L)
+                        .titulo("Tarea de prueba")
+                        .estado("PENDIENTE")
+                        .fechaLimite(LocalDate.of(2026, 10, 25))
+                        .build()))
+                .citas(List.of(com.urleads.dto.AppointmentResponse.builder()
+                        .id(10L)
+                        .titulo("Cita de prueba")
+                        .estado("PROGRAMADA")
+                        .inicio(Instant.parse("2026-10-25T15:00:00Z"))
+                        .fin(Instant.parse("2026-10-25T16:00:00Z"))
+                        .build()))
+                .items(List.of(
+                        AgendaItemResponse.builder()
+                                .tipo("CITA")
+                                .id(10L)
+                                .titulo("Cita de prueba")
+                                .build(),
+                        AgendaItemResponse.builder()
+                                .tipo("TAREA")
+                                .id(1L)
+                                .titulo("Tarea de prueba")
+                                .build()
+                ))
+                .build();
+
+        when(agendaQueryService.obtenerResumenPendientesDelDia(eq(42L), eq("2026-10-25"), eq("America/Lima")))
+                .thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/agenda/daily-pending")
+                        .header("Authorization", validToken)
+                        .param("fecha", "2026-10-25")
+                        .param("zonaHoraria", "America/Lima"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fecha").value("2026-10-25"))
+                .andExpect(jsonPath("$.zonaHoraria").value("America/Lima"))
+                .andExpect(jsonPath("$.totalPendientes").value(2))
+                .andExpect(jsonPath("$.totalTareasPendientes").value(1))
+                .andExpect(jsonPath("$.totalCitasProgramadas").value(1))
+                .andExpect(jsonPath("$.tareas").isArray())
+                .andExpect(jsonPath("$.tareas[0].id").value(1L))
+                .andExpect(jsonPath("$.citas").isArray())
+                .andExpect(jsonPath("$.citas[0].id").value(10L))
+                .andExpect(jsonPath("$.items").isArray())
+                .andExpect(jsonPath("$.items[0].tipo").value("CITA"))
+                .andExpect(jsonPath("$.items[1].tipo").value("TAREA"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/agenda/daily-pending sin token de autenticación retorna 401 Unauthorized")
+    void getDailyPending_unauthenticated_returns401() throws Exception {
+        mockMvc.perform(get("/api/v1/agenda/daily-pending"))
+                .andExpect(status().isUnauthorized());
+    }
 }

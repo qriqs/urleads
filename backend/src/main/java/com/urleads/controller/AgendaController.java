@@ -1,6 +1,7 @@
 package com.urleads.controller;
 
 import com.urleads.dto.AgendaItemResponse;
+import com.urleads.dto.DailyPendingResponse;
 import com.urleads.dto.PageResponse;
 import com.urleads.security.CurrentUserProvider;
 import com.urleads.service.AgendaQueryService;
@@ -41,5 +42,14 @@ public class AgendaController {
         return ResponseEntity.ok(PageResponse.from(
                 agendaQueryService.obtenerAgendaCombinada(usuarioId, desde, hasta, leadId, tipo, pageable)
         ));
+    }
+
+    @GetMapping("/daily-pending")
+    public ResponseEntity<DailyPendingResponse> getDailyPending(
+            @RequestParam(required = false) String fecha,
+            @RequestParam(required = false) String zonaHoraria
+    ) {
+        Long usuarioId = currentUserProvider.getCurrentUserId();
+        return ResponseEntity.ok(agendaQueryService.obtenerResumenPendientesDelDia(usuarioId, fecha, zonaHoraria));
     }
 }

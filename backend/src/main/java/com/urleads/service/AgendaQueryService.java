@@ -191,4 +191,110 @@ public class AgendaQueryService {
 
         return new PageImpl<>(pageContent, pageable, items.size());
     }
+
+    /**
+     * Resumen diario de citas y tareas pendientes para el usuario autenticado.
+     * Basado exclusivamente en los datos locales de Agenda, sin consultar bases de datos ajenas de CRM.
+     */
+    @Transactional(readOnly = true)
+    public com.urleads.dto.DailyPendingResponse obtenerResumenPendientesDelDia(
+            Long usuarioId,
+            String fechaStr,
+            String zonaHorariaStr
+    ) {
+        ZoneId zoneId;
+        try {
+            zoneId = (zonaHorariaStr != null && !zonaHorariaStr.isBlank())
+                    ? ZoneId.of(zonaHorariaStr.trim())
+                    : DEFAULT_ZONE;
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Zona horaria inválida: '" + zonaHorariaStr + "'. Ejemplo válido: 'America/Lima'");
+        }
+
+        LocalDate fecha = (fechaStr != null && !fechaStr.isBlank())
+                ? parseLocalDate(fechaStr, zoneId)
+                : LocalDate.now(zoneId);
+
+        List<TaskResponse> tareasList = new ArrayList<>();
+        List<AppointmentResponse> citasList = new ArrayList<>();
+        List<AgendaItemResponse> items = new ArrayList<>();
+
+        // 1. Tareas pendientes del día (fechaLimite = fecha y estado = 'PENDIENTE')
+        if (agendaTareaRepository != null) {
+            List<AgendaTarea> tareas = agendaTareaRepository.findByUsuarioIdAndFechaLimiteAndEstadoOrderByHoraLimiteAscIdAsc(
+                    usuarioId, fecha, "PENDIENTE");
+
+            for (AgendaTarea tarea : tareas) {
+                TaskResponse tr = TaskResponse.fromEntity(tarea);
+                tareasList.add(tr);
+
+                LocalTime hora = tarea.getHoraLimite();
+                Instant momentoUtc = ZonedDateTime.of(fecha, hora != null ? hora : LocalTime.of(9, 0), zoneId).toInstant();
+
+                items.add(AgendaItemResponse.builder()
+                        .tipo("TAREA")
+                        .id(tarea.getId())
+                        .referencia("TAREA-" + tarea.getId())
+                        .leadId(tarea.getLeadId())
+                        .titulo(tarea.getTitulo())
+                        .descripcion(tarea.getDescripcion())
+                        .fecha(fecha)
+                        .hora(hora)
+                        .momentoUtc(momentoUtc)
+                        .finUtc(null)
+                        .estado(tarea.getEstado())
+                        .tarea(tr)
+                        .cita(null)
+                        .build());
+            }
+        }
+
+        // 2. Citas programadas del día (inicio dentro del día en zoneId y estado = 'PROGRAMADA')
+        if (agendaCitaRepository != null) {
+            Instant startOfDay = fecha.atStartOfDay(zoneId).toInstant();
+            Instant endOfDay = fecha.atTime(LocalTime.MAX).atZone(zoneId).toInstant();
+
+            List<AgendaCita> citas = agendaCitaRepository.findByUsuarioIdAndEstadoAndInicioBetweenOrderByInicioAscIdAsc(
+                    usuarioId, "PROGRAMADA", startOfDay, endOfDay);
+
+            for (AgendaCita cita : citas) {
+                AppointmentResponse ar = AppointmentResponse.fromEntity(cita);
+                citasList.add(ar);
+
+                ZonedDateTime zdt = cita.getInicio().atZone(zoneId);
+                items.add(AgendaItemResponse.builder()
+                        .tipo("CITA")
+                        .id(cita.getId())
+                        .referencia("CITA-" + cita.getId())
+                        .leadId(cita.getLeadId())
+                        .titulo(cita.getTitulo())
+                        .descripcion(cita.getDescripcion())
+                        .fecha(zdt.toLocalDate())
+                        .hora(zdt.toLocalTime())
+                        .momentoUtc(cita.getInicio())
+                        .finUtc(cita.getFin())
+                        .estado(cita.getEstado())
+                        .tarea(null)
+                        .cita(ar)
+                        .build());
+            }
+        }
+
+        // 3. Ordenamiento cronológico de las actividades pendientes del día
+        items.sort(Comparator
+                .comparing(AgendaItemResponse::getMomentoUtc, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(AgendaItemResponse::getTipo)
+                .thenComparing(AgendaItemResponse::getId));
+
+        return com.urleads.dto.DailyPendingResponse.builder()
+                .fecha(fecha)
+                .zonaHoraria(zoneId.getId())
+                .totalPendientes(tareasList.size() + citasList.size())
+                .totalTareasPendientes(tareasList.size())
+                .totalCitasProgramadas(citasList.size())
+                .tareas(tareasList)
+                .citas(citasList)
+                .items(items)
+                .build();
+    }
 }

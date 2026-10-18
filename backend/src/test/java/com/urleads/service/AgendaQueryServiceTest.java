@@ -1,6 +1,7 @@
 package com.urleads.service;
 
 import com.urleads.dto.AgendaItemResponse;
+import com.urleads.dto.DailyPendingResponse;
 import com.urleads.entity.AgendaCita;
 import com.urleads.entity.AgendaTarea;
 import com.urleads.entity.Usuario;
@@ -199,5 +200,99 @@ class AgendaQueryServiceTest {
 
         verify(agendaCitaRepository).findByUsuarioIdAndInicioBetweenOrderByInicioAscIdAsc(
                 eq(42L), any(Instant.class), any(Instant.class));
+    }
+
+    @Test
+    @DisplayName("obtenerResumenPendientesDelDia retorna tareas pendientes y citas programadas con totales")
+    void obtenerResumenPendientesDelDia_returnsPendingTasksAndAppointments() {
+        LocalDate fecha = LocalDate.of(2026, 10, 25);
+
+        AgendaTarea tarea = AgendaTarea.builder()
+                .id(101L)
+                .usuario(usuario)
+                .titulo("Seguimiento a propuesta")
+                .descripcion("Revisar dudas con cliente")
+                .fechaLimite(fecha)
+                .horaLimite(LocalTime.of(16, 0))
+                .estado("PENDIENTE")
+                .build();
+
+        AgendaCita cita = AgendaCita.builder()
+                .id(201L)
+                .usuario(usuario)
+                .titulo("Reunión de alineación")
+                .inicio(Instant.parse("2026-10-25T14:30:00Z")) // 09:30 Lima
+                .fin(Instant.parse("2026-10-25T15:30:00Z"))
+                .zonaHoraria("America/Lima")
+                .estado("PROGRAMADA")
+                .build();
+
+        when(agendaTareaRepository.findByUsuarioIdAndFechaLimiteAndEstadoOrderByHoraLimiteAscIdAsc(
+                eq(42L), eq(fecha), eq("PENDIENTE")))
+                .thenReturn(List.of(tarea));
+
+        when(agendaCitaRepository.findByUsuarioIdAndEstadoAndInicioBetweenOrderByInicioAscIdAsc(
+                eq(42L), eq("PROGRAMADA"), any(Instant.class), any(Instant.class)))
+                .thenReturn(List.of(cita));
+
+        DailyPendingResponse response = agendaQueryService.obtenerResumenPendientesDelDia(
+                42L, "2026-10-25", "America/Lima");
+
+        assertThat(response).isNotNull();
+        assertThat(response.getFecha()).isEqualTo(fecha);
+        assertThat(response.getZonaHoraria()).isEqualTo("America/Lima");
+        assertThat(response.getTotalPendientes()).isEqualTo(2);
+        assertThat(response.getTotalTareasPendientes()).isEqualTo(1);
+        assertThat(response.getTotalCitasProgramadas()).isEqualTo(1);
+
+        assertThat(response.getTareas()).hasSize(1);
+        assertThat(response.getTareas().get(0).getId()).isEqualTo(101L);
+        assertThat(response.getTareas().get(0).getEstado()).isEqualTo("PENDIENTE");
+
+        assertThat(response.getCitas()).hasSize(1);
+        assertThat(response.getCitas().get(0).getId()).isEqualTo(201L);
+        assertThat(response.getCitas().get(0).getEstado()).isEqualTo("PROGRAMADA");
+
+        // Items combinados cronológicos:
+        // Cita a las 14:30 UTC / 09:30 Lima vs Tarea a las 21:00 UTC / 16:00 Lima
+        assertThat(response.getItems()).hasSize(2);
+        assertThat(response.getItems().get(0).getTipo()).isEqualTo("CITA");
+        assertThat(response.getItems().get(0).getId()).isEqualTo(201L);
+        assertThat(response.getItems().get(1).getTipo()).isEqualTo("TAREA");
+        assertThat(response.getItems().get(1).getId()).isEqualTo(101L);
+    }
+
+    @Test
+    @DisplayName("obtenerResumenPendientesDelDia por defecto usa la fecha de hoy y America/Lima")
+    void obtenerResumenPendientesDelDia_defaultDateAndZone() {
+        when(agendaTareaRepository.findByUsuarioIdAndFechaLimiteAndEstadoOrderByHoraLimiteAscIdAsc(
+                eq(42L), any(LocalDate.class), eq("PENDIENTE")))
+                .thenReturn(List.of());
+
+        when(agendaCitaRepository.findByUsuarioIdAndEstadoAndInicioBetweenOrderByInicioAscIdAsc(
+                eq(42L), eq("PROGRAMADA"), any(Instant.class), any(Instant.class)))
+                .thenReturn(List.of());
+
+        DailyPendingResponse response = agendaQueryService.obtenerResumenPendientesDelDia(42L, null, null);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getZonaHoraria()).isEqualTo("America/Lima");
+        assertThat(response.getFecha()).isEqualTo(LocalDate.now(ZoneId.of("America/Lima")));
+        assertThat(response.getTotalPendientes()).isEqualTo(0);
+        assertThat(response.getTotalTareasPendientes()).isEqualTo(0);
+        assertThat(response.getTotalCitasProgramadas()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("obtenerResumenPendientesDelDia es estrictamente autónomo y no consulta CRM")
+    void obtenerResumenPendientesDelDia_autonomousWithoutCrm() {
+        agendaQueryService.obtenerResumenPendientesDelDia(42L, "2026-10-25", "America/Lima");
+
+        // Sólo interactúa con repositorios locales de Agenda
+        verify(agendaTareaRepository).findByUsuarioIdAndFechaLimiteAndEstadoOrderByHoraLimiteAscIdAsc(
+                eq(42L), eq(LocalDate.of(2026, 10, 25)), eq("PENDIENTE"));
+        verify(agendaCitaRepository).findByUsuarioIdAndEstadoAndInicioBetweenOrderByInicioAscIdAsc(
+                eq(42L), eq("PROGRAMADA"), any(Instant.class), any(Instant.class));
+        verifyNoMoreInteractions(agendaTareaRepository, agendaCitaRepository);
     }
 }
