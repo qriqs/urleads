@@ -22,7 +22,7 @@ class FlywayMigrationTests {
     @DisplayName("Flyway migration executes successfully and applies migrations")
     void flywayMigrationApplied() {
         assertThat(flyway.info().applied()).isNotEmpty();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("7");
     }
 
     @Test
@@ -34,6 +34,8 @@ class FlywayMigrationTests {
         Integer outboxCount = jdbcTemplate.queryForObject("SELECT count(*) FROM outbox_events", Integer.class);
         Integer templatesCount = jdbcTemplate.queryForObject("SELECT count(*) FROM quote_templates", Integer.class);
         Integer templateItemsCount = jdbcTemplate.queryForObject("SELECT count(*) FROM quote_template_items", Integer.class);
+        Integer ordersCount = jdbcTemplate.queryForObject("SELECT count(*) FROM commercial_orders", Integer.class);
+        Integer orderItemsCount = jdbcTemplate.queryForObject("SELECT count(*) FROM commercial_order_items", Integer.class);
         Integer outcomeColumnsCount = jdbcTemplate.queryForObject(
             "SELECT count(*) FROM information_schema.columns WHERE table_name = 'quotes' AND column_name IN ('outcome_reason', 'outcome_notes', 'outcome_date')",
             Integer.class
@@ -49,6 +51,8 @@ class FlywayMigrationTests {
         assertThat(outboxCount).isNotNull().isGreaterThanOrEqualTo(0);
         assertThat(templatesCount).isNotNull().isGreaterThanOrEqualTo(0);
         assertThat(templateItemsCount).isNotNull().isGreaterThanOrEqualTo(0);
+        assertThat(ordersCount).isNotNull().isGreaterThanOrEqualTo(0);
+        assertThat(orderItemsCount).isNotNull().isGreaterThanOrEqualTo(0);
         assertThat(outcomeColumnsCount).isEqualTo(3);
         assertThat(revisionColumnsCount).isEqualTo(5);
     }
