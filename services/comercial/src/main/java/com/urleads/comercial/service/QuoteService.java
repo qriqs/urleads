@@ -6,7 +6,9 @@ import com.urleads.comercial.dto.QuoteDetailResponse;
 import com.urleads.comercial.dto.QuoteItemRequest;
 import com.urleads.comercial.dto.QuoteOutcomeRequest;
 import com.urleads.comercial.dto.QuoteResponse;
+import com.urleads.comercial.dto.QuoteRevisionRequest;
 import com.urleads.comercial.dto.QuoteUpdateRequest;
+import java.util.List;
 import com.urleads.comercial.entity.CatalogItem;
 import com.urleads.comercial.entity.Quote;
 import com.urleads.comercial.entity.QuoteItem;
@@ -234,6 +236,10 @@ public class QuoteService {
     public QuoteDetailResponse sendQuote(String ownerId, Long id) {
         Quote quote = findQuoteByOwner(ownerId, id);
 
+        if (Boolean.FALSE.equals(quote.isLatest())) {
+            throw new IllegalStateException("No se puede enviar una versión superada de la cotización (v" + quote.getRevisionNumber() + ")");
+        }
+
         // Idempotencia: si ya fue enviada, retornar sin error
         if (quote.getStatus() == QuoteStatus.SENT) {
             return QuoteDetailResponse.fromEntity(quote);
@@ -254,6 +260,10 @@ public class QuoteService {
 
     public QuoteDetailResponse rejectQuote(String ownerId, Long id, QuoteOutcomeRequest outcomeRequest) {
         Quote quote = findQuoteByOwner(ownerId, id);
+
+        if (Boolean.FALSE.equals(quote.isLatest())) {
+            throw new IllegalStateException("No se puede rechazar una versión superada de la cotización (v" + quote.getRevisionNumber() + ")");
+        }
 
         // Idempotencia: si ya fue rechazada, actualizar motivo si viene en la solicitud y retornar
         if (quote.getStatus() == QuoteStatus.REJECTED) {
@@ -294,6 +304,10 @@ public class QuoteService {
     public QuoteDetailResponse acceptQuote(String ownerId, Long id) {
         Quote quote = findQuoteByOwner(ownerId, id);
 
+        if (Boolean.FALSE.equals(quote.isLatest())) {
+            throw new IllegalStateException("No se puede aceptar una versión superada de la cotización (v" + quote.getRevisionNumber() + ")");
+        }
+
         // Idempotencia: si ya fue aceptada, retornar respuesta sin duplicar eventos
         if (quote.getStatus() == QuoteStatus.ACCEPTED) {
             return QuoteDetailResponse.fromEntity(quote);
@@ -331,12 +345,49 @@ public class QuoteService {
         return QuoteDetailResponse.fromEntity(savedQuote);
     }
 
+    /**
+     * Crea una nueva revisión inmutable (v(N+1)) a partir de una cotización existente.
+     * Bloquea la versión previa dejándola como no-última (isLatest = false).
+     */
+    public QuoteDetailResponse createRevision(String ownerId, Long id, QuoteRevisionRequest request) {
+        Quote previousQuote = findQuoteByOwner(ownerId, id);
+
+        if (Boolean.FALSE.equals(previousQuote.isLatest())) {
+            throw new IllegalStateException("No se puede generar una revisión a partir de una versión anterior que ya ha sido superada. Utilice la versión activa (v" + previousQuote.getRevisionNumber() + ").");
+        }
+
+        Quote nextRevision = previousQuote.createNextRevision(
+            request != null ? request.notes() : null,
+            request != null ? request.taxRate() : null
+        );
+
+        if (previousQuote.getRootQuoteId() == null) {
+            previousQuote.setRootQuoteId(previousQuote.getId());
+            nextRevision.setRootQuoteId(previousQuote.getId());
+        }
+
+        quoteRepository.save(previousQuote);
+        Quote saved = quoteRepository.save(nextRevision);
+        return QuoteDetailResponse.fromEntity(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<QuoteResponse> getRevisions(String ownerId, Long id) {
+        Quote quote = findQuoteByOwner(ownerId, id);
+        Long rootId = quote.getRootQuoteId() != null ? quote.getRootQuoteId() : quote.getId();
+        List<Quote> revisions = quoteRepository.findRevisionsByRootId(ownerId, rootId);
+        return revisions.stream().map(QuoteResponse::fromEntity).toList();
+    }
+
     private Quote findQuoteByOwner(String ownerId, Long id) {
         return quoteRepository.findByIdAndOwnerId(id, ownerId)
             .orElseThrow(() -> new ResourceNotFoundException("Cotización no encontrada con ID: " + id));
     }
 
     private void ensureDraftStatus(Quote quote, String action) {
+        if (Boolean.FALSE.equals(quote.isLatest())) {
+            throw new IllegalStateException("No se puede " + action + " una versión anterior superada de la cotización (v" + quote.getRevisionNumber() + ")");
+        }
         if (quote.isFinal()) {
             throw new IllegalStateException("No se puede " + action + " una cotización en estado final (" + quote.getStatus() + ")");
         }

@@ -8,6 +8,8 @@ import com.urleads.comercial.dto.QuoteOutcomeRequest;
 import com.urleads.comercial.dto.QuoteResponse;
 import com.urleads.comercial.dto.QuoteUpdateRequest;
 import com.urleads.comercial.dto.InstantiateQuoteRequest;
+import com.urleads.comercial.dto.QuoteRevisionRequest;
+import java.util.List;
 import com.urleads.comercial.entity.QuoteOutcomeReason;
 import com.urleads.comercial.entity.QuoteStatus;
 import com.urleads.comercial.service.QuoteService;
@@ -189,5 +191,26 @@ public class QuoteController {
         String ownerId = jwt.getSubject();
         QuoteDetailResponse response = quoteTemplateService.instantiateQuote(ownerId, templateId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping({"/{id}/revisions", "/{id}/revise"})
+    public ResponseEntity<QuoteDetailResponse> createRevision(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable Long id,
+        @Valid @RequestBody(required = false) QuoteRevisionRequest request
+    ) {
+        String ownerId = jwt.getSubject();
+        QuoteDetailResponse response = quoteService.createRevision(ownerId, id, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/{id}/revisions")
+    public ResponseEntity<List<QuoteResponse>> getRevisions(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable Long id
+    ) {
+        String ownerId = jwt.getSubject();
+        List<QuoteResponse> revisions = quoteService.getRevisions(ownerId, id);
+        return ResponseEntity.ok(revisions);
     }
 }

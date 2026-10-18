@@ -28,4 +28,7 @@ public interface QuoteRepository extends JpaRepository<Quote, Long>, JpaSpecific
         @Param("currency") String currency,
         Pageable pageable
     );
+
+    @Query("SELECT q FROM Quote q WHERE q.ownerId = :ownerId AND (q.rootQuoteId = :rootId OR q.id = :rootId) ORDER BY q.revisionNumber ASC")
+    java.util.List<Quote> findRevisionsByRootId(@Param("ownerId") String ownerId, @Param("rootId") Long rootId);
 }

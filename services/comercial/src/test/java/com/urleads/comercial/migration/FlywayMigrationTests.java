@@ -22,7 +22,7 @@ class FlywayMigrationTests {
     @DisplayName("Flyway migration executes successfully and applies migrations")
     void flywayMigrationApplied() {
         assertThat(flyway.info().applied()).isNotEmpty();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
     }
 
     @Test
@@ -38,6 +38,10 @@ class FlywayMigrationTests {
             "SELECT count(*) FROM information_schema.columns WHERE table_name = 'quotes' AND column_name IN ('outcome_reason', 'outcome_notes', 'outcome_date')",
             Integer.class
         );
+        Integer revisionColumnsCount = jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM information_schema.columns WHERE table_name = 'quotes' AND column_name IN ('version', 'root_quote_id', 'parent_quote_id', 'revision_number', 'is_latest')",
+            Integer.class
+        );
 
         assertThat(catalogCount).isNotNull().isGreaterThanOrEqualTo(0);
         assertThat(quotesCount).isNotNull().isGreaterThanOrEqualTo(0);
@@ -46,5 +50,6 @@ class FlywayMigrationTests {
         assertThat(templatesCount).isNotNull().isGreaterThanOrEqualTo(0);
         assertThat(templateItemsCount).isNotNull().isGreaterThanOrEqualTo(0);
         assertThat(outcomeColumnsCount).isEqualTo(3);
+        assertThat(revisionColumnsCount).isEqualTo(5);
     }
 }

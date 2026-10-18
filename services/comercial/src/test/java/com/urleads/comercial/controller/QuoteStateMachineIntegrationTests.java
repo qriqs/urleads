@@ -140,7 +140,7 @@ class QuoteStateMachineIntegrationTests {
         // Mark as ACCEPTED
         Quote quote = quoteRepository.findById(quoteId).orElseThrow();
         quote.setStatus(QuoteStatus.ACCEPTED);
-        quoteRepository.save(quote);
+        quote = quoteRepository.save(quote);
 
         mockMvc.perform(post("/api/v1/quotes/" + quoteId + "/send")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + user42Token))
@@ -149,7 +149,7 @@ class QuoteStateMachineIntegrationTests {
 
         // Mark as REJECTED
         quote.setStatus(QuoteStatus.REJECTED);
-        quoteRepository.save(quote);
+        quote = quoteRepository.save(quote);
 
         mockMvc.perform(post("/api/v1/quotes/" + quoteId + "/send")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + user42Token))
@@ -238,7 +238,7 @@ class QuoteStateMachineIntegrationTests {
         // 1. Blocked on ACCEPTED
         Quote quote = quoteRepository.findById(quoteId).orElseThrow();
         quote.setStatus(QuoteStatus.ACCEPTED);
-        quoteRepository.save(quote);
+        quote = quoteRepository.save(quote);
 
         mockMvc.perform(put("/api/v1/quotes/" + quoteId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + user42Token)
@@ -249,7 +249,7 @@ class QuoteStateMachineIntegrationTests {
 
         // 2. Blocked on REJECTED
         quote.setStatus(QuoteStatus.REJECTED);
-        quoteRepository.save(quote);
+        quote = quoteRepository.save(quote);
 
         mockMvc.perform(put("/api/v1/quotes/" + quoteId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + user42Token)
@@ -267,7 +267,7 @@ class QuoteStateMachineIntegrationTests {
         // 1. Blocked on ACCEPTED
         Quote quote = quoteRepository.findById(quoteId).orElseThrow();
         quote.setStatus(QuoteStatus.ACCEPTED);
-        quoteRepository.save(quote);
+        quote = quoteRepository.save(quote);
 
         mockMvc.perform(delete("/api/v1/quotes/" + quoteId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + user42Token))
@@ -276,7 +276,7 @@ class QuoteStateMachineIntegrationTests {
 
         // 2. Blocked on REJECTED
         quote.setStatus(QuoteStatus.REJECTED);
-        quoteRepository.save(quote);
+        quote = quoteRepository.save(quote);
 
         mockMvc.perform(delete("/api/v1/quotes/" + quoteId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + user42Token))
@@ -296,7 +296,7 @@ class QuoteStateMachineIntegrationTests {
 
         // Set to ACCEPTED
         quote.setStatus(QuoteStatus.ACCEPTED);
-        quoteRepository.save(quote);
+        quote = quoteRepository.save(quote);
 
         // Attempt add item
         mockMvc.perform(post("/api/v1/quotes/" + quoteId + "/items")
@@ -314,7 +314,7 @@ class QuoteStateMachineIntegrationTests {
 
         // Set to REJECTED
         quote.setStatus(QuoteStatus.REJECTED);
-        quoteRepository.save(quote);
+        quote = quoteRepository.save(quote);
 
         // Attempt add item
         mockMvc.perform(post("/api/v1/quotes/" + quoteId + "/items")
