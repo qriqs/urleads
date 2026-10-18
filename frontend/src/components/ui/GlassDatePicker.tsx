@@ -218,14 +218,14 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         className={`w-full h-[52px] px-5 rounded-2xl liquid-glass-input flex items-center justify-between text-left transition-all cursor-pointer ${
-          disabled ? "opacity-35 cursor-not-allowed" : "hover:border-white/40"
-        } ${isOpen ? "border-white/60 ring-2 ring-white/20" : ""}`}
+          disabled ? "opacity-35 cursor-not-allowed" : "hover:border-primary/50"
+        } ${isOpen ? "border-primary ring-2 ring-primary/20" : ""}`}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <CalendarIcon className="h-4 w-4 text-white/80 shrink-0" />
+          <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
           <span
             className={`text-[15px] truncate ${
-              value ? "text-white font-medium" : "text-white/50 font-normal"
+              value ? "text-foreground font-medium" : "text-muted-foreground font-normal"
             }`}
           >
             {value ? getDisplayText() : placeholder}
@@ -236,7 +236,7 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
           <span
             onClick={handleClear}
             title="Limpiar fecha"
-            className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer shrink-0 ml-2"
+            className="w-6 h-6 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0 ml-2"
           >
             <X className="h-3 w-3" />
           </span>
@@ -249,28 +249,19 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
           role="dialog"
           aria-label="Selector de calendario"
           className="glass-calendar-popover absolute top-[calc(100%+8px)] left-0 sm:left-auto sm:right-0 z-50 rounded-2xl p-3.5 w-[290px]"
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.08) 100%)",
-            backdropFilter: "blur(28px) saturate(130%)",
-            WebkitBackdropFilter: "blur(28px) saturate(130%)",
-            border: "1px solid rgba(255, 255, 255, 0.28)",
-            boxShadow:
-              "0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35)",
-          }}
         >
           {/* Calendar Header */}
-          <div className="flex items-center justify-between pb-2.5 mb-1.5 border-b border-white/15">
+          <div className="flex items-center justify-between pb-2.5 mb-1.5 border-b border-border">
             <button
               type="button"
               onClick={handlePrevMonth}
               aria-label="Mes anterior"
-              className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white/80 hover:text-white transition-all cursor-pointer"
+              className="w-7 h-7 rounded-full bg-secondary hover:bg-secondary/80 border border-border flex items-center justify-center text-foreground transition-all cursor-pointer"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
 
-            <div className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-semibold bg-white/15 border border-white/25 text-white backdrop-blur-md shadow-sm">
+            <div className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-semibold bg-secondary border border-border text-foreground shadow-xs">
               <span>
                 {MONTH_NAMES[viewMonth]} {viewYear}
               </span>
@@ -280,7 +271,7 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
               type="button"
               onClick={handleNextMonth}
               aria-label="Mes siguiente"
-              className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white/80 hover:text-white transition-all cursor-pointer"
+              className="w-7 h-7 rounded-full bg-secondary hover:bg-secondary/80 border border-border flex items-center justify-center text-foreground transition-all cursor-pointer"
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
@@ -291,7 +282,7 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
             {WEEKDAYS.map((w) => (
               <span
                 key={w}
-                className="text-[10px] font-semibold text-white/60 uppercase tracking-wider py-0.5"
+                className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-0.5"
               >
                 {w}
               </span>
@@ -305,7 +296,7 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
                 return (
                   <div
                     key={`muted-${idx}`}
-                    className="w-8 h-8 flex items-center justify-center text-[11px] text-white/20 select-none cursor-default"
+                    className="w-8 h-8 flex items-center justify-center text-[11px] text-muted-foreground/30 select-none cursor-default"
                   >
                     {item.day}
                   </div>
@@ -319,13 +310,13 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
                   onClick={() => handleSelectDay(item.day)}
                   className={`w-8 h-8 rounded-full flex flex-col items-center justify-center text-[11px] font-medium transition-all cursor-pointer relative ${
                     item.isSelected
-                      ? "aurora-chip-btn bg-white/35 text-white font-bold border-white/60 shadow-md scale-105"
-                      : "text-white/90 hover:bg-white/20 hover:text-white hover:scale-105"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs scale-105"
+                      : "text-foreground hover:bg-secondary hover:scale-105"
                   }`}
                 >
                   <span>{item.day}</span>
                   {item.isToday && !item.isSelected && (
-                    <span className="w-1 h-1 rounded-full bg-cyan-300 absolute bottom-0.5" />
+                    <span className="w-1 h-1 rounded-full bg-primary absolute bottom-0.5" />
                   )}
                 </button>
               );
@@ -333,11 +324,11 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
           </div>
 
           {/* Footer Toolbar: Hoy / Limpiar */}
-          <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-white/15">
+          <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-border">
             <button
               type="button"
               onClick={handleClear}
-              className="px-2.5 py-0.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white/70 hover:text-white text-[11px] font-medium transition-all cursor-pointer"
+              className="px-2.5 py-0.5 rounded-full bg-secondary hover:bg-secondary/80 border border-border text-foreground text-[11px] font-medium transition-all cursor-pointer"
             >
               Limpiar
             </button>
