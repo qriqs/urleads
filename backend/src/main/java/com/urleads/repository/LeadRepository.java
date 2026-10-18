@@ -14,11 +14,20 @@ import com.urleads.entity.Lead;
 
 public interface LeadRepository extends JpaRepository<Lead, Long> {
 
-    List<Lead> findByUsuarioId(Long usuarioId);
+    @Query("SELECT l FROM Lead l WHERE l.usuario.id = :usuarioId AND l.archivedAt IS NULL")
+    List<Lead> findByUsuarioId(@Param("usuarioId") Long usuarioId);
 
-    Page<Lead> findByUsuarioId(Long usuarioId, Pageable pageable);
+    @Query("SELECT l FROM Lead l WHERE l.usuario.id = :usuarioId AND l.archivedAt IS NULL")
+    Page<Lead> findByUsuarioId(@Param("usuarioId") Long usuarioId, Pageable pageable);
 
-    Optional<Lead> findByIdAndUsuarioId(Long leadId, Long usuarioId);
+    @Query("SELECT l FROM Lead l WHERE l.id = :leadId AND l.usuario.id = :usuarioId AND l.archivedAt IS NULL")
+    Optional<Lead> findByIdAndUsuarioId(@Param("leadId") Long leadId, @Param("usuarioId") Long usuarioId);
+
+    @Query("SELECT l FROM Lead l WHERE l.id = :leadId AND l.usuario.id = :usuarioId AND l.archivedAt IS NOT NULL")
+    Optional<Lead> findByIdAndUsuarioIdAndArchivedAtIsNotNull(@Param("leadId") Long leadId, @Param("usuarioId") Long usuarioId);
+
+    @Query("SELECT l FROM Lead l WHERE l.usuario.id = :usuarioId AND l.archivedAt IS NOT NULL")
+    Page<Lead> findArchivedByUsuarioId(@Param("usuarioId") Long usuarioId, Pageable pageable);
 
     // ==========================================
     // Detección de duplicados (DSW-46 / C06)
@@ -32,18 +41,20 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
 
     boolean existsByUsuarioIdAndTelefonoNormAndIdNot(Long usuarioId, String telefonoNorm, Long id);
 
-    List<Lead> findByUsuarioIdAndEtapa(Long usuarioId, String etapa);
+    @Query("SELECT l FROM Lead l WHERE l.usuario.id = :usuarioId AND l.etapa = :etapa AND l.archivedAt IS NULL")
+    List<Lead> findByUsuarioIdAndEtapa(@Param("usuarioId") Long usuarioId, @Param("etapa") String etapa);
 
-    List<Lead> findByUsuarioIdAndProximoSeguimiento(Long usuarioId, LocalDate fecha);
+    @Query("SELECT l FROM Lead l WHERE l.usuario.id = :usuarioId AND l.proximoSeguimiento = :fecha AND l.archivedAt IS NULL")
+    List<Lead> findByUsuarioIdAndProximoSeguimiento(@Param("usuarioId") Long usuarioId, @Param("fecha") LocalDate fecha);
 
-    List<Lead> findByUsuarioIdAndProximoSeguimientoBefore(Long usuarioId, LocalDate fecha);
+    @Query("SELECT l FROM Lead l WHERE l.usuario.id = :usuarioId AND l.proximoSeguimiento < :fecha AND l.archivedAt IS NULL")
+    List<Lead> findByUsuarioIdAndProximoSeguimientoBefore(@Param("usuarioId") Long usuarioId, @Param("fecha") LocalDate fecha);
 
     @Query("""
             SELECT l FROM Lead l
             WHERE l.usuario.id = :usuarioId
+              AND l.archivedAt IS NULL
               AND (:etapa = '' OR l.etapa = :etapa)
-              AND (:priority = '' OR l.priority = :priority)
-              AND (:origin = '' OR l.origin = :origin)
               AND (:priority = '' OR l.priority = :priority)
               AND (:origin = '' OR l.origin = :origin)
               AND (
@@ -70,6 +81,7 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
     @Query("""
             SELECT l FROM Lead l
             WHERE l.usuario.id = :usuarioId
+              AND l.archivedAt IS NULL
               AND (:etapa = '' OR l.etapa = :etapa)
               AND (:priority = '' OR l.priority = :priority)
               AND (:origin = '' OR l.origin = :origin)
@@ -105,19 +117,21 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
             @Param("leadIds") java.util.Collection<Long> leadIds,
             @Param("usuarioId") Long usuarioId);
 
-    @Query("SELECT l FROM Lead l LEFT JOIN FETCH l.tags WHERE l.id = :leadId AND l.usuario.id = :usuarioId")
+    @Query("SELECT l FROM Lead l LEFT JOIN FETCH l.tags WHERE l.id = :leadId AND l.usuario.id = :usuarioId AND l.archivedAt IS NULL")
     Optional<Lead> findByIdAndUsuarioIdWithTags(@Param("leadId") Long leadId, @Param("usuarioId") Long usuarioId);
 
     // ==========================================
     // Consultas para Dashboard (/api/dashboard)
     // ==========================================
 
-    long countByUsuarioId(Long usuarioId);
+    @Query("SELECT COUNT(l) FROM Lead l WHERE l.usuario.id = :usuarioId AND l.archivedAt IS NULL")
+    long countByUsuarioId(@Param("usuarioId") Long usuarioId);
 
     @Query("""
             SELECT l.etapa, COUNT(l)
             FROM Lead l
             WHERE l.usuario.id = :usuarioId
+              AND l.archivedAt IS NULL
             GROUP BY l.etapa
             """)
     List<Object[]> countLeadsPorEtapa(@Param("usuarioId") Long usuarioId);
@@ -125,6 +139,7 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
     @Query("""
             SELECT l FROM Lead l
             WHERE l.usuario.id = :usuarioId
+              AND l.archivedAt IS NULL
               AND l.proximoSeguimiento = :hoy
               AND l.etapa != 'CERRADO'
             ORDER BY l.nombre ASC
@@ -136,6 +151,7 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
     @Query("""
             SELECT l FROM Lead l
             WHERE l.usuario.id = :usuarioId
+              AND l.archivedAt IS NULL
               AND l.proximoSeguimiento < :hoy
               AND l.etapa != 'CERRADO'
             ORDER BY l.proximoSeguimiento ASC, l.nombre ASC

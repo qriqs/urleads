@@ -84,6 +84,18 @@ public class LeadController {
     }
 
     @Operation(
+            summary = "Listar leads archivados paginados",
+            description = "Retorna la lista paginada de leads archivados pertenecientes al usuario autenticado. Requiere sesión web activa (cookie JSESSIONID)."
+    )
+    @ApiResponse(responseCode = "200", description = "Página de leads archivados obtenida exitosamente")
+    @ApiResponse(responseCode = "401", description = "Sin sesión activa", content = @Content(schema = @Schema(implementation = com.urleads.dto.ErrorResponse.class)))
+    @GetMapping("/archived")
+    public PageResponse<LeadResponse> listarArchivados(
+            @Parameter(description = "Número de página (base 0)") @RequestParam(required = false, defaultValue = "0") int page) {
+        return leadService.listarArchivados(currentUserProvider.getCurrentUserId(), page);
+    }
+
+    @Operation(
             summary = "Obtener lead por ID",
             description = "Retorna el detalle completo del lead si pertenece al usuario autenticado. Requiere sesión web activa (cookie JSESSIONID). Retorna 404 si no existe o si pertenece a otro usuario."
     )
@@ -174,6 +186,38 @@ public class LeadController {
                 id,
                 currentUserProvider.getCurrentUserId(),
                 request.tagIds());
+    }
+
+    @Operation(
+            summary = "Archivar lead",
+            description = "Marca un lead activo como archivado. Requiere sesión web activa (cookie JSESSIONID) y cabecera obligatoria X-XSRF-TOKEN con el token CSRF.",
+            parameters = {
+                    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true, description = "Token CSRF obtenido de GET /api/auth/csrf o de la cookie XSRF-TOKEN")
+            }
+    )
+    @ApiResponse(responseCode = "200", description = "Lead archivado exitosamente")
+    @ApiResponse(responseCode = "401", description = "Sin sesión activa", content = @Content(schema = @Schema(implementation = com.urleads.dto.ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Token CSRF faltante o inválido", content = @Content(schema = @Schema(implementation = com.urleads.dto.ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Lead no encontrado, pertenece a otro usuario o ya está archivado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @PostMapping("/{id}/archive")
+    public LeadResponse archivar(@Parameter(description = "ID del lead a archivar") @PathVariable Long id) {
+        return leadService.archivar(id, currentUserProvider.getCurrentUserId());
+    }
+
+    @Operation(
+            summary = "Restaurar lead archivado",
+            description = "Restaura un lead previamente archivado al estado activo. Requiere sesión web activa (cookie JSESSIONID) y cabecera obligatoria X-XSRF-TOKEN con el token CSRF.",
+            parameters = {
+                    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true, description = "Token CSRF obtenido de GET /api/auth/csrf o de la cookie XSRF-TOKEN")
+            }
+    )
+    @ApiResponse(responseCode = "200", description = "Lead restaurado exitosamente")
+    @ApiResponse(responseCode = "401", description = "Sin sesión activa", content = @Content(schema = @Schema(implementation = com.urleads.dto.ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Token CSRF faltante o inválido", content = @Content(schema = @Schema(implementation = com.urleads.dto.ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Lead no encontrado, pertenece a otro usuario o no está archivado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @PostMapping("/{id}/restore")
+    public LeadResponse restaurar(@Parameter(description = "ID del lead a restaurar") @PathVariable Long id) {
+        return leadService.restaurar(id, currentUserProvider.getCurrentUserId());
     }
 
 }
