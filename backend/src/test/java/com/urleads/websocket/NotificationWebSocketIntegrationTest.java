@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
                 + "org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,"
                 + "org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration,"
                 + "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration",
-        "websocket.auth.timeout-seconds=2"
+        "websocket.auth.timeout-seconds=4"
 })
 class NotificationWebSocketIntegrationTest {
 
@@ -69,6 +69,9 @@ class NotificationWebSocketIntegrationTest {
 
     @MockBean
     private AgendaTareaRepository agendaTareaRepository;
+
+    @MockBean
+    private AgendaCitaRepository agendaCitaRepository;
 
     @MockBean
     private CurrentUserProvider currentUserProvider;
@@ -184,8 +187,8 @@ class NotificationWebSocketIntegrationTest {
         WebSocketSession session = client.execute(clientHandler, wsUri).get(5, TimeUnit.SECONDS);
         assertThat(session.isOpen()).isTrue();
 
-        // No enviar frame de autenticación y esperar a que el servidor aplique el timeout (configurado a 2s en este test)
-        CloseStatus status = closeStatuses.poll(4, TimeUnit.SECONDS);
+        // No enviar frame de autenticación y esperar a que el servidor aplique el timeout (configurado a 4s en este test)
+        CloseStatus status = closeStatuses.poll(6, TimeUnit.SECONDS);
         assertThat(status).isNotNull();
         assertThat(status.getCode()).isEqualTo(1008);
     }
