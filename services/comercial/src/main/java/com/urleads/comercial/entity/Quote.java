@@ -167,6 +167,20 @@ public class Quote {
         this.status = status;
     }
 
+    public boolean isFinal() {
+        return status != null && status.isFinal();
+    }
+
+    public void transitionTo(QuoteStatus newStatus) {
+        if (this.status == newStatus) {
+            return;
+        }
+        if (this.status != null && !this.status.canTransitionTo(newStatus)) {
+            throw new IllegalStateException("Transición inválida de estado: no se puede pasar de " + this.status + " a " + newStatus);
+        }
+        this.status = newStatus;
+    }
+
     public BigDecimal getSubtotal() {
         return subtotal;
     }
