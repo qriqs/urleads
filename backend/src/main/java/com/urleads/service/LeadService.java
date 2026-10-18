@@ -17,7 +17,18 @@ public interface LeadService {
             String search,
             String followUp,
             String stage,
+            String priority,
+            String origin,
             int page);
+
+    default PageResponse<LeadResponse> listarPaginado(
+            Long usuarioId,
+            String search,
+            String followUp,
+            String stage,
+            int page) {
+        return listarPaginado(usuarioId, search, followUp, stage, null, null, page);
+    }
 
     LeadResponse obtener(Long leadId, Long usuarioId);
 

@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -75,6 +76,13 @@ public class LeadServiceImpl implements LeadService {
     @Transactional(readOnly = true)
     public PageResponse<LeadResponse> listarPaginado(
             Long usuarioId, String search, String followUp, String stage, int page) {
+        return listarPaginado(usuarioId, search, followUp, stage, null, null, page);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<LeadResponse> listarPaginado(
+            Long usuarioId, String search, String followUp, String stage, String priority, String origin, int page) {
 
         LocalDate hoy = LocalDate.now(clock.withZone(ClockConfig.LIMA_ZONE));
 
@@ -87,6 +95,24 @@ public class LeadServiceImpl implements LeadService {
                 throw new LeadValidationException("Etapa no válida para filtro: solo se permite NUEVO, EN_SEGUIMIENTO o CERRADO");
             }
             etapa = etapaTrimmed;
+        }
+
+        String prioridadFiltro = "";
+        if (priority != null && !priority.isBlank()) {
+            String priorityTrimmed = priority.trim().toUpperCase(Locale.ROOT);
+            if (!LeadValidator.isValidPriority(priorityTrimmed)) {
+                throw new LeadValidationException("Prioridad no válida para filtro: solo se permite BAJA, MEDIA o ALTA");
+            }
+            prioridadFiltro = priorityTrimmed;
+        }
+
+        String origenFiltro = "";
+        if (origin != null && !origin.isBlank()) {
+            String originTrimmed = origin.trim().toUpperCase(Locale.ROOT);
+            if (!LeadValidator.isValidOrigin(originTrimmed)) {
+                throw new LeadValidationException("Origen no válido para filtro: solo se permite WEB, REFERIDO o MANUAL");
+            }
+            origenFiltro = originTrimmed;
         }
 
         String modo = "all";
@@ -103,7 +129,8 @@ public class LeadServiceImpl implements LeadService {
                 PAGE_SIZE,
                 Sort.by(Sort.Direction.DESC, "creadoEn"));
 
-        Page<Lead> resultado = leadRepository.buscar(usuarioId, etapa, patron, modo, hoy, pageable);
+        Page<Lead> resultado = leadRepository.buscar(
+                usuarioId, etapa, prioridadFiltro, origenFiltro, patron, modo, hoy, pageable);
 
         return PageResponse.from(resultado.map(this::toResponse));
     }
@@ -144,6 +171,8 @@ public class LeadServiceImpl implements LeadService {
         lead.setCorreo(request.getCorreo());
         lead.setService(request.getService());
         lead.setEtapa(request.getEtapa().trim());
+        lead.setPriority(request.getPriority() != null ? request.getPriority() : "MEDIA");
+        lead.setOrigin(request.getOrigin() != null ? request.getOrigin() : "MANUAL");
 
         if ("CERRADO".equals(lead.getEtapa())) {
             lead.setProximoSeguimiento(null);
@@ -170,6 +199,8 @@ public class LeadServiceImpl implements LeadService {
         lead.setCorreo(request.getCorreo());
         lead.setService(request.getService());
         lead.setEtapa(request.getEtapa().trim());
+        lead.setPriority(request.getPriority() != null ? request.getPriority() : "MEDIA");
+        lead.setOrigin(request.getOrigin() != null ? request.getOrigin() : "MANUAL");
 
         if ("CERRADO".equals(lead.getEtapa())) {
             lead.setProximoSeguimiento(null);
@@ -204,6 +235,8 @@ public class LeadServiceImpl implements LeadService {
         response.setCorreo(lead.getCorreo());
         response.setService(lead.getService());
         response.setEtapa(lead.getEtapa());
+        response.setPriority(lead.getPriority() != null ? lead.getPriority() : "MEDIA");
+        response.setOrigin(lead.getOrigin() != null ? lead.getOrigin() : "MANUAL");
         response.setProximoSeguimiento(lead.getProximoSeguimiento());
         response.setCreadoEn(lead.getCreadoEn());
         response.setActualizadoEn(lead.getActualizadoEn());

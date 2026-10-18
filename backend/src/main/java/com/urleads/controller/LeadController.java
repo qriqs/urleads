@@ -35,13 +35,26 @@ public class LeadController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false, defaultValue = "all") String followUp,
             @RequestParam(required = false) String stage,
+            @RequestParam(required = false) String priority,
+            @RequestParam(required = false) String origin,
             @RequestParam(required = false, defaultValue = "0") int page) {
+
+        if (priority == null && origin == null) {
+            return leadService.listarPaginado(
+                    currentUserProvider.getCurrentUserId(),
+                    search,
+                    followUp,
+                    stage,
+                    page);
+        }
 
         return leadService.listarPaginado(
                 currentUserProvider.getCurrentUserId(),
                 search,
                 followUp,
                 stage,
+                priority,
+                origin,
                 page);
     }
 
