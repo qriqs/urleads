@@ -74,7 +74,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(requestHandler)
-                .ignoringRequestMatchers("/api/health", "/api/v1/**", "/ws/**")
+                .ignoringRequestMatchers("/api/health", "/api/v1/**", "/internal/**", "/ws/**")
             )
             .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class);
 
@@ -94,6 +94,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/login").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/api/**").authenticated()
+                .requestMatchers("/internal/**").authenticated()
                 .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/robots.txt", "/{*path}").permitAll()
                 .requestMatchers("/api/auth/session", "/api/auth/me").authenticated()
                 .anyRequest().authenticated()

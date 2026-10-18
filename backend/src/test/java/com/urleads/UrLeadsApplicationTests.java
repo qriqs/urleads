@@ -48,6 +48,9 @@ class UrLeadsApplicationTests {
     private com.urleads.repository.ProcessedEventRepository processedEventRepository;
 
     @MockBean
+    private com.urleads.repository.AgendaTareaRepository agendaTareaRepository;
+
+    @MockBean
     private CurrentUserProvider currentUserProvider;
 
     @Test

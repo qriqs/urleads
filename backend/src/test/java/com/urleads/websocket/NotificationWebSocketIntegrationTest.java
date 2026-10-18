@@ -68,6 +68,9 @@ class NotificationWebSocketIntegrationTest {
     private ProcessedEventRepository processedEventRepository;
 
     @MockBean
+    private AgendaTareaRepository agendaTareaRepository;
+
+    @MockBean
     private CurrentUserProvider currentUserProvider;
 
     @Test
