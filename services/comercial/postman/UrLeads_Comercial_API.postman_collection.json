@@ -346,6 +346,32 @@
           }
         }
       ]
+    },
+    {
+      "name": "9. Integración Inter-Servicio (CRM, Eureka, Resiliencia)",
+      "item": [
+        {
+          "name": "Consultar Lead en CRM vía OpenFeign (crm-service)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/crm/leads/105", "host": ["{{baseUrl}}"], "path": ["api", "v1", "crm", "leads", "105"] }
+          }
+        },
+        {
+          "name": "Aceptar Cotización y Despachar Outbox a RabbitMQ",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}/accept", "host": ["{{baseUrl}}"], "path": ["api", "v1", "quotes", "{{quoteId}}", "accept"] }
+          }
+        },
+        {
+          "name": "Prueba de Resiliencia / Fallo CRM (Lead Inexistente o Caída 503)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/crm/leads/999", "host": ["{{baseUrl}}"], "path": ["api", "v1", "crm", "leads", "999"] }
+          }
+        }
+      ]
     }
   ]
 }

@@ -13,7 +13,6 @@ import {
   Plus,
   MoreVertical,
   Check,
-  Send,
   Phone,
   Mail,
   FileText,
@@ -24,24 +23,26 @@ import { UrLeadsLogo } from "./UrLeadsLogo";
 export const DashboardPreview: React.FC = () => {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 25 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="mt-4 w-full max-w-5xl shrink-0"
+      transition={{ duration: 0.7, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="mt-3.5 w-full max-w-[970px] shrink-0"
     >
-      {/* Frosted Glass Outer Container */}
+      {/* Outer Container with hardware acceleration & clean glass effect */}
       <div
-        className="rounded-2xl overflow-hidden p-3 md:p-4 backdrop-blur-md"
+        className="rounded-2xl overflow-hidden p-3 md:p-3.5 backdrop-blur-xs"
         style={{
-          background: "rgba(255, 255, 255, 0.4)",
-          border: "1px solid rgba(255, 255, 255, 0.5)",
+          background: "rgba(255, 255, 255, 0.88)",
+          border: "1px solid rgba(255, 255, 255, 0.6)",
           boxShadow: "var(--shadow-dashboard)",
+          transform: "translateZ(0)",
+          willChange: "transform",
         }}
       >
         {/* Inner Dashboard Window */}
         <div className="bg-background rounded-xl border border-border/80 shadow-xs overflow-hidden text-[11px] select-none pointer-events-none">
           {/* Top Bar */}
-          <div className="h-11 px-3.5 border-b border-border bg-background flex items-center justify-between gap-4">
+          <div className="h-10 px-3.5 border-b border-border bg-background flex items-center justify-between gap-4">
             {/* Left: Logo & Org Switcher */}
             <div className="flex items-center gap-1.5">
               <UrLeadsLogo size={20} showText />
@@ -50,7 +51,7 @@ export const DashboardPreview: React.FC = () => {
 
             {/* Middle: Search bar with ⌘K */}
             <div className="flex-1 max-w-sm">
-              <div className="h-7 px-2.5 rounded-md bg-secondary/60 border border-border/60 flex items-center justify-between text-muted-foreground">
+              <div className="h-6.5 px-2.5 rounded-md bg-secondary/60 border border-border/60 flex items-center justify-between text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Search className="h-3 w-3" />
                   <span className="text-[10px]">Buscar prospectos, notas...</span>
@@ -77,10 +78,10 @@ export const DashboardPreview: React.FC = () => {
           </div>
 
           {/* App Body: Sidebar + Main Content */}
-          <div className="flex min-h-[380px]">
-            {/* Sidebar (w-40) */}
-            <aside className="w-40 border-r border-border bg-background p-3 flex flex-col justify-between shrink-0">
-              <div className="space-y-4">
+          <div className="flex min-h-[350px]">
+            {/* Sidebar (w-38) */}
+            <aside className="w-38 border-r border-border bg-background p-3 flex flex-col justify-between shrink-0">
+              <div className="space-y-3.5">
                 {/* Main Navigation */}
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-secondary text-foreground font-medium">
@@ -142,7 +143,7 @@ export const DashboardPreview: React.FC = () => {
             </aside>
 
             {/* Main Content Area */}
-            <main className="flex-1 bg-secondary/30 p-4 space-y-4 overflow-hidden">
+            <main className="flex-1 bg-secondary/30 p-3.5 md:p-4 space-y-3.5 overflow-hidden">
               {/* Top Greeting */}
               <div className="flex items-center justify-between">
                 <div>
@@ -189,9 +190,9 @@ export const DashboardPreview: React.FC = () => {
               {/* Two Equal-Width Cards */}
               <div className="flex gap-3">
                 {/* Pipeline Value Card */}
-                <div className="flex-1 basis-0 bg-background rounded-lg border border-border p-3.5 flex flex-col justify-between shadow-2xs">
+                <div className="flex-1 basis-0 bg-background rounded-lg border border-border p-3 flex flex-col justify-between shadow-2xs">
                   <div>
-                    <div className="flex items-center justify-between text-muted-foreground mb-1.5">
+                    <div className="flex items-center justify-between text-muted-foreground mb-1">
                       <div className="flex items-center gap-1.5">
                         <div className="h-3.5 w-3.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center">
                           <Check className="h-2 w-2 stroke-[3]" />
@@ -203,7 +204,7 @@ export const DashboardPreview: React.FC = () => {
                       <span className="text-[10px]">Activo</span>
                     </div>
 
-                    <div className="mt-1">
+                    <div className="mt-0.5">
                       <span className="text-xl font-semibold tracking-tight text-foreground font-body">
                         $124,500
                       </span>
@@ -213,7 +214,7 @@ export const DashboardPreview: React.FC = () => {
                     </div>
 
                     {/* Stats */}
-                    <div className="flex items-center gap-2 mt-1 text-[10px]">
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px]">
                       <span className="text-muted-foreground">Últimos 30 Días</span>
                       <span className="text-emerald-600 font-semibold">
                         +$18.5K
@@ -225,11 +226,11 @@ export const DashboardPreview: React.FC = () => {
                   </div>
 
                   {/* SVG Area Chart with smooth cubic Bézier curve */}
-                  <div className="mt-2.5 w-full h-20 relative overflow-hidden">
+                  <div className="mt-2 w-full h-18 relative overflow-hidden">
                     <svg
                       viewBox="0 0 360 80"
                       preserveAspectRatio="none"
-                      className="w-full h-20"
+                      className="w-full h-18"
                     >
                       <defs>
                         <linearGradient
@@ -271,7 +272,7 @@ export const DashboardPreview: React.FC = () => {
                 </div>
 
                 {/* Stages Card */}
-                <div className="flex-1 basis-0 bg-background rounded-lg border border-border p-3.5 flex flex-col shadow-2xs">
+                <div className="flex-1 basis-0 bg-background rounded-lg border border-border p-3 flex flex-col shadow-2xs">
                   {/* Header */}
                   <div className="flex items-center justify-between pb-1.5 border-b border-border/50">
                     <span className="font-semibold text-foreground text-xs">
@@ -287,9 +288,9 @@ export const DashboardPreview: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* 3 Rows (py-3, no dividers, text-xs, justify-between) */}
+                  {/* 3 Rows */}
                   <div className="flex-1 flex flex-col justify-around py-1">
-                    <div className="flex items-center justify-between py-3 text-xs">
+                    <div className="flex items-center justify-between py-2 text-xs">
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-2 rounded-full bg-sky-400" />
                         <span className="text-foreground font-medium">Nuevos (Por calificar)</span>
@@ -299,7 +300,7 @@ export const DashboardPreview: React.FC = () => {
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between py-3 text-xs">
+                    <div className="flex items-center justify-between py-2 text-xs">
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-2 rounded-full bg-amber-400" />
                         <span className="text-foreground font-medium">En Seguimiento</span>
@@ -309,7 +310,7 @@ export const DashboardPreview: React.FC = () => {
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between py-3 text-xs">
+                    <div className="flex items-center justify-between py-2 text-xs">
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-2 rounded-full bg-emerald-500" />
                         <span className="text-foreground font-medium">Cerrados (Concretados)</span>
@@ -346,12 +347,12 @@ export const DashboardPreview: React.FC = () => {
                     <tbody className="divide-y divide-border/40 text-[11px]">
                       {/* Row 1: Carlos Torres - En seguimiento (amber) */}
                       <tr>
-                        <td className="py-2 text-muted-foreground">Oct 26</td>
-                        <td className="py-2 font-medium text-foreground">Carlos Torres</td>
-                        <td className="py-2 text-right text-muted-foreground">
+                        <td className="py-1.5 text-muted-foreground">Oct 26</td>
+                        <td className="py-1.5 font-medium text-foreground">Carlos Torres</td>
+                        <td className="py-1.5 text-right text-muted-foreground">
                           Consultoría IT
                         </td>
-                        <td className="py-2 text-right">
+                        <td className="py-1.5 text-right">
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-500/10 text-amber-700 border border-amber-500/20">
                             En seguimiento
                           </span>
@@ -360,14 +361,14 @@ export const DashboardPreview: React.FC = () => {
 
                       {/* Row 2: Tech Solutions - Cerrado (emerald) */}
                       <tr>
-                        <td className="py-2 text-muted-foreground">Oct 25</td>
-                        <td className="py-2 font-medium text-foreground">
+                        <td className="py-1.5 text-muted-foreground">Oct 25</td>
+                        <td className="py-1.5 font-medium text-foreground">
                           Tech Solutions S.A.
                         </td>
-                        <td className="py-2 text-right text-muted-foreground">
+                        <td className="py-1.5 text-right text-muted-foreground">
                           Plan Enterprise
                         </td>
-                        <td className="py-2 text-right">
+                        <td className="py-1.5 text-right">
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
                             Cerrado
                           </span>
@@ -376,12 +377,12 @@ export const DashboardPreview: React.FC = () => {
 
                       {/* Row 3: María López - Cerrado (emerald) */}
                       <tr>
-                        <td className="py-2 text-muted-foreground">Oct 24</td>
-                        <td className="py-2 font-medium text-foreground">María López</td>
-                        <td className="py-2 text-right text-muted-foreground">
+                        <td className="py-1.5 text-muted-foreground">Oct 24</td>
+                        <td className="py-1.5 font-medium text-foreground">María López</td>
+                        <td className="py-1.5 text-right text-muted-foreground">
                           Marketing Digital
                         </td>
-                        <td className="py-2 text-right">
+                        <td className="py-1.5 text-right">
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
                             Cerrado
                           </span>
@@ -390,14 +391,14 @@ export const DashboardPreview: React.FC = () => {
 
                       {/* Row 4: Distribuidora Sur - Nuevo (sky) */}
                       <tr>
-                        <td className="py-2 text-muted-foreground">Oct 23</td>
-                        <td className="py-2 font-medium text-foreground">
+                        <td className="py-1.5 text-muted-foreground">Oct 23</td>
+                        <td className="py-1.5 font-medium text-foreground">
                           Distribuidora Sur
                         </td>
-                        <td className="py-2 text-right text-muted-foreground">
+                        <td className="py-1.5 text-right text-muted-foreground">
                           Logística & Soporte
                         </td>
-                        <td className="py-2 text-right">
+                        <td className="py-1.5 text-right">
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-sky-500/10 text-sky-700 border border-sky-500/20">
                             Nuevo
                           </span>
