@@ -55,6 +55,16 @@ public class Quote {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "outcome_reason", length = 50)
+    private QuoteOutcomeReason outcomeReason;
+
+    @Column(name = "outcome_notes", columnDefinition = "TEXT")
+    private String outcomeNotes;
+
+    @Column(name = "outcome_date")
+    private Instant outcomeDate;
+
     @OneToMany(mappedBy = "quote", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<QuoteItem> items = new ArrayList<>();
 
@@ -243,5 +253,29 @@ public class Quote {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public QuoteOutcomeReason getOutcomeReason() {
+        return outcomeReason;
+    }
+
+    public void setOutcomeReason(QuoteOutcomeReason outcomeReason) {
+        this.outcomeReason = outcomeReason;
+    }
+
+    public String getOutcomeNotes() {
+        return outcomeNotes;
+    }
+
+    public void setOutcomeNotes(String outcomeNotes) {
+        this.outcomeNotes = outcomeNotes;
+    }
+
+    public Instant getOutcomeDate() {
+        return outcomeDate;
+    }
+
+    public void setOutcomeDate(Instant outcomeDate) {
+        this.outcomeDate = outcomeDate;
     }
 }

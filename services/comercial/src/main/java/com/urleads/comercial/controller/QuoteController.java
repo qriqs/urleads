@@ -4,6 +4,7 @@ import com.urleads.comercial.dto.PageResponse;
 import com.urleads.comercial.dto.QuoteCreateRequest;
 import com.urleads.comercial.dto.QuoteDetailResponse;
 import com.urleads.comercial.dto.QuoteItemRequest;
+import com.urleads.comercial.dto.QuoteOutcomeRequest;
 import com.urleads.comercial.dto.QuoteResponse;
 import com.urleads.comercial.dto.QuoteUpdateRequest;
 import com.urleads.comercial.entity.QuoteStatus;
@@ -123,10 +124,22 @@ public class QuoteController {
     @PostMapping("/{id}/reject")
     public ResponseEntity<QuoteDetailResponse> reject(
         @AuthenticationPrincipal Jwt jwt,
-        @PathVariable Long id
+        @PathVariable Long id,
+        @Valid @RequestBody(required = false) QuoteOutcomeRequest request
     ) {
         String ownerId = jwt.getSubject();
-        QuoteDetailResponse response = quoteService.rejectQuote(ownerId, id);
+        QuoteDetailResponse response = quoteService.rejectQuote(ownerId, id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/outcome")
+    public ResponseEntity<QuoteDetailResponse> recordOutcome(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable Long id,
+        @Valid @RequestBody QuoteOutcomeRequest request
+    ) {
+        String ownerId = jwt.getSubject();
+        QuoteDetailResponse response = quoteService.recordOutcome(ownerId, id, request);
         return ResponseEntity.ok(response);
     }
 

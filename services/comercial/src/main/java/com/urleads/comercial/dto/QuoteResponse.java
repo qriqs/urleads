@@ -1,6 +1,7 @@
 package com.urleads.comercial.dto;
 
 import com.urleads.comercial.entity.Quote;
+import com.urleads.comercial.entity.QuoteOutcomeReason;
 import com.urleads.comercial.entity.QuoteStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -18,7 +19,10 @@ public record QuoteResponse(
     String notes,
     int itemsCount,
     Instant createdAt,
-    Instant updatedAt
+    Instant updatedAt,
+    QuoteOutcomeReason outcomeReason,
+    String outcomeNotes,
+    Instant outcomeDate
 ) {
     public static QuoteResponse fromEntity(Quote quote) {
         return new QuoteResponse(
@@ -34,7 +38,10 @@ public record QuoteResponse(
             quote.getNotes(),
             quote.getItems() != null ? quote.getItems().size() : 0,
             quote.getCreatedAt(),
-            quote.getUpdatedAt()
+            quote.getUpdatedAt(),
+            quote.getOutcomeReason(),
+            quote.getOutcomeNotes(),
+            quote.getOutcomeDate()
         );
     }
 }

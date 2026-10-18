@@ -4,6 +4,7 @@ import com.urleads.comercial.dto.PageResponse;
 import com.urleads.comercial.dto.QuoteCreateRequest;
 import com.urleads.comercial.dto.QuoteDetailResponse;
 import com.urleads.comercial.dto.QuoteItemRequest;
+import com.urleads.comercial.dto.QuoteOutcomeRequest;
 import com.urleads.comercial.dto.QuoteResponse;
 import com.urleads.comercial.dto.QuoteUpdateRequest;
 import com.urleads.comercial.entity.CatalogItem;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 @Service
 @Transactional
@@ -148,10 +150,19 @@ public class QuoteService {
     }
 
     public QuoteDetailResponse rejectQuote(String ownerId, Long id) {
+        return rejectQuote(ownerId, id, null);
+    }
+
+    public QuoteDetailResponse rejectQuote(String ownerId, Long id, QuoteOutcomeRequest outcomeRequest) {
         Quote quote = findQuoteByOwner(ownerId, id);
 
-        // Idempotencia: si ya fue rechazada, retornar sin error
+        // Idempotencia: si ya fue rechazada, actualizar motivo si viene en la solicitud y retornar
         if (quote.getStatus() == QuoteStatus.REJECTED) {
+            if (outcomeRequest != null) {
+                applyOutcome(quote, outcomeRequest);
+                Quote saved = quoteRepository.save(quote);
+                return QuoteDetailResponse.fromEntity(saved);
+            }
             return QuoteDetailResponse.fromEntity(quote);
         }
 
@@ -160,8 +171,25 @@ public class QuoteService {
         }
 
         quote.transitionTo(QuoteStatus.REJECTED);
+        if (outcomeRequest != null) {
+            applyOutcome(quote, outcomeRequest);
+        } else {
+            if (quote.getOutcomeDate() == null) {
+                quote.setOutcomeDate(Instant.now());
+            }
+        }
         Quote saved = quoteRepository.save(quote);
         return QuoteDetailResponse.fromEntity(saved);
+    }
+
+    public QuoteDetailResponse recordOutcome(String ownerId, Long id, QuoteOutcomeRequest request) {
+        return rejectQuote(ownerId, id, request);
+    }
+
+    private void applyOutcome(Quote quote, QuoteOutcomeRequest request) {
+        quote.setOutcomeReason(request.reason());
+        quote.setOutcomeNotes(request.notes());
+        quote.setOutcomeDate(request.date() != null ? request.date() : Instant.now());
     }
 
     public QuoteDetailResponse acceptQuote(String ownerId, Long id) {
