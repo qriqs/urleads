@@ -12,11 +12,21 @@ public interface LeadService {
 
     List<LeadResponse> listar(Long usuarioId);
 
+    default PageResponse<LeadResponse> listarPaginado(
+            Long usuarioId,
+            String search,
+            String followUp,
+            String stage,
+            int page) {
+        return listarPaginado(usuarioId, search, followUp, stage, null, page);
+    }
+
     PageResponse<LeadResponse> listarPaginado(
             Long usuarioId,
             String search,
             String followUp,
             String stage,
+            List<Long> tagIds,
             int page);
 
     LeadResponse obtener(Long leadId, Long usuarioId);
@@ -26,6 +36,8 @@ public interface LeadService {
     LeadResponse crear(Long usuarioId, CreateLeadRequest request);
 
     LeadResponse actualizar(Long leadId, Long usuarioId, UpdateLeadRequest request);
+
+    LeadResponse actualizarTags(Long leadId, Long usuarioId, List<Long> tagIds);
 
     void eliminar(Long leadId, Long usuarioId);
 }

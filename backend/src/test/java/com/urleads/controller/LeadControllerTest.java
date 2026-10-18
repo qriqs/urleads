@@ -352,4 +352,72 @@ class LeadControllerTest {
 
         verify(leadService).listarPaginado(USUARIO_ACTUAL, null, "today", "NUEVO", 0);
     }
+
+    // =========================================================================
+    // TESTS C08: ETIQUETAS Y RELACIONES (DSW-48)
+    // =========================================================================
+
+    @Test
+    void actualizarTags_devuelve200() throws Exception {
+        when(leadService.actualizarTags(eq(10L), eq(USUARIO_ACTUAL), eq(List.of(1L, 2L))))
+                .thenReturn(respuesta());
+
+        mockMvc.perform(put("/api/leads/10/tags")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tagIds":[1, 2]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Ana Torres"));
+
+        verify(leadService).actualizarTags(10L, USUARIO_ACTUAL, List.of(1L, 2L));
+    }
+
+    @Test
+    void actualizarTags_sinCsrf_devuelve403() throws Exception {
+        mockMvc.perform(put("/api/leads/10/tags")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tagIds":[1, 2]}"""))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void actualizarTags_leadOEtiquetaInexistente_devuelve404() throws Exception {
+        when(leadService.actualizarTags(eq(10L), eq(USUARIO_ACTUAL), any()))
+                .thenThrow(new com.urleads.exception.TagNotFoundException("Etiqueta no encontrada"));
+
+        mockMvc.perform(put("/api/leads/10/tags")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tagIds":[999]}"""))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void actualizarTags_cuerpoNulo_devuelve400() throws Exception {
+        mockMvc.perform(put("/api/leads/10/tags")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void listar_conTagIds_pasaFiltroAlServicio() throws Exception {
+        when(leadService.listarPaginado(USUARIO_ACTUAL, null, "all", null, List.of(1L, 2L), 0))
+                .thenReturn(new PageResponse<>(List.of(respuesta()), 0, 20, 1, 1));
+
+        mockMvc.perform(get("/api/leads")
+                        .param("tagIds", "1")
+                        .param("tagIds", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(leadService).listarPaginado(USUARIO_ACTUAL, null, "all", null, List.of(1L, 2L), 0);
+    }
 }
