@@ -22,7 +22,7 @@ class FlywayMigrationTests {
     @DisplayName("Flyway migration executes successfully and applies migrations")
     void flywayMigrationApplied() {
         assertThat(flyway.info().applied()).isNotEmpty();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
     }
 
     @Test
