@@ -67,6 +67,27 @@ public class QuoteItem {
         this.subtotal = this.quantity.multiply(this.unitPrice).setScale(2, RoundingMode.HALF_UP);
     }
 
+    /**
+     * Construye una instantánea inmutable de línea de cotización a partir de un ítem de catálogo.
+     */
+    public static QuoteItem fromCatalogSnapshot(
+        Quote quote,
+        CatalogItem catalogItem,
+        BigDecimal quantity,
+        BigDecimal overrideUnitPrice
+    ) {
+        BigDecimal price = overrideUnitPrice != null ? overrideUnitPrice : catalogItem.getUnitPrice();
+        return new QuoteItem(
+            quote,
+            catalogItem.getId(),
+            catalogItem.getCode(),
+            catalogItem.getName(),
+            catalogItem.getDescription(),
+            quantity,
+            price
+        );
+    }
+
     public Long getId() {
         return id;
     }
