@@ -12,6 +12,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -68,6 +69,22 @@ public class Quote {
     @OneToMany(mappedBy = "quote", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<QuoteItem> items = new ArrayList<>();
 
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
+
+    @Column(name = "root_quote_id")
+    private Long rootQuoteId;
+
+    @Column(name = "parent_quote_id")
+    private Long parentQuoteId;
+
+    @Column(name = "revision_number", nullable = false)
+    private Integer revisionNumber = 1;
+
+    @Column(name = "is_latest", nullable = false)
+    private Boolean isLatest = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -99,13 +116,27 @@ public class Quote {
         if (status == null) {
             status = QuoteStatus.DRAFT;
         }
-        recalculateTotals();
+        if (version == null) {
+            version = 0L;
+        }
+        if (revisionNumber == null) {
+            revisionNumber = 1;
+        }
+        if (isLatest == null) {
+            isLatest = true;
+        }
+        if (items != null && !items.isEmpty()) {
+            recalculateTotals();
+        } else if (subtotal == null) {
+            subtotal = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+            tax = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+            total = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
     }
 
     @PreUpdate
     public void preUpdate() {
         updatedAt = Instant.now();
-        recalculateTotals();
     }
 
     public void recalculateTotals() {
@@ -277,5 +308,89 @@ public class Quote {
 
     public void setOutcomeDate(Instant outcomeDate) {
         this.outcomeDate = outcomeDate;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+
+    public Long getRootQuoteId() {
+        return rootQuoteId != null ? rootQuoteId : id;
+    }
+
+    public void setRootQuoteId(Long rootQuoteId) {
+        this.rootQuoteId = rootQuoteId;
+    }
+
+    public Long getParentQuoteId() {
+        return parentQuoteId;
+    }
+
+    public void setParentQuoteId(Long parentQuoteId) {
+        this.parentQuoteId = parentQuoteId;
+    }
+
+    public Integer getRevisionNumber() {
+        return revisionNumber != null ? revisionNumber : 1;
+    }
+
+    public void setRevisionNumber(Integer revisionNumber) {
+        this.revisionNumber = revisionNumber;
+    }
+
+    public Boolean isLatest() {
+        return isLatest != null ? isLatest : true;
+    }
+
+    public void setLatest(Boolean latest) {
+        isLatest = latest;
+    }
+
+    /**
+     * Genera una nueva revisión inmutable vinculada (v(N+1)) a partir de esta cotización.
+     * Bloquea la versión actual desmarcándola como la última (isLatest = false).
+     */
+    public Quote createNextRevision(String newNotes, BigDecimal newTaxRate) {
+        this.isLatest = false;
+
+        BigDecimal tax = newTaxRate != null ? newTaxRate : this.taxRate;
+        String notesText = newNotes != null ? newNotes : this.notes;
+
+        Quote nextRevision = new Quote(
+            this.leadId,
+            this.ownerId,
+            this.currency,
+            tax,
+            notesText
+        );
+
+        nextRevision.setRootQuoteId(this.getRootQuoteId());
+        nextRevision.setParentQuoteId(this.getId());
+        nextRevision.setRevisionNumber(this.getRevisionNumber() + 1);
+        nextRevision.setLatest(true);
+        nextRevision.setStatus(QuoteStatus.DRAFT);
+
+        // Copia profunda de ítems
+        if (this.items != null) {
+            for (QuoteItem item : this.items) {
+                QuoteItem cloned = new QuoteItem(
+                    nextRevision,
+                    item.getCatalogItemId(),
+                    item.getCode(),
+                    item.getName(),
+                    item.getDescription(),
+                    item.getQuantity(),
+                    item.getUnitPrice()
+                );
+                nextRevision.addItem(cloned);
+            }
+        }
+
+        nextRevision.recalculateTotals();
+        return nextRevision;
     }
 }

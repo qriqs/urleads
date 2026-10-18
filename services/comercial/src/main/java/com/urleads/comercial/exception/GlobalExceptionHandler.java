@@ -55,6 +55,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
+    @ExceptionHandler({
+        jakarta.persistence.OptimisticLockException.class,
+        org.springframework.orm.ObjectOptimisticLockingFailureException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleOptimisticLock(Exception ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            HttpStatus.CONFLICT.value(),
+            "CONCURRENT_MODIFICATION",
+            "Conflicto de concurrencia: el registro ha sido modificado simultáneamente por otra operación. Por favor recargue los datos."
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
         ApiErrorResponse response = new ApiErrorResponse(

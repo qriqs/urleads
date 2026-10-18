@@ -23,7 +23,12 @@ public record QuoteDetailResponse(
     Instant updatedAt,
     QuoteOutcomeReason outcomeReason,
     String outcomeNotes,
-    Instant outcomeDate
+    Instant outcomeDate,
+    Long version,
+    Integer revisionNumber,
+    Boolean isLatest,
+    Long rootQuoteId,
+    Long parentQuoteId
 ) {
     public static QuoteDetailResponse fromEntity(Quote quote) {
         List<QuoteItemResponse> itemResponses = quote.getItems() != null
@@ -46,7 +51,12 @@ public record QuoteDetailResponse(
             quote.getUpdatedAt(),
             quote.getOutcomeReason(),
             quote.getOutcomeNotes(),
-            quote.getOutcomeDate()
+            quote.getOutcomeDate(),
+            quote.getVersion(),
+            quote.getRevisionNumber(),
+            quote.isLatest(),
+            quote.getRootQuoteId(),
+            quote.getParentQuoteId()
         );
     }
 }
