@@ -65,7 +65,7 @@ cd backend
 | **C10** | Importación acotada de leads desde Excel con plantilla fija | Ampliación | `Backlog` | C01, C06 | [DSW-50](https://linear.app/enmanuelprojects/issue/DSW-50) |
 | **C11** | Registro y consulta de historial de importaciones | Ampliación | `Backlog` | C01, C10 | [DSW-51](https://linear.app/enmanuelprojects/issue/DSW-51) |
 | **C12** | Flujo de archivar y restaurar leads sin borrado físico | Ampliación | `Backlog` | C01, C03 | [DSW-52](https://linear.app/enmanuelprojects/issue/DSW-52) |
-| **C13** | Servicio SOAP/XML de consulta de lead y pruebas con SoapUI | Principal | `Todo` | C02, C03 | [DSW-53](https://linear.app/enmanuelprojects/issue/DSW-53) |
+| **C13** | Servicio SOAP/XML de consulta de lead y pruebas con SoapUI | Principal | `In Progress` | C02, C03 | [DSW-53](https://linear.app/enmanuelprojects/issue/DSW-53) |
 | **C14** | Configuración de Docker Compose y pipeline de integración local | Integración | `Todo` | C01, S01, A01 | [DSW-54](https://linear.app/enmanuelprojects/issue/DSW-54) |
 | **C15** | Verificación integral end-to-end, resiliencia y regresión | Integración | `Todo` | C04, C05, C13, C14, S15, A15 | [DSW-55](https://linear.app/enmanuelprojects/issue/DSW-55) |
 
@@ -879,3 +879,143 @@ La suite estándar `./mvnw --batch-mode --no-transfer-progress verify` valida
 las pruebas unitarias y web. Las pruebas de migración y PostgreSQL requieren una
 base aislada configurada y autorizada mediante `TEST_DB_URL`, `TEST_DB_USERNAME`
 y `TEST_DB_PASSWORD`.
+
+---
+
+## 14. Implementación y verificación de C13 (Servicio SOAP/XML GetLead y suite SoapUI)
+
+Esta sección documenta las decisiones de diseño, dependencias aprobadas,
+arquitectura de seguridad, suite SoapUI y validación automatizada de la tarea **C13**.
+
+### 14.1. Decisiones de diseño y contrato SOAP 1.1
+
+Para cumplir los requerimientos curriculares de interoperabilidad basada en XML sobre
+HTTP, el servicio CRM expone un endpoint SOAP 1.1 contract-first para la consulta de
+leads (`GetLead`). La mutación e ingesta permanecen exclusivamente en la API REST de CRM.
+
+1. **Contrato XML Schema y WSDL:**
+   - Contrato XSD: `backend/src/main/resources/xsd/leads-v1.xsd`.
+   - Target Namespace (TNS): `urn:urleads:crm:leads:v1`.
+   - SOAPAction: `urn:urleads:crm:leads:v1:GetLead`.
+   - Endpoint SOAP: `POST /ws/leads`.
+   - Contrato WSDL publicado: `GET /ws/leads.wsdl` (generado dinámicamente mediante
+     `DefaultWsdl11Definition` y el servlet `MessageDispatcherServlet`).
+
+2. **Estructura mínima de datos sin datos personales (PII):**
+   - Solicitud `GetLeadRequest`: contiene únicamente `leadId` (`xs:long`, con restricción
+     `minInclusive value="1"`).
+   - Respuesta `GetLeadResponse`: contiene únicamente `id` (`xs:long`), `stage`
+     (enumeración canónica: `NUEVO`, `EN_SEGUIMIENTO`, `CERRADO`) y `nextFollowUp`
+     (`xs:date`, formato `YYYY-MM-DD`, opcional/nillable).
+   - No expone nombres, teléfonos, correos, notas privadas ni metadatos de auditoría.
+
+3. **Reutilización directa de servicio de aplicación (C03):**
+   - El endpoint delega directamente en `LeadService.obtenerInterno(leadId, usuarioId)`.
+   - El identificador del usuario propietario (`usuarioId`) se extrae exclusivamente del
+     claim `sub` del token JWT validado criptográficamente por la infraestructura de seguridad.
+   - No se realizan llamadas HTTP contra el propio CRM ni se utiliza autenticación por sesión.
+
+4. **Modelo de fallos en dos capas:**
+   - **Capa HTTP (pre-dispatch):** Token ausente o inválido retorna `HTTP 401 Unauthorized`
+     con cabecera `WWW-Authenticate: Bearer`. Token válido sin scope `crm.leads.read`
+     retorna `HTTP 403 Forbidden`.
+   - **Capa SOAP (en endpoint):** Lead inexistente o ajeno produce un sobre `SOAP Fault`
+     con código `Client`, `faultstring` `LEAD_NOT_FOUND`, código de respuesta `HTTP 500`
+     y detalle explicativo. Ambas condiciones son estrictamente indistinguibles para
+     evitar la enumeración de leads. Solicitudes con XML mal formado o no conforme a XSD
+     retornan un `SOAP Fault Client`.
+
+### 14.2. Dependencias incorporadas y compatibilidad
+
+Conforme a la aprobación explícita de dependencias otorgada por el usuario para C13,
+se incorporaron las siguientes dependencias en `backend/pom.xml`, gestionadas por el
+parent de Spring Boot 3.3.13 sin versiones huérfanas:
+
+- `org.springframework.boot:spring-boot-starter-web-services` (versión 3.3.13, provee
+  `spring-ws-core 4.0.15` y Jakarta XML Web Services).
+- `wsdl4j:wsdl4j` (versión 1.6.3, requerida por `DefaultWsdl11Definition` para la
+  generación y serialización WSDL).
+- `org.springframework.ws:spring-ws-test` (versión 4.0.15, ámbito test, para utilidades
+  y verificación de esquemas SOAP).
+
+### 14.3. Arquitectura de seguridad (/ws/**) y protección XML
+
+1. **Cadena de filtros de seguridad dedicada (`wsFilterChain`):**
+   - Configurada en `SecurityConfig.java` con orden `@Order(2)` previo a la cadena web de sesión.
+   - Sesiones configuradas como `SessionCreationPolicy.STATELESS` y CSRF deshabilitado.
+   - `GET /ws/leads.wsdl`, `GET /ws/*.wsdl` y `GET /ws/*.xsd` tienen acceso público (`permitAll()`).
+   - `POST /ws/leads` exige token Bearer con `SCOPE_crm.leads.read`.
+   - `DefaultBearerTokenResolver` configurado con `setAllowUriQueryParameter(false)` para
+     rechazar explícitamente tokens en parámetros de consulta.
+   - Se ignoran cookies de sesión web (`JSESSIONID`) y credenciales de autenticación básica.
+
+2. **Límite de tamaño XML (`SoapSizeLimitingFilter`):**
+   - Filtro antepuesto a la cadena de seguridad que acota las cargas entrantes a un máximo
+     de 16 KB (16,384 bytes) tanto por cabecera `Content-Length` como por flujo acotado
+     de lectura (`BoundedServletRequestWrapper`).
+   - Cargas sobredimensionadas son rechazadas inmediatamente a nivel HTTP con `413 Payload Too Large`
+     antes de alcanzar el analizador XML, mitigando ataques de denegación de servicio (XML Bomb / Billion Laughs).
+
+3. **Endurecimiento explícito del analizador XML (`SecureSaajSoapMessageFactory`):**
+   - La fábrica de mensajes SAAJ (`SecureSaajSoapMessageFactory`) antepone un analizador SAX
+     estrictamente endurecido antes de la construcción del sobre SOAP, con las siguientes características:
+     - `http://apache.org/xml/features/disallow-doctype-decl` = `true` (deshabilita completamente declaraciones DOCTYPE).
+     - `http://xml.org/sax/features/external-general-entities` = `false` (deshabilita entidades generales externas).
+     - `http://xml.org/sax/features/external-parameter-entities` = `false` (deshabilita entidades de parámetro externas).
+     - `http://apache.org/xml/features/nonvalidating/load-external-dtd` = `false` (deshabilita carga de DTD externa).
+     - `XMLConstants.FEATURE_SECURE_PROCESSING` = `true`.
+     - `XMLConstants.ACCESS_EXTERNAL_DTD` = `""` y `XMLConstants.ACCESS_EXTERNAL_SCHEMA` = `""`.
+     - `EntityResolver` configurado para retornar flujos vacíos, impidiendo cualquier resolución de recursos externos.
+   - Cualquier intento de inclusión de DOCTYPE o entidades externas falla cerrado inmediatamente lanzando
+     `InvalidXmlException` sin resolver recursos locales ni externos y sin invocar la capa de servicio.
+
+### 14.4. Suite de pruebas automatizadas SoapUI
+
+En el directorio `backend/soapui/` se estructuró y versionó el proyecto XML de SoapUI:
+
+- **Proyecto:** `urleads-crm-soapui-project.xml` (suite `GetLeadTestSuite`).
+- **Casos de prueba obligatorios:**
+  1. `TC01 - Valid GetLead Request` (HTTP 200 OK, validación XSD, respuesta mínima sin PII).
+  2. `TC02 - Schema Invalid XML Request` (HTTP 500, SOAP Fault Client).
+  3. `TC03 - Missing or Invalid Bearer Token` (HTTP 401 Unauthorized, cabecera Bearer).
+  4. `TC04 - Token Lacking Required Scope` (HTTP 403 Forbidden).
+  5. `TC05 - Indistinguishable Missing and Foreign Lead` (HTTP 500, SOAP Fault `LEAD_NOT_FOUND`).
+  6. `TC06 - XXE and External DTD Injection Rejection` (Rechazo seguro sin fuga de secretos).
+- **Parametrización:** Propiedades de URL (`crm_endpoint`) y tokens JWT (`jwt_token_*`)
+  parametrizadas sin almacenar credenciales reales ni secretos en control de versiones.
+- **Documentación y estado de ejecución:** `backend/soapui/README.md` describe la estructura,
+  propiedades y comandos de ejecución. En la fase de validación en tiempo de ejecución (intento A4),
+  se ejecutó de forma automatizada mediante el ejecutor `testrunner.sh` de SoapUI 5.7.2 Open Source
+  contra la instancia temporal de CRM levantada en `http://127.0.0.1:8113/ws/leads`, validando
+  exitosamente los 6 casos de prueba (18 aserciones válidas, 0 fallos).
+
+### 14.5. Matriz de aceptación y resultados C13
+
+| Requisito | Descripción | Prueba automatizada | Resultado |
+| :--- | :--- | :--- | :--- |
+| **R1** | SOAP 1.1 GetLead contract-first y WSDL en `/ws/leads.wsdl` | `LeadSoapSecurityWebTest.wsdl_PublicAccess_Returns200WithWsdlContent`<br>`LeadSoapEndpointWebTest.getLead_Success_Returns200WithMinimalDto`<br>SoapUI `TC01` | Superado (HTTP 200, WSDL válido, DTO exacto sin PII) |
+| **R2** | Autenticación Bearer JWT obligatoria, 401/403 pre-dispatch, sin sesión | `LeadSoapSecurityWebTest`<br>SoapUI `TC03`, `TC04` | Superado (HTTP 401/403 consistentes) |
+| **R3** | Reutilización de `LeadService.obtenerInterno` con `sub` validado | `LeadSoapEndpointWebTest.getLead_Success_Returns200WithMinimalDto`<br>SoapUI `TC01` | Superado (invocación verificada con `usuarioId=42`) |
+| **R4** | Mapeo de fallos SOAP y paridad estricta inexistente/ajeno | `LeadSoapEndpointWebTest.getLead_NotFound_ReturnsSoapClientFault500`<br>`LeadSoapEndpointWebTest.getLead_ForeignLead_ReturnsIdenticalSoapFault`<br>SoapUI `TC05` | Superado (ambos retornan `LEAD_NOT_FOUND` y HTTP 500) |
+| **R5** | Validación XSD, protección XXE explícita y límite de tamaño 16 KB | `LeadSoapSecurityWebTest.post_OversizedPayload_RejectedAtHttpIngressWith413`<br>`LeadSoapEndpointWebTest.getLead_XxeExternalEntityWithSentinelFile_RejectedSafelyAndServiceNeverInvoked`<br>`SecureSaajSoapMessageFactoryTest`<br>SoapUI `TC02`, `TC06` | Superado (413 en sobrecarga, centinelas observables no resueltos, servicio no invocado) |
+| **R6** | Proyecto SoapUI versionado y ejecutado con 6 casos obligatorios | `backend/soapui/urleads-crm-soapui-project.xml`<br>`backend/soapui/README.md`<br>Ejecución CLI `testrunner.sh` | Superado (6 casos ejecutados, 0 fallos, 18 aserciones válidas) |
+| **R7** | Sin migraciones Flyway ni alteración de esquemas DB | Inspección de migraciones `db/migration/` (V1–V7 intactas) | Superado (0 cambios de esquema) |
+| **R8** | Documentación técnica y reporte de tareas | `docs/backend-v2/guia-cris.md`, `contratos.md` | Superado |
+
+### 14.6. Comandos reproducibles de verificación
+
+```bash
+# 1. Pruebas unitarias y de integración de la interfaz SOAP, seguridad y parser endurecido (24 pruebas, 0 fallas en Java 21)
+JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \
+PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH \
+./mvnw --batch-mode --no-transfer-progress test \
+  -Dtest=LeadSoapSecurityWebTest,LeadSoapEndpointWebTest,SecureSaajSoapMessageFactoryTest
+
+# 2. Verificación de formato y ausencia de conflictos de estilo Git
+git diff --check
+```
+
+> **Nota sobre `./mvnw verify` completo:** La ejecución de `mvn verify` sin perfil de base de datos
+> ejecuta 294 pruebas unitarias/slice. De ellas, 292 pruebas pasan exitosamente; únicamente 2 pruebas
+> en `SpaControllerTest` fallan debido a la ausencia del directorio compilado `frontend/dist` en un entorno
+> limpio de backend, condición ajena al alcance del servicio SOAP C13.
