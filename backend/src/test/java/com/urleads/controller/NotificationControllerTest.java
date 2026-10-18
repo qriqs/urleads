@@ -169,7 +169,7 @@ class NotificationControllerTest {
                 .pospuestaHasta(Instant.now().plusSeconds(1800))
                 .build();
 
-        when(notificationService.posponerNotificacion(10L, 1L, 30)).thenReturn(snoozed);
+        when(notificationService.posponerNotificacion(eq(10L), eq(1L), any(SnoozeNotificationRequest.class))).thenReturn(snoozed);
 
         SnoozeNotificationRequest request = SnoozeNotificationRequest.builder()
                 .minutos(30)
@@ -181,6 +181,52 @@ class NotificationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(10))
                 .andExpect(jsonPath("$.pospuestaHasta").exists());
+    }
+
+    @Test
+    @WithMockUser(username = "admin")
+    @DisplayName("Posponer notificación con preset '15m' retorna 200 OK")
+    void snoozeNotification_WithPreset15m_ReturnsOk() throws Exception {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(1L);
+
+        NotificationResponse snoozed = NotificationResponse.builder()
+                .id(10L)
+                .pospuestaHasta(Instant.now().plusSeconds(900))
+                .snoozeCount(1)
+                .build();
+
+        when(notificationService.posponerNotificacion(eq(10L), eq(1L), any(SnoozeNotificationRequest.class))).thenReturn(snoozed);
+
+        SnoozeNotificationRequest request = SnoozeNotificationRequest.builder()
+                .preset("15m")
+                .build();
+
+        mockMvc.perform(post("/api/v1/notifications/10/snooze")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(10))
+                .andExpect(jsonPath("$.snoozeCount").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "admin")
+    @DisplayName("Posponer notificación superando límite máximo retorna 400 Bad Request")
+    void snoozeNotification_ExceedingLimit_ReturnsBadRequest() throws Exception {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(1L);
+
+        when(notificationService.posponerNotificacion(eq(10L), eq(1L), any(SnoozeNotificationRequest.class)))
+                .thenThrow(new IllegalArgumentException("Límite máximo de aplazamientos alcanzado (máximo permitido: 3)"));
+
+        SnoozeNotificationRequest request = SnoozeNotificationRequest.builder()
+                .preset("1h")
+                .build();
+
+        mockMvc.perform(post("/api/v1/notifications/10/snooze")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Límite máximo de aplazamientos alcanzado (máximo permitido: 3)"));
     }
 
     @Test

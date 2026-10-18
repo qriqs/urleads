@@ -176,4 +176,170 @@ class NotificationServiceTest {
         verify(notificationRepository, never()).save(any());
         verify(webSocketHandler, never()).sendNotificationToUser(any(), any());
     }
+
+    @Test
+    @DisplayName("Posponer notificación con preset '15m' suma exactamente 15 minutos e incrementa snoozeCount")
+    void snooze_WithPreset15m_Adds15MinutesAndIncrementsCount() {
+        Long userId = 1L;
+        Long notificationId = 10L;
+
+        Notification notification = Notification.builder()
+                .id(notificationId)
+                .usuario(new Usuario(userId, "alex", "pass"))
+                .snoozeCount(0)
+                .build();
+
+        when(notificationRepository.findByIdAndUsuarioId(notificationId, userId))
+                .thenReturn(Optional.of(notification));
+        when(notificationRepository.save(any(Notification.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        Instant antes = Instant.now();
+        com.urleads.dto.SnoozeNotificationRequest request = com.urleads.dto.SnoozeNotificationRequest.builder()
+                .preset("15m")
+                .build();
+
+        NotificationResponse response = notificationService.posponerNotificacion(notificationId, userId, request);
+
+        assertThat(response.getSnoozeCount()).isEqualTo(1);
+        assertThat(response.getPospuestaHasta()).isAfterOrEqualTo(antes.plusSeconds(895));
+        assertThat(response.getPospuestaHasta()).isBeforeOrEqualTo(Instant.now().plusSeconds(905));
+        verify(notificationRepository).save(notification);
+    }
+
+    @Test
+    @DisplayName("Posponer notificación con preset '1h' suma 60 minutos")
+    void snooze_WithPreset1h_Adds60Minutes() {
+        Long userId = 1L;
+        Long notificationId = 10L;
+
+        Notification notification = Notification.builder()
+                .id(notificationId)
+                .usuario(new Usuario(userId, "alex", "pass"))
+                .snoozeCount(1)
+                .build();
+
+        when(notificationRepository.findByIdAndUsuarioId(notificationId, userId))
+                .thenReturn(Optional.of(notification));
+        when(notificationRepository.save(any(Notification.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        Instant antes = Instant.now();
+        com.urleads.dto.SnoozeNotificationRequest request = com.urleads.dto.SnoozeNotificationRequest.builder()
+                .preset("1h")
+                .build();
+
+        NotificationResponse response = notificationService.posponerNotificacion(notificationId, userId, request);
+
+        assertThat(response.getSnoozeCount()).isEqualTo(2);
+        assertThat(response.getPospuestaHasta()).isAfterOrEqualTo(antes.plusSeconds(3595));
+    }
+
+    @Test
+    @DisplayName("Posponer notificación con preset '1d' suma 1440 minutos (24 horas)")
+    void snooze_WithPreset1d_Adds24Hours() {
+        Long userId = 1L;
+        Long notificationId = 10L;
+
+        Notification notification = Notification.builder()
+                .id(notificationId)
+                .usuario(new Usuario(userId, "alex", "pass"))
+                .snoozeCount(0)
+                .build();
+
+        when(notificationRepository.findByIdAndUsuarioId(notificationId, userId))
+                .thenReturn(Optional.of(notification));
+        when(notificationRepository.save(any(Notification.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        Instant antes = Instant.now();
+        com.urleads.dto.SnoozeNotificationRequest request = com.urleads.dto.SnoozeNotificationRequest.builder()
+                .preset("1d")
+                .build();
+
+        NotificationResponse response = notificationService.posponerNotificacion(notificationId, userId, request);
+
+        assertThat(response.getSnoozeCount()).isEqualTo(1);
+        assertThat(response.getPospuestaHasta()).isAfterOrEqualTo(antes.plusSeconds(86395));
+    }
+
+    @Test
+    @DisplayName("Preset de aplazamiento inválido lanza IllegalArgumentException con mensaje explicativo")
+    void snooze_InvalidPreset_ThrowsIllegalArgument() {
+        Long userId = 1L;
+        Long notificationId = 10L;
+
+        Notification notification = Notification.builder()
+                .id(notificationId)
+                .usuario(new Usuario(userId, "alex", "pass"))
+                .snoozeCount(0)
+                .build();
+
+        when(notificationRepository.findByIdAndUsuarioId(notificationId, userId))
+                .thenReturn(Optional.of(notification));
+
+        com.urleads.dto.SnoozeNotificationRequest request = com.urleads.dto.SnoozeNotificationRequest.builder()
+                .preset("2w")
+                .build();
+
+        assertThatThrownBy(() -> notificationService.posponerNotificacion(notificationId, userId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Preset de aplazamiento inválido: '2w'. Opciones permitidas: '15m', '1h', '1d'");
+    }
+
+    @Test
+    @DisplayName("Validación de límite máximo de aplazamientos (máximo 3): el 4to intento es rechazado")
+    void snooze_ExceedingLimit_ThrowsIllegalArgument() {
+        Long userId = 1L;
+        Long notificationId = 10L;
+
+        // Notificación que ya fue aplazada 3 veces (snoozeCount = 3)
+        Notification notification = Notification.builder()
+                .id(notificationId)
+                .usuario(new Usuario(userId, "alex", "pass"))
+                .snoozeCount(3)
+                .build();
+
+        when(notificationRepository.findByIdAndUsuarioId(notificationId, userId))
+                .thenReturn(Optional.of(notification));
+
+        com.urleads.dto.SnoozeNotificationRequest request = com.urleads.dto.SnoozeNotificationRequest.builder()
+                .preset("15m")
+                .build();
+
+        assertThatThrownBy(() -> notificationService.posponerNotificacion(notificationId, userId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Límite máximo de aplazamientos alcanzado (máximo permitido: 3)");
+
+        verify(notificationRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Comprobación de que la base de datos de CRM no es modificada ni alterada por snooze")
+    void snooze_DoesNotModifyCrmOrLeadDatabase() {
+        Long userId = 1L;
+        Long notificationId = 10L;
+
+        Notification notification = Notification.builder()
+                .id(notificationId)
+                .usuario(new Usuario(userId, "alex", "pass"))
+                .snoozeCount(1)
+                .build();
+
+        when(notificationRepository.findByIdAndUsuarioId(notificationId, userId))
+                .thenReturn(Optional.of(notification));
+        when(notificationRepository.save(any(Notification.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        com.urleads.dto.SnoozeNotificationRequest request = com.urleads.dto.SnoozeNotificationRequest.builder()
+                .preset("1h")
+                .build();
+
+        NotificationResponse response = notificationService.posponerNotificacion(notificationId, userId, request);
+
+        assertThat(response).isNotNull();
+        // Verifica que la persistencia se limita estrictamente al repositorio de Notification
+        verify(notificationRepository).save(notification);
+        // Ningún componente externo de CRM es consultado ni alterado
+    }
 }

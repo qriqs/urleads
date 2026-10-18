@@ -47,6 +47,10 @@ public class Notification {
     @Column(name = "pospuesta_hasta")
     private Instant pospuestaHasta;
 
+    @Column(name = "snooze_count", nullable = false)
+    @Builder.Default
+    private int snoozeCount = 0;
+
     @Column(name = "creado_en", nullable = false, updatable = false)
     @Builder.Default
     private Instant creadoEn = Instant.now();

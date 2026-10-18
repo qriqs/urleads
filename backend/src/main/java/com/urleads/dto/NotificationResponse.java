@@ -29,6 +29,8 @@ public class NotificationResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Instant pospuestaHasta;
 
+    private int snoozeCount;
+
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Instant creadoEn;
 
@@ -43,6 +45,7 @@ public class NotificationResponse {
                 .leida(entity.isLeida())
                 .leidaEn(entity.getLeidaEn())
                 .pospuestaHasta(entity.getPospuestaHasta())
+                .snoozeCount(entity.getSnoozeCount())
                 .creadoEn(entity.getCreadoEn())
                 .build();
     }

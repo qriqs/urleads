@@ -23,6 +23,7 @@ import java.util.Optional;
 public class NotificationService {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
+    public static final int MAX_SNOOZE_COUNT = 3;
 
     private final NotificationRepository notificationRepository;
     private final UsuarioRepository usuarioRepository;
@@ -112,15 +113,28 @@ public class NotificationService {
     }
 
     @Transactional
-    public NotificationResponse posponerNotificacion(Long id, Long usuarioId, int minutos) {
+    public NotificationResponse posponerNotificacion(Long id, Long usuarioId, com.urleads.dto.SnoozeNotificationRequest request) {
         Notification notification = notificationRepository.findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notificación no encontrada o no pertenece al usuario autenticado"));
 
+        // Validación estricta del límite máximo de aplazamientos
+        if (notification.getSnoozeCount() >= MAX_SNOOZE_COUNT) {
+            throw new IllegalArgumentException("Límite máximo de aplazamientos alcanzado (máximo permitido: " + MAX_SNOOZE_COUNT + ")");
+        }
+
+        int minutos = (request != null) ? request.resolverMinutos() : 15;
         Instant pospuesta = Instant.now().plus(minutos, ChronoUnit.MINUTES);
+
         notification.setPospuestaHasta(pospuesta);
+        notification.setSnoozeCount(notification.getSnoozeCount() + 1);
         notification = notificationRepository.save(notification);
 
         return NotificationResponse.fromEntity(notification);
+    }
+
+    @Transactional
+    public NotificationResponse posponerNotificacion(Long id, Long usuarioId, int minutos) {
+        return posponerNotificacion(id, usuarioId, com.urleads.dto.SnoozeNotificationRequest.builder().minutos(minutos).build());
     }
 
     @Transactional(readOnly = true)

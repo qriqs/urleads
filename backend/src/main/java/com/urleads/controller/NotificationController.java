@@ -86,7 +86,7 @@ public class NotificationController {
             @Valid @RequestBody SnoozeNotificationRequest request
     ) {
         Long usuarioId = currentUserProvider.getCurrentUserId();
-        return ResponseEntity.ok(notificationService.posponerNotificacion(id, usuarioId, request.getMinutos()));
+        return ResponseEntity.ok(notificationService.posponerNotificacion(id, usuarioId, request));
     }
 
     /**
