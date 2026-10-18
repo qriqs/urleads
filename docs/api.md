@@ -77,6 +77,9 @@ credenciales de acceso inter-servicio protegidas por la sesión web existente:
 | GET | `/api/leads/{id}/audit` | Consultar historial paginado de cambios del lead. |
 | GET | `/api/leads/{id}/notes` | Listar entradas internas de bitácora cronológicamente. |
 | POST | `/api/leads/{id}/notes` | Registrar entrada interna; responde 201. |
+| POST | `/api/leads/{id}/archive` | Archivar lead propio activo; responde 200 y representación con archivedAt. |
+| POST | `/api/leads/{id}/restore` | Restaurar lead propio archivado; responde 200 y representación reactivada. |
+| GET | `/api/leads/archived` | Listar leads archivados del usuario de forma paginada. |
 | GET | `/api/dashboard` | Resumen y pendientes del usuario. |
 
 La lista acepta `search`, `stage`, `followUp`, `priority`, `origin` y `page`; el tamaño de página
@@ -260,6 +263,36 @@ Ejemplo de cuerpo para `PUT /api/leads/{id}/tags`:
 }
 ```
 
+## Archivo y restauración lógica (Backend V2 C12 / DSW-52)
+
+Operaciones para la gestión de ciclo de vida lógico de leads sin eliminación física:
+
+| Método | Ruta | Resultado |
+|---|---|---|
+| POST | `/api/leads/{id}/archive` | Archiva un lead activo propio; responde 200 OK con `archivedAt` asignado. |
+| POST | `/api/leads/{id}/restore` | Restaura un lead archivado propio; responde 200 OK con `archivedAt: null`. |
+| GET | `/api/leads/archived` | Listado paginado de leads archivados del usuario (orden `createdAt` DESC, `id` DESC). |
+
+### Reglas y contratos de archivo y restauración:
+
+- **Marca temporal de archivo:** Se utiliza la columna `archived_at TIMESTAMPTZ NULL` en la tabla `lead`. `NULL` representa un lead activo; un timestamp UTC representa un lead archivado.
+- **Diferenciación estricta de DELETE:** El archivo lógico es una operación independiente de `DELETE`. No realiza borrado físico en base de datos ni invoca cascada de notas (`nota`), registros de auditoría (`lead_audit_log`), etiquetas (`lead_tag`) ni eventos outbox históricos. Tampoco emite eventos outbox adicionales.
+- **Exclusión de leads archivados:** Todas las consultas y mutaciones estándar excluyen leads archivados, respondiendo HTTP 404 indistinguible (`{"status":404,"code":"NOT_FOUND","message":"Lead no encontrado"}`):
+  - Detalle `GET /api/leads/{id}`.
+  - Edición `PUT /api/leads/{id}`.
+  - Gestión de etiquetas `PUT /api/leads/{id}/tags`.
+  - Notas `GET` y `POST /api/leads/{id}/notes`.
+  - Auditoría `GET /api/leads/{id}/audit`.
+  - Eliminación física `DELETE /api/leads/{id}`.
+  - Dashboard `GET /api/dashboard` (conteos totales, distribución por etapa, seguimientos de hoy y atrasados excluyen archivados).
+  - Consulta interna inter-servicios `GET /internal/v1/leads/{id}`.
+  - Búsqueda y listado activo `GET /api/leads`.
+- **Transiciones de estado y respuestas de error:**
+  - `POST /api/leads/{id}/archive` requiere que el lead pertenezca al usuario autenticado y se encuentre activo (`archived_at IS NULL`). Si el lead ya está archivado, no existe o pertenece a otro usuario, responde 404 (semántica de no-existencia).
+  - `POST /api/leads/{id}/restore` requiere que el lead pertenezca al usuario autenticado y se encuentre archivado (`archived_at IS NOT NULL`). Si el lead ya está activo, no existe o pertenece a otro usuario, responde 404.
+- **Unicidad de contactos normalizados C06:** Las restricciones únicas sobre `correo_norm` y `telefono_norm` aplican a nivel de tabla sobre todas las filas (incluyendo archivadas). Los contactos de leads archivados permanecen reservados y restaurar un lead no evade las reglas de unicidad.
+- **Seguridad:** Requiere sesión web activa (cookie `JSESSIONID`) y cabecera obligatoria `X-XSRF-TOKEN` para mutaciones (`archive`, `restore`). La propiedad del lead siempre se resuelve a través del usuario autenticado en el servidor (`CurrentUserProvider`), ignorando cualquier parámetro del cliente.
+
 ## Monitoreo y salud
 
 El endpoint de salud es público y no requiere sesión ni credenciales. Es el
@@ -337,7 +370,7 @@ If the lead has no scheduled follow-up (such as in stage `CERRADO` or `NUEVO` wi
   - `404 Not Found`: Lead does not exist or belongs to another owner (`{"status":404,"code":"NOT_FOUND","message":"Lead no encontrado"}`). Does not leak resource existence across owners.
 - **Content negotiation:** Returns `application/json`. Requests specifying `Accept: text/html` receive `406 Not Acceptable`; SPA HTML is never served.
 - **Application service reuse:** Core lookup logic is encapsulated in `LeadService.obtenerInterno(Long leadId, Long usuarioId)`, reusable directly by future internal integrations (such as SOAP C13) without HTTP self-calls.
-- **Known boundaries:** Exclusion of archived leads is a future dependency owned by task C12 (DSW-52); no archive state is evaluated in C03. Live port 8080 verification is constrained by existing local environment processes.
+- **Known boundaries:** Exclusion of archived leads is implemented in task C12 (DSW-52); archived leads return HTTP 404 identical to nonexistent or other-owner leads. Live port 8080 verification is constrained by existing local environment processes.
 
 ## Método PUT
 
