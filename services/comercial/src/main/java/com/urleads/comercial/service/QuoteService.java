@@ -18,6 +18,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import com.urleads.comercial.repository.QuoteItemRepository;
+import com.urleads.comercial.client.CrmLeadService;
+import com.urleads.comercial.config.RabbitMqConfig;
+import com.urleads.comercial.entity.OutboxEvent;
+import com.urleads.comercial.event.QuotationAcceptedData;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,15 +34,21 @@ public class QuoteService {
     private final QuoteRepository quoteRepository;
     private final CatalogItemRepository catalogItemRepository;
     private final QuoteItemRepository quoteItemRepository;
+    private final CrmLeadService crmLeadService;
+    private final OutboxEventPublisher outboxEventPublisher;
 
     public QuoteService(
         QuoteRepository quoteRepository,
         CatalogItemRepository catalogItemRepository,
-        QuoteItemRepository quoteItemRepository
+        QuoteItemRepository quoteItemRepository,
+        CrmLeadService crmLeadService,
+        OutboxEventPublisher outboxEventPublisher
     ) {
         this.quoteRepository = quoteRepository;
         this.catalogItemRepository = catalogItemRepository;
         this.quoteItemRepository = quoteItemRepository;
+        this.crmLeadService = crmLeadService;
+        this.outboxEventPublisher = outboxEventPublisher;
     }
 
     public QuoteDetailResponse create(String ownerId, QuoteCreateRequest request) {
@@ -118,6 +128,46 @@ public class QuoteService {
         quoteItemRepository.delete(toRemove);
         Quote saved = quoteRepository.save(quote);
         return QuoteDetailResponse.fromEntity(saved);
+    }
+
+    public QuoteDetailResponse acceptQuote(String ownerId, Long id) {
+        Quote quote = findQuoteByOwner(ownerId, id);
+
+        // Idempotencia: si ya fue aceptada, retornar respuesta sin duplicar eventos
+        if (quote.getStatus() == QuoteStatus.ACCEPTED) {
+            return QuoteDetailResponse.fromEntity(quote);
+        }
+
+        if (quote.getStatus() == QuoteStatus.REJECTED) {
+            throw new IllegalStateException("No se puede aceptar una cotización en estado REJECTED");
+        }
+
+        // Validar existencia de lead en CRM via OpenFeign (S04)
+        crmLeadService.getLeadById(quote.getLeadId());
+
+        // Transición de estado a ACCEPTED
+        quote.setStatus(QuoteStatus.ACCEPTED);
+        Quote savedQuote = quoteRepository.save(quote);
+
+        // Registro atómico de evento en tabla outbox_events (sin PII)
+        QuotationAcceptedData eventData = new QuotationAcceptedData(
+            savedQuote.getId(),
+            savedQuote.getLeadId(),
+            savedQuote.getCurrency(),
+            savedQuote.getTotal()
+        );
+
+        OutboxEvent outboxEvent = outboxEventPublisher.createAndSaveEvent(
+            RabbitMqConfig.QUOTATION_ACCEPTED_ROUTING_KEY,
+            1,
+            savedQuote.getOwnerId(),
+            eventData
+        );
+
+        // Despacho del evento hacia RabbitMQ
+        outboxEventPublisher.publishEvent(outboxEvent);
+
+        return QuoteDetailResponse.fromEntity(savedQuote);
     }
 
     private Quote findQuoteByOwner(String ownerId, Long id) {

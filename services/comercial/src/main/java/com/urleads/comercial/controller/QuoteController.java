@@ -109,4 +109,14 @@ public class QuoteController {
         QuoteDetailResponse response = quoteService.removeItem(ownerId, id, itemId);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/{id}/accept")
+    public ResponseEntity<QuoteDetailResponse> accept(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable Long id
+    ) {
+        String ownerId = jwt.getSubject();
+        QuoteDetailResponse response = quoteService.acceptQuote(ownerId, id);
+        return ResponseEntity.ok(response);
+    }
 }
