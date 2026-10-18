@@ -42,9 +42,9 @@ cd infra && docker compose up -d --wait && cd ..
 # requiere compilar previamente el frontend o usar el script verificado del repositorio:
 ./scripts/build.sh -Pdb-integration
 
-# Para pruebas unitarias rápidas del backend sin assets de frontend:
+# Para pruebas unitarias rápidas del backend sin base de datos ni assets de frontend:
 cd backend
-./mvnw test -Dtest=*UnitTest
+./mvnw test -Dtest=LeadServiceImplTest,DashboardServiceTest,SecurityCurrentUserProviderTest
 ```
 
 ---
