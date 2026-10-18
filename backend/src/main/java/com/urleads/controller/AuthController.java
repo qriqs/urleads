@@ -1,10 +1,19 @@
 package com.urleads.controller;
 
+import com.urleads.config.OpenApiConfig;
 import com.urleads.dto.ErrorResponse;
 import com.urleads.dto.LoginRequest;
 import com.urleads.dto.UserResponse;
 import com.urleads.entity.Usuario;
 import com.urleads.repository.UsuarioRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -24,6 +33,7 @@ import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Autenticación", description = "Autenticación de usuario, gestión de sesión web y token CSRF")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -37,6 +47,16 @@ public class AuthController {
         this.usuarioRepository = usuarioRepository;
     }
 
+    @Operation(
+            summary = "Iniciar sesión",
+            description = "Autentica al usuario mediante credenciales (username/password) y establece una cookie de sesión JSESSIONID HttpOnly. Endpoint público no autenticado que requiere cabecera obligatoria X-XSRF-TOKEN con el token CSRF obtenido de GET /api/auth/csrf.",
+            parameters = {
+                    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true, description = "Token CSRF obtenido previamente de GET /api/auth/csrf")
+            }
+    )
+    @ApiResponse(responseCode = "200", description = "Inicio de sesión exitoso", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Credenciales inválidas", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping("/login")
     public ResponseEntity<?> login(
             @Valid @RequestBody LoginRequest request,
@@ -71,6 +91,9 @@ public class AuthController {
         }
     }
 
+    @Operation(summary = "Consultar usuario autenticado", description = "Obtiene los datos del usuario en la sesión activa. Disponible en /api/auth/session y /api/auth/me.", security = @SecurityRequirement(name = OpenApiConfig.COOKIE_AUTH_SCHEME))
+    @ApiResponse(responseCode = "200", description = "Sesión activa válida", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Sin sesión activa", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping({"/session", "/me"})
     public ResponseEntity<?> getCurrentUser(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -84,6 +107,8 @@ public class AuthController {
         return ResponseEntity.ok(new UserResponse(usuario.getId(), usuario.getUsername()));
     }
 
+    @Operation(summary = "Obtener token CSRF", description = "Endpoint público para obtener el token CSRF requerido en las peticiones que mutan estado (POST, PUT, DELETE).")
+    @ApiResponse(responseCode = "200", description = "Token CSRF disponible")
     @GetMapping("/csrf")
     public CsrfToken getCsrfToken(CsrfToken token) {
         return token;
