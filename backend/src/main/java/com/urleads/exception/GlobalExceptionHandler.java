@@ -3,9 +3,11 @@ package com.urleads.exception;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.transaction.TransactionSystemException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -66,5 +68,31 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .badRequest()
                 .body(new ErrorResponse(400, "VALIDATION_ERROR", "Cuerpo de la petición inválido."));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        String duplicateMessage = LeadDuplicateExceptionClassifier.resolveDuplicateMessage(ex);
+        if (duplicateMessage != null) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(new ErrorResponse(400, "VALIDATION_ERROR", duplicateMessage));
+        }
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse(500, "INTERNAL_SERVER_ERROR", "Error interno del servidor."));
+    }
+
+    @ExceptionHandler(TransactionSystemException.class)
+    public ResponseEntity<ErrorResponse> handleTransactionSystemException(TransactionSystemException ex) {
+        String duplicateMessage = LeadDuplicateExceptionClassifier.resolveDuplicateMessage(ex);
+        if (duplicateMessage != null) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(new ErrorResponse(400, "VALIDATION_ERROR", duplicateMessage));
+        }
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse(500, "INTERNAL_SERVER_ERROR", "Error interno del servidor."));
     }
 }

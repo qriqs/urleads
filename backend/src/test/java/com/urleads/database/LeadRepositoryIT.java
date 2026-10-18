@@ -1,15 +1,18 @@
 package com.urleads.database;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +35,9 @@ class LeadRepositoryIT {
 
     @Autowired
     private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     @DisplayName("Insert: guarda un lead con fechas autogeneradas y recupera por ID")
@@ -353,5 +359,129 @@ class LeadRepositoryIT {
         assertThat(atrasados.get(0).getNombre()).isEqualTo("Alpha Mas Antiguo");
         assertThat(atrasados.get(1).getNombre()).isEqualTo("Beta Mas Antiguo");
         assertThat(atrasados.get(2).getNombre()).isEqualTo("Ayer");
+    }
+
+    // =========================================================================
+    // TESTS C06: DETECCIÓN DE DUPLICADOS EN REPOSITORIO (DSW-46)
+    // =========================================================================
+
+    @Test
+    @DisplayName("C06 Repository: existsByUsuarioIdAndCorreoNorm detecta duplicados por propietario")
+    void shouldCheckDuplicateEmailByOwner() {
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("dupEmailA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("dupEmailB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        Lead lead = new Lead();
+        lead.setUsuario(usuarioA);
+        lead.setNombre("Lead Con Correo");
+        lead.setCorreo("contacto@test.com");
+        lead.setEtapa("NUEVO");
+        leadRepository.save(lead);
+        entityManager.flush();
+
+        // Para usuario A existe "contacto@test.com"
+        assertThat(leadRepository.existsByUsuarioIdAndCorreoNorm(usuarioA.getId(), "contacto@test.com")).isTrue();
+        // Para usuario B no existe
+        assertThat(leadRepository.existsByUsuarioIdAndCorreoNorm(usuarioB.getId(), "contacto@test.com")).isFalse();
+        // Otro correo para usuario A no existe
+        assertThat(leadRepository.existsByUsuarioIdAndCorreoNorm(usuarioA.getId(), "otro@test.com")).isFalse();
+    }
+
+    @Test
+    @DisplayName("C06 Repository: existsByUsuarioIdAndTelefonoNorm detecta duplicados por propietario")
+    void shouldCheckDuplicatePhoneByOwner() {
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("dupPhoneA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("dupPhoneB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        Lead lead = new Lead();
+        lead.setUsuario(usuarioA);
+        lead.setNombre("Lead Con Tel");
+        lead.setTelefono("+51 (999) 111-222");
+        lead.setEtapa("NUEVO");
+        leadRepository.save(lead);
+        entityManager.flush();
+
+        // Para usuario A existe dígitos "51999111222"
+        assertThat(leadRepository.existsByUsuarioIdAndTelefonoNorm(usuarioA.getId(), "51999111222")).isTrue();
+        // Para usuario B no existe
+        assertThat(leadRepository.existsByUsuarioIdAndTelefonoNorm(usuarioB.getId(), "51999111222")).isFalse();
+        // Otro teléfono para usuario A no existe
+        assertThat(leadRepository.existsByUsuarioIdAndTelefonoNorm(usuarioA.getId(), "999000000")).isFalse();
+    }
+
+    @Test
+    @DisplayName("C06 Repository: IdNot excluye la propia entidad en actualización")
+    void shouldExcludeSelfOnUpdateChecks() {
+        Usuario usuario = new Usuario();
+        usuario.setUsername("selfUser");
+        usuario.setPasswordHash("hash");
+        usuario = usuarioRepository.save(usuario);
+
+        Lead l1 = new Lead();
+        l1.setUsuario(usuario);
+        l1.setNombre("Lead Uno");
+        l1.setCorreo("uno@test.com");
+        l1.setTelefono("999111222");
+        l1.setEtapa("NUEVO");
+        l1 = leadRepository.save(l1);
+
+        Lead l2 = new Lead();
+        l2.setUsuario(usuario);
+        l2.setNombre("Lead Dos");
+        l2.setCorreo("dos@test.com");
+        l2.setTelefono("888222333");
+        l2.setEtapa("NUEVO");
+        l2 = leadRepository.save(l2);
+        entityManager.flush();
+
+        // l1 contra su propio correo y teléfono -> retorna false (auto-excluido)
+        assertThat(leadRepository.existsByUsuarioIdAndCorreoNormAndIdNot(usuario.getId(), "uno@test.com", l1.getId())).isFalse();
+        assertThat(leadRepository.existsByUsuarioIdAndTelefonoNormAndIdNot(usuario.getId(), "999111222", l1.getId())).isFalse();
+
+        // l1 intentando tomar el correo o teléfono de l2 -> retorna true (colisión con otra entidad)
+        assertThat(leadRepository.existsByUsuarioIdAndCorreoNormAndIdNot(usuario.getId(), "dos@test.com", l1.getId())).isTrue();
+        assertThat(leadRepository.existsByUsuarioIdAndTelefonoNormAndIdNot(usuario.getId(), "888222333", l1.getId())).isTrue();
+    }
+
+    @Test
+    @DisplayName("C06 Repository: Carrera concurrente es abortada por restricción de base de datos")
+    void shouldEnforceDbUniquenessOnConcurrentRaceInsert() {
+        Usuario usuario = new Usuario();
+        usuario.setUsername("raceUser");
+        usuario.setPasswordHash("hash");
+        usuario = usuarioRepository.save(usuario);
+
+        Lead l1 = new Lead();
+        l1.setUsuario(usuario);
+        l1.setNombre("Primero");
+        l1.setTelefono("999111222");
+        l1.setEtapa("NUEVO");
+        leadRepository.save(l1);
+        entityManager.flush();
+
+        Lead l2 = new Lead();
+        l2.setUsuario(usuario);
+        l2.setNombre("Segundo Concurrente");
+        l2.setTelefono("(999) 111-222");
+        l2.setEtapa("NUEVO");
+
+        assertThatThrownBy(() -> {
+            leadRepository.save(l2);
+            entityManager.flush();
+        }).isInstanceOf(DataIntegrityViolationException.class);
     }
 }

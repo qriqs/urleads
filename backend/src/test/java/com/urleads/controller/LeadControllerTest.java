@@ -17,10 +17,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
+import jakarta.persistence.RollbackException;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -28,17 +31,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.transaction.TransactionSystemException;
 
 import com.urleads.dto.CreateLeadRequest;
 import com.urleads.dto.LeadResponse;
 import com.urleads.dto.PageResponse;
 import com.urleads.dto.UpdateLeadRequest;
 import com.urleads.exception.LeadNotFoundException;
+import com.urleads.exception.LeadValidationException;
 import com.urleads.security.CurrentUserProvider;
 import com.urleads.security.SecurityConfig;
 import com.urleads.security.UserDetailsServiceImpl;
@@ -232,6 +238,136 @@ class LeadControllerTest {
                 {"name":"Ana","stage":"NUEVO"}""")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void crear_conCorreoDuplicado_devuelve400ConErrorSeguroSinFugas() throws Exception {
+        when(leadService.crear(eq(USUARIO_ACTUAL), any(CreateLeadRequest.class)))
+                .thenThrow(new LeadValidationException("Ya existe un lead con este correo"));
+
+        enviar("POST", "/api/leads", BODY_VALIDO)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este correo"))
+                .andExpect(jsonPath("$.sql").doesNotExist())
+                .andExpect(jsonPath("$.stackTrace").doesNotExist())
+                .andExpect(jsonPath("$.exception").doesNotExist());
+    }
+
+    @Test
+    void crear_conTelefonoDuplicado_devuelve400ConErrorSeguroSinFugas() throws Exception {
+        when(leadService.crear(eq(USUARIO_ACTUAL), any(CreateLeadRequest.class)))
+                .thenThrow(new LeadValidationException("Ya existe un lead con este teléfono"));
+
+        enviar("POST", "/api/leads", BODY_VALIDO)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este teléfono"));
+    }
+
+    @Test
+    void actualizar_conContactoDuplicado_devuelve400ConErrorSeguro() throws Exception {
+        when(leadService.actualizar(eq(10L), eq(USUARIO_ACTUAL), any(UpdateLeadRequest.class)))
+                .thenThrow(new LeadValidationException("Ya existe un lead con este correo"));
+
+        enviar("PUT", "/api/leads/10", BODY_VALIDO)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este correo"));
+    }
+
+    @Test
+    void crear_dataIntegrityViolationConConstraintCorreo_devuelve400ConMensajeCorreo() throws Exception {
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "duplicate key",
+                new SQLException("duplicate"),
+                "uq_lead_owner_correo_norm"
+        );
+        when(leadService.crear(eq(USUARIO_ACTUAL), any(CreateLeadRequest.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate error", cve));
+
+        enviar("POST", "/api/leads", BODY_VALIDO)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este correo"));
+    }
+
+    @Test
+    void crear_dataIntegrityViolationConConstraintTelefono_devuelve400ConMensajeTelefono() throws Exception {
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "duplicate key",
+                new SQLException("duplicate"),
+                "uq_lead_owner_telefono_norm"
+        );
+        when(leadService.crear(eq(USUARIO_ACTUAL), any(CreateLeadRequest.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate error", cve));
+
+        enviar("POST", "/api/leads", BODY_VALIDO)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este teléfono"));
+    }
+
+    @Test
+    void crear_dataIntegrityViolationAjena_devuelve500SinFugaDeSqlNiMensajesInternos() throws Exception {
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "foreign key violation in schema internal detail",
+                new SQLException("insert into lead ... violates foreign key"),
+                "fk_lead_usuario"
+        );
+        when(leadService.crear(eq(USUARIO_ACTUAL), any(CreateLeadRequest.class)))
+                .thenThrow(new DataIntegrityViolationException("FK failure", cve));
+
+        enviar("POST", "/api/leads", BODY_VALIDO)
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
+                .andExpect(jsonPath("$.message").value("Error interno del servidor."))
+                .andExpect(jsonPath("$.sql").doesNotExist())
+                .andExpect(jsonPath("$.constraint").doesNotExist())
+                .andExpect(jsonPath("$.stackTrace").doesNotExist());
+    }
+
+    @Test
+    void actualizar_transactionSystemExceptionConConstraintTelefono_devuelve400ConMensajeTelefono() throws Exception {
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "duplicate key",
+                new SQLException("duplicate"),
+                "uq_lead_owner_telefono_norm"
+        );
+        RollbackException rollbackEx = new RollbackException("commit failed", cve);
+        TransactionSystemException tse = new TransactionSystemException("JPA commit error", rollbackEx);
+
+        when(leadService.actualizar(eq(10L), eq(USUARIO_ACTUAL), any(UpdateLeadRequest.class)))
+                .thenThrow(tse);
+
+        enviar("PUT", "/api/leads/10", BODY_VALIDO)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este teléfono"));
+    }
+
+    @Test
+    void actualizar_transactionSystemExceptionAjena_devuelve500SinFuga() throws Exception {
+        RollbackException rollbackEx = new RollbackException("commit failed due to timeout");
+        TransactionSystemException tse = new TransactionSystemException("JPA commit error", rollbackEx);
+
+        when(leadService.actualizar(eq(10L), eq(USUARIO_ACTUAL), any(UpdateLeadRequest.class)))
+                .thenThrow(tse);
+
+        enviar("PUT", "/api/leads/10", BODY_VALIDO)
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
+                .andExpect(jsonPath("$.message").value("Error interno del servidor."))
+                .andExpect(jsonPath("$.sql").doesNotExist())
+                .andExpect(jsonPath("$.stackTrace").doesNotExist());
     }
 
     // ---------- GET ----------

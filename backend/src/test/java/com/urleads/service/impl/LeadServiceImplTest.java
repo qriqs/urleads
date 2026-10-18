@@ -4,16 +4,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Optional;
 
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -312,5 +316,351 @@ class LeadServiceImplTest {
         assertThat(response.stage()).isEqualTo("CERRADO");
         assertThat(response.nextFollowUp()).isNull();
         verify(leadRepository).findByIdAndUsuarioId(200L, 42L);
+    }
+
+    // =========================================================================
+    // TESTS C06: DETECCIÓN DE DUPLICADOS POR PROPIETARIO (DSW-46)
+    // =========================================================================
+
+    @Test
+    @DisplayName("C06: Crear lead rechaza correo duplicado del mismo propietario con LeadValidationException")
+    void crear_conCorreoDuplicadoMismoPropietario_lanzaLeadValidationException() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Ana Repetida");
+        request.setCorreo("  Ana.Torres@Example.com  ");
+        request.setEtapa("NUEVO");
+
+        when(leadRepository.existsByUsuarioIdAndCorreoNorm(1L, "ana.torres@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.crear(1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessage("Ya existe un lead con este correo");
+
+        verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("C06: Crear lead rechaza teléfono duplicado del mismo propietario con LeadValidationException")
+    void crear_conTelefonoDuplicadoMismoPropietario_lanzaLeadValidationException() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Beto Repetido");
+        request.setTelefono("+51 (999) 111-222");
+        request.setEtapa("NUEVO");
+
+        when(leadRepository.existsByUsuarioIdAndTelefonoNorm(1L, "51999111222")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.crear(1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessage("Ya existe un lead con este teléfono");
+
+        verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("C06: Crear lead permite mismo correo en propietarios distintos")
+    void crear_conMismoCorreoEnDistintoPropietario_sePermiteYPersiste() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Carlos Otro Dueño");
+        request.setCorreo("compartido@example.com");
+        request.setEtapa("NUEVO");
+
+        Usuario usuario = new Usuario();
+        usuario.setId(2L);
+
+        when(leadRepository.existsByUsuarioIdAndCorreoNorm(2L, "compartido@example.com")).thenReturn(false);
+        when(usuarioRepository.findById(2L)).thenReturn(Optional.of(usuario));
+        when(leadRepository.save(any(Lead.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.crear(2L, request);
+
+        verify(leadRepository).save(any(Lead.class));
+    }
+
+    @Test
+    @DisplayName("C06: Crear lead permite mismo teléfono en propietarios distintos")
+    void crear_conMismoTelefonoEnDistintoPropietario_sePermiteYPersiste() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Diana Otro Dueño");
+        request.setTelefono("999111222");
+        request.setEtapa("NUEVO");
+
+        Usuario usuario = new Usuario();
+        usuario.setId(3L);
+
+        when(leadRepository.existsByUsuarioIdAndTelefonoNorm(3L, "999111222")).thenReturn(false);
+        when(usuarioRepository.findById(3L)).thenReturn(Optional.of(usuario));
+        when(leadRepository.save(any(Lead.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.crear(3L, request);
+
+        verify(leadRepository).save(any(Lead.class));
+    }
+
+    @Test
+    @DisplayName("C06: Crear lead con teléfono sin dígitos y correo único se permite y no compara teléfono nulo")
+    void crear_conTelefonoSinDigitosPeroCorreoUnico_sePermiteYPersiste() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Elena Sin Digitos");
+        request.setTelefono("---");
+        request.setCorreo("elena@example.com");
+        request.setEtapa("NUEVO");
+
+        Usuario usuario = new Usuario();
+        usuario.setId(1L);
+
+        when(leadRepository.existsByUsuarioIdAndCorreoNorm(1L, "elena@example.com")).thenReturn(false);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(leadRepository.save(any(Lead.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.crear(1L, request);
+
+        verify(leadRepository).existsByUsuarioIdAndCorreoNorm(1L, "elena@example.com");
+        verify(leadRepository, never()).existsByUsuarioIdAndTelefonoNorm(any(), any());
+        verify(leadRepository).save(any(Lead.class));
+    }
+
+    @Test
+    @DisplayName("C06: Actualizar lead permite auto-exclusión conservando su propio correo y teléfono")
+    void actualizar_conMismoCorreoYTelefonoDelMismoLead_permiteAutoExclusion() {
+        Lead existente = new Lead();
+        existente.setId(10L);
+        existente.setNombre("Original");
+        existente.setCorreo("original@mail.com");
+        existente.setTelefono("999111222");
+        existente.setEtapa("NUEVO");
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(existente));
+        when(leadRepository.existsByUsuarioIdAndCorreoNormAndIdNot(1L, "original@mail.com", 10L)).thenReturn(false);
+        when(leadRepository.existsByUsuarioIdAndTelefonoNormAndIdNot(1L, "999111222", 10L)).thenReturn(false);
+        when(leadRepository.save(any(Lead.class))).thenAnswer(i -> i.getArgument(0));
+
+        UpdateLeadRequest request = new UpdateLeadRequest();
+        request.setNombre("Original Actualizado");
+        request.setCorreo("ORIGINAL@mail.com");
+        request.setTelefono(" 999-111-222 ");
+        request.setEtapa("EN_SEGUIMIENTO");
+
+        service.actualizar(10L, 1L, request);
+
+        verify(leadRepository).save(any(Lead.class));
+    }
+
+    @Test
+    @DisplayName("C06: Actualizar lead rechaza correo que ya pertenece a otro lead del mismo propietario")
+    void actualizar_conCorreoDeOtroLeadDelMismoPropietario_lanzaLeadValidationException() {
+        Lead existente = new Lead();
+        existente.setId(10L);
+        existente.setNombre("Lead Diez");
+        existente.setCorreo("diez@mail.com");
+        existente.setEtapa("NUEVO");
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(existente));
+        when(leadRepository.existsByUsuarioIdAndCorreoNormAndIdNot(1L, "veinte@mail.com", 10L)).thenReturn(true);
+
+        UpdateLeadRequest request = new UpdateLeadRequest();
+        request.setNombre("Lead Diez Modificado");
+        request.setCorreo("veinte@mail.com");
+        request.setEtapa("NUEVO");
+
+        assertThatThrownBy(() -> service.actualizar(10L, 1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessage("Ya existe un lead con este correo");
+
+        verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("C06: Actualizar lead rechaza teléfono que ya pertenece a otro lead del mismo propietario")
+    void actualizar_conTelefonoDeOtroLeadDelMismoPropietario_lanzaLeadValidationException() {
+        Lead existente = new Lead();
+        existente.setId(10L);
+        existente.setNombre("Lead Diez");
+        existente.setTelefono("999111222");
+        existente.setEtapa("NUEVO");
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(existente));
+        when(leadRepository.existsByUsuarioIdAndTelefonoNormAndIdNot(1L, "888222333", 10L)).thenReturn(true);
+
+        UpdateLeadRequest request = new UpdateLeadRequest();
+        request.setNombre("Lead Diez Modificado");
+        request.setTelefono("(888) 222-333");
+        request.setEtapa("NUEVO");
+
+        assertThatThrownBy(() -> service.actualizar(10L, 1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessage("Ya existe un lead con este teléfono");
+
+        verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("C06: Conflicto de carrera en BD para correo se mapea a LeadValidationException con mensaje específico")
+    void crear_conflictoConcurrenteBDCorreo_seMapeaALeadValidationException() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Concurrente Correo");
+        request.setCorreo("concurrente@example.com");
+        request.setEtapa("NUEVO");
+
+        Usuario usuario = new Usuario();
+        usuario.setId(1L);
+
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "duplicate key",
+                new SQLException("duplicate"),
+                "uq_lead_owner_correo_norm"
+        );
+
+        when(leadRepository.existsByUsuarioIdAndCorreoNorm(1L, "concurrente@example.com")).thenReturn(false);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(leadRepository.save(any(Lead.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint", cve));
+
+        assertThatThrownBy(() -> service.crear(1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessage("Ya existe un lead con este correo");
+    }
+
+    @Test
+    @DisplayName("C06: Conflicto de carrera en BD para teléfono se mapea a LeadValidationException con mensaje específico")
+    void crear_conflictoConcurrenteBDTelefono_seMapeaALeadValidationException() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Concurrente Tel");
+        request.setTelefono("999111222");
+        request.setEtapa("NUEVO");
+
+        Usuario usuario = new Usuario();
+        usuario.setId(1L);
+
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "duplicate key",
+                new SQLException("duplicate"),
+                "uq_lead_owner_telefono_norm"
+        );
+
+        when(leadRepository.existsByUsuarioIdAndTelefonoNorm(1L, "999111222")).thenReturn(false);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(leadRepository.save(any(Lead.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint", cve));
+
+        assertThatThrownBy(() -> service.crear(1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessage("Ya existe un lead con este teléfono");
+    }
+
+    @Test
+    @DisplayName("C06: Violación de integridad de BD ajena a duplicados (ej. FK) NO se reescribe como duplicado en crear")
+    void crear_conflictoBDRestriccionAjena_noSeMapeaAYPropagaExcepcionOriginal() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Fk Fallido");
+        request.setCorreo("fk@example.com");
+        request.setEtapa("NUEVO");
+
+        Usuario usuario = new Usuario();
+        usuario.setId(1L);
+
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "fk error",
+                new SQLException("fk"),
+                "fk_lead_usuario"
+        );
+        DataIntegrityViolationException originalEx = new DataIntegrityViolationException("FK failure", cve);
+
+        when(leadRepository.existsByUsuarioIdAndCorreoNorm(1L, "fk@example.com")).thenReturn(false);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(leadRepository.save(any(Lead.class))).thenThrow(originalEx);
+
+        assertThatThrownBy(() -> service.crear(1L, request))
+                .isSameAs(originalEx)
+                .isNotInstanceOf(LeadValidationException.class);
+    }
+
+    @Test
+    @DisplayName("C06: Conflicto de carrera en BD en actualizar se mapea a LeadValidationException para correo")
+    void actualizar_conflictoConcurrenteBDCorreo_seMapeaALeadValidationException() {
+        Lead existente = new Lead();
+        existente.setId(10L);
+        existente.setNombre("Lead Diez");
+        existente.setCorreo("diez@mail.com");
+        existente.setEtapa("NUEVO");
+
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "duplicate key",
+                new SQLException("duplicate"),
+                "uq_lead_owner_correo_norm"
+        );
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(existente));
+        when(leadRepository.existsByUsuarioIdAndCorreoNormAndIdNot(1L, "nuevo@mail.com", 10L)).thenReturn(false);
+        when(leadRepository.save(any(Lead.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint", cve));
+
+        UpdateLeadRequest request = new UpdateLeadRequest();
+        request.setNombre("Lead Diez Modificado");
+        request.setCorreo("nuevo@mail.com");
+        request.setEtapa("NUEVO");
+
+        assertThatThrownBy(() -> service.actualizar(10L, 1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessage("Ya existe un lead con este correo");
+    }
+
+    @Test
+    @DisplayName("C06: Conflicto de carrera en BD en actualizar se mapea a LeadValidationException para teléfono")
+    void actualizar_conflictoConcurrenteBDTelefono_seMapeaALeadValidationException() {
+        Lead existente = new Lead();
+        existente.setId(10L);
+        existente.setNombre("Lead Diez");
+        existente.setTelefono("999111222");
+        existente.setEtapa("NUEVO");
+
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "duplicate key",
+                new SQLException("duplicate"),
+                "uq_lead_owner_telefono_norm"
+        );
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(existente));
+        when(leadRepository.existsByUsuarioIdAndTelefonoNormAndIdNot(1L, "888111222", 10L)).thenReturn(false);
+        when(leadRepository.save(any(Lead.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint", cve));
+
+        UpdateLeadRequest request = new UpdateLeadRequest();
+        request.setNombre("Lead Diez Modificado");
+        request.setTelefono("888111222");
+        request.setEtapa("NUEVO");
+
+        assertThatThrownBy(() -> service.actualizar(10L, 1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessage("Ya existe un lead con este teléfono");
+    }
+
+    @Test
+    @DisplayName("C06: Violación de integridad de BD ajena a duplicados (ej. CHECK) NO se reescribe como duplicado en actualizar")
+    void actualizar_conflictoBDRestriccionAjena_noSeMapeaAYPropagaExcepcionOriginal() {
+        Lead existente = new Lead();
+        existente.setId(10L);
+        existente.setNombre("Lead Diez");
+        existente.setCorreo("diez@mail.com");
+        existente.setEtapa("NUEVO");
+
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "check error",
+                new SQLException("check"),
+                "chk_lead_nombre"
+        );
+        DataIntegrityViolationException originalEx = new DataIntegrityViolationException("Check failure", cve);
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(existente));
+        when(leadRepository.existsByUsuarioIdAndCorreoNormAndIdNot(1L, "diez@mail.com", 10L)).thenReturn(false);
+        when(leadRepository.save(any(Lead.class))).thenThrow(originalEx);
+
+        UpdateLeadRequest request = new UpdateLeadRequest();
+        request.setNombre("Modificado");
+        request.setCorreo("diez@mail.com");
+        request.setEtapa("NUEVO");
+
+        assertThatThrownBy(() -> service.actualizar(10L, 1L, request))
+                .isSameAs(originalEx)
+                .isNotInstanceOf(LeadValidationException.class);
     }
 }

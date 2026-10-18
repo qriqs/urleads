@@ -41,10 +41,10 @@ class DatabaseMigrationIT {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    @DisplayName("La migracion inicial creo el historial de Flyway y la version 3 fue aplicada")
+    @DisplayName("La migracion inicial creo el historial de Flyway y la version 4 fue aplicada")
     void initialMigrationAppliedSuccessfully() {
         assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
         assertThat(flyway.info().current().getState().isApplied()).isTrue();
 
         Integer historyCount = jdbcTemplate.queryForObject(
@@ -82,7 +82,8 @@ class DatabaseMigrationIT {
         );
         assertThat(leadColumns).contains(
                 "id", "usuario_id", "nombre", "telefono", "correo",
-                "etapa", "proximo_seguimiento", "creado_en", "actualizado_en", "service"
+                "etapa", "proximo_seguimiento", "creado_en", "actualizado_en", "service",
+                "telefono_norm", "correo_norm"
         );
 
         List<String> notaColumns = jdbcTemplate.queryForList(
@@ -216,11 +217,11 @@ class DatabaseMigrationIT {
     void leadAllowsValidNames() {
         Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
 
-        Long leadIdMin = createTestLead(usuarioId, "AB", "+51900000000", null, "NUEVO", null);
+        Long leadIdMin = createTestLead(usuarioId, "AB", "+51900000001", null, "NUEVO", null);
         assertThat(leadIdMin).isNotNull();
 
         String valid120Name = "A".repeat(120);
-        Long leadIdMax = createTestLead(usuarioId, valid120Name, "+51900000000", null, "NUEVO", null);
+        Long leadIdMax = createTestLead(usuarioId, valid120Name, "+51900000002", null, "NUEVO", null);
         assertThat(leadIdMax).isNotNull();
     }
 
@@ -311,9 +312,9 @@ class DatabaseMigrationIT {
     void leadAllowsValidStages() {
         Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
 
-        Long idNuevo = createTestLead(usuarioId, "Lead 1", "+51900000000", null, "NUEVO", null);
-        Long idSeguimiento = createTestLead(usuarioId, "Lead 2", "+51900000000", null, "EN_SEGUIMIENTO", LocalDate.now());
-        Long idCerrado = createTestLead(usuarioId, "Lead 3", "+51900000000", null, "CERRADO", null);
+        Long idNuevo = createTestLead(usuarioId, "Lead 1", "+51900000001", null, "NUEVO", null);
+        Long idSeguimiento = createTestLead(usuarioId, "Lead 2", "+51900000002", null, "EN_SEGUIMIENTO", LocalDate.now());
+        Long idCerrado = createTestLead(usuarioId, "Lead 3", "+51900000003", null, "CERRADO", null);
 
         assertThat(idNuevo).isNotNull();
         assertThat(idSeguimiento).isNotNull();
@@ -480,6 +481,96 @@ class DatabaseMigrationIT {
                 usuarioId
         );
         assertThat(userCount).isEqualTo(1);
+    }
+
+    // =========================================================================
+    // TESTS C06: RESTRICCIONES DE UNICIDAD Y NORMALIZACIÓN V4 (DSW-46)
+    // =========================================================================
+
+    @Test
+    @Transactional
+    @DisplayName("lead V4: columnas generadas normalizan teléfono y correo preservando valores crudos")
+    void leadNormalizationColumnsComputeCorrectly() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+        String rawPhone = "+1 (212) 555-0100";
+        String rawEmail = "\t\n  Test.User@Example.COM  \r\n";
+
+        Long leadId = createTestLead(usuarioId, "Lead Normalizado", rawPhone, rawEmail, "NUEVO", null);
+
+        String storedPhone = jdbcTemplate.queryForObject("SELECT telefono FROM lead WHERE id = ?", String.class, leadId);
+        String storedEmail = jdbcTemplate.queryForObject("SELECT correo FROM lead WHERE id = ?", String.class, leadId);
+        String phoneNorm = jdbcTemplate.queryForObject("SELECT telefono_norm FROM lead WHERE id = ?", String.class, leadId);
+        String emailNorm = jdbcTemplate.queryForObject("SELECT correo_norm FROM lead WHERE id = ?", String.class, leadId);
+
+        assertThat(storedPhone).isEqualTo(rawPhone);
+        assertThat(storedEmail).isEqualTo(rawEmail);
+        assertThat(phoneNorm).isEqualTo("12125550100");
+        assertThat(emailNorm).isEqualTo("test.user@example.com");
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("lead V4: rechaza correo duplicado normalizado con espacios/tabuladores/saltos de línea para el mismo propietario")
+    void leadUniqueConstraintRejectsDuplicateNormalizedEmailForSameOwner() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+        createTestLead(usuarioId, "Lead Primero", null, "ana.torres@example.com", "NUEVO", null);
+
+        assertThatThrownBy(() -> createTestLead(
+                usuarioId,
+                "Lead Segundo",
+                null,
+                "\t\n  ANA.TORRES@EXAMPLE.COM  \r\n",
+                "NUEVO",
+                null
+        )).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("lead V4: rechaza teléfono duplicado normalizado para el mismo propietario (uq_lead_owner_telefono_norm)")
+    void leadUniqueConstraintRejectsDuplicateNormalizedPhoneForSameOwner() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+        createTestLead(usuarioId, "Lead Primero", "+51 (999) 111-222", null, "NUEVO", null);
+
+        assertThatThrownBy(() -> createTestLead(
+                usuarioId,
+                "Lead Segundo",
+                "51.999.111.222",
+                null,
+                "NUEVO",
+                null
+        )).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("lead V4: permite mismos medios de contacto normalizados en diferentes propietarios")
+    void leadAllowsSameContactsForDifferentOwners() {
+        Long usuarioA = createTestUser("synthetic_user_a_" + UUID.randomUUID());
+        Long usuarioB = createTestUser("synthetic_user_b_" + UUID.randomUUID());
+
+        Long leadA = createTestLead(usuarioA, "Lead A", "+51999111222", "compartido@example.com", "NUEVO", null);
+        Long leadB = createTestLead(usuarioB, "Lead B", "51 999 111 222", "COMPARTIDO@example.com", "NUEVO", null);
+
+        assertThat(leadA).isNotNull();
+        assertThat(leadB).isNotNull();
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("lead V4: permite múltiples contactos nulos o sin dígitos sin colisionar")
+    void leadAllowsMultipleNullOrPunctuationContactsForSameOwner() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+
+        Long l1 = createTestLead(usuarioId, "Lead 1", "999111222", null, "NUEVO", null);
+        Long l2 = createTestLead(usuarioId, "Lead 2", "888222333", null, "NUEVO", null);
+        Long l3 = createTestLead(usuarioId, "Lead 3", "---", "email3@example.com", "NUEVO", null);
+        Long l4 = createTestLead(usuarioId, "Lead 4", "+ - ()", "email4@example.com", "NUEVO", null);
+
+        assertThat(l1).isNotNull();
+        assertThat(l2).isNotNull();
+        assertThat(l3).isNotNull();
+        assertThat(l4).isNotNull();
     }
 
     private Long createTestUser(String username) {

@@ -15,7 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -202,6 +205,99 @@ class LeadServiceImplOutboxTest {
 
         assertThatThrownBy(() -> leadService.crear(usuarioId, request))
                 .isInstanceOf(RuntimeException.class);
+
+        verifyNoInteractions(outboxService);
+    }
+
+    @Test
+    @DisplayName("C06: Lead con correo duplicado en crear es rechazado y NO encola outbox")
+    void crear_duplicadoCorreo_noEncolaOutboxNiPersisteLead() {
+        Long usuarioId = 42L;
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Carlos Duplicado");
+        request.setCorreo("duplicado@example.com");
+        request.setEtapa("NUEVO");
+
+        when(leadRepository.existsByUsuarioIdAndCorreoNorm(usuarioId, "duplicado@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> leadService.crear(usuarioId, request))
+                .isInstanceOf(LeadValidationException.class);
+
+        verify(leadRepository, never()).save(any());
+        verifyNoInteractions(outboxService);
+    }
+
+    @Test
+    @DisplayName("C06: Lead con teléfono duplicado en crear es rechazado y NO encola outbox")
+    void crear_duplicadoTelefono_noEncolaOutboxNiPersisteLead() {
+        Long usuarioId = 42L;
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Carlos Duplicado Tel");
+        request.setTelefono("999111222");
+        request.setEtapa("NUEVO");
+
+        when(leadRepository.existsByUsuarioIdAndTelefonoNorm(usuarioId, "999111222")).thenReturn(true);
+
+        assertThatThrownBy(() -> leadService.crear(usuarioId, request))
+                .isInstanceOf(LeadValidationException.class);
+
+        verify(leadRepository, never()).save(any());
+        verifyNoInteractions(outboxService);
+    }
+
+    @Test
+    @DisplayName("C06: Lead con contacto duplicado en actualizar es rechazado y NO encola outbox")
+    void actualizar_duplicadoContacto_noEncolaOutboxNiPersisteLead() {
+        Long usuarioId = 42L;
+        Long leadId = 101L;
+
+        Lead existente = new Lead();
+        existente.setId(leadId);
+        existente.setNombre("Carlos Perez");
+        existente.setCorreo("carlos@example.com");
+        existente.setEtapa("NUEVO");
+
+        when(leadRepository.findByIdAndUsuarioId(leadId, usuarioId)).thenReturn(Optional.of(existente));
+        when(leadRepository.existsByUsuarioIdAndCorreoNormAndIdNot(usuarioId, "otro@example.com", leadId)).thenReturn(true);
+
+        UpdateLeadRequest request = new UpdateLeadRequest();
+        request.setNombre("Carlos Perez");
+        request.setCorreo("otro@example.com");
+        request.setEtapa("EN_SEGUIMIENTO");
+
+        assertThatThrownBy(() -> leadService.actualizar(leadId, usuarioId, request))
+                .isInstanceOf(LeadValidationException.class);
+
+        verify(leadRepository, never()).save(any());
+        verifyNoInteractions(outboxService);
+    }
+
+    @Test
+    @DisplayName("C06: Falla por restricción de unicidad en BD durante carrera transaccional NO encola outbox")
+    void crear_carreraBDReduceADataIntegrityViolation_noEncolaOutbox() {
+        Long usuarioId = 42L;
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Carrera Concurrente");
+        request.setCorreo("carrera@example.com");
+        request.setEtapa("NUEVO");
+
+        Usuario usuario = new Usuario();
+        usuario.setId(usuarioId);
+
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "duplicate key",
+                new SQLException("duplicate"),
+                "uq_lead_owner_correo_norm"
+        );
+
+        when(leadRepository.existsByUsuarioIdAndCorreoNorm(usuarioId, "carrera@example.com")).thenReturn(false);
+        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
+        when(leadRepository.save(any(Lead.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate key violates unique constraint", cve));
+
+        assertThatThrownBy(() -> leadService.crear(usuarioId, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessage("Ya existe un lead con este correo");
 
         verifyNoInteractions(outboxService);
     }

@@ -49,6 +49,12 @@ public class Lead {
     @Column(name = "service")
     private String service;
 
+    @Column(name = "telefono_norm", insertable = false, updatable = false)
+    private String telefonoNorm;
+
+    @Column(name = "correo_norm", insertable = false, updatable = false)
+    private String correoNorm;
+
     @Column(name = "creado_en", nullable = false, updatable = false)
     private OffsetDateTime creadoEn;
 
@@ -96,6 +102,10 @@ public class Lead {
 
     public String getService() { return service; }
     public void setService(String service) { this.service = service; }
+
+    public String getTelefonoNorm() { return telefonoNorm; }
+
+    public String getCorreoNorm() { return correoNorm; }
 
     public OffsetDateTime getCreadoEn() { return creadoEn; }
     public void setCreadoEn(OffsetDateTime creadoEn) { this.creadoEn = creadoEn; }

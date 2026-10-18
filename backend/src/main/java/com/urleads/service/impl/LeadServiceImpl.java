@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -20,11 +21,13 @@ import com.urleads.dto.UpdateLeadRequest;
 import com.urleads.entity.Lead;
 import com.urleads.entity.LeadStage;
 import com.urleads.entity.Usuario;
+import com.urleads.exception.LeadDuplicateExceptionClassifier;
 import com.urleads.exception.LeadNotFoundException;
 import com.urleads.exception.LeadValidationException;
 import com.urleads.exception.UsuarioNotFoundException;
 import com.urleads.repository.LeadRepository;
 import com.urleads.repository.UsuarioRepository;
+import com.urleads.service.LeadNormalizer;
 import com.urleads.service.LeadService;
 import com.urleads.service.LeadValidator;
 import com.urleads.service.OutboxService;
@@ -133,6 +136,7 @@ public class LeadServiceImpl implements LeadService {
     @Override
     public LeadResponse crear(Long usuarioId, CreateLeadRequest request) {
         LeadValidator.validate(request);
+        validarDuplicados(usuarioId, null, request.getCorreo(), request.getTelefono());
 
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new UsuarioNotFoundException("Usuario no encontrado"));
@@ -151,7 +155,17 @@ public class LeadServiceImpl implements LeadService {
             lead.setProximoSeguimiento(request.getProximoSeguimiento());
         }
 
-        Lead leadGuardado = leadRepository.save(lead);
+        Lead leadGuardado;
+        try {
+            leadGuardado = leadRepository.save(lead);
+        } catch (DataIntegrityViolationException ex) {
+            String duplicateMessage = LeadDuplicateExceptionClassifier.resolveDuplicateMessage(ex);
+            if (duplicateMessage != null) {
+                throw new LeadValidationException(duplicateMessage);
+            }
+            throw ex;
+        }
+
         if (outboxService != null) {
             outboxService.recordLeadCreated(usuarioId, leadGuardado);
         }
@@ -165,6 +179,8 @@ public class LeadServiceImpl implements LeadService {
         Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
                 .orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
 
+        validarDuplicados(usuarioId, leadId, request.getCorreo(), request.getTelefono());
+
         lead.setNombre(request.getNombre());
         lead.setTelefono(request.getTelefono());
         lead.setCorreo(request.getCorreo());
@@ -177,11 +193,43 @@ public class LeadServiceImpl implements LeadService {
             lead.setProximoSeguimiento(request.getProximoSeguimiento());
         }
 
-        Lead leadActualizado = leadRepository.save(lead);
+        Lead leadActualizado;
+        try {
+            leadActualizado = leadRepository.save(lead);
+        } catch (DataIntegrityViolationException ex) {
+            String duplicateMessage = LeadDuplicateExceptionClassifier.resolveDuplicateMessage(ex);
+            if (duplicateMessage != null) {
+                throw new LeadValidationException(duplicateMessage);
+            }
+            throw ex;
+        }
+
         if (outboxService != null) {
             outboxService.recordLeadUpdated(usuarioId, leadActualizado);
         }
         return toResponse(leadActualizado);
+    }
+
+    private void validarDuplicados(Long usuarioId, Long leadIdExcluido, String correo, String telefono) {
+        String correoNorm = LeadNormalizer.normalizeEmail(correo);
+        if (correoNorm != null) {
+            boolean existe = (leadIdExcluido == null)
+                    ? leadRepository.existsByUsuarioIdAndCorreoNorm(usuarioId, correoNorm)
+                    : leadRepository.existsByUsuarioIdAndCorreoNormAndIdNot(usuarioId, correoNorm, leadIdExcluido);
+            if (existe) {
+                throw new LeadValidationException("Ya existe un lead con este correo");
+            }
+        }
+
+        String telefonoNorm = LeadNormalizer.normalizePhone(telefono);
+        if (telefonoNorm != null) {
+            boolean existe = (leadIdExcluido == null)
+                    ? leadRepository.existsByUsuarioIdAndTelefonoNorm(usuarioId, telefonoNorm)
+                    : leadRepository.existsByUsuarioIdAndTelefonoNormAndIdNot(usuarioId, telefonoNorm, leadIdExcluido);
+            if (existe) {
+                throw new LeadValidationException("Ya existe un lead con este teléfono");
+            }
+        }
     }
 
     @Override

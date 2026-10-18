@@ -20,6 +20,18 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
 
     Optional<Lead> findByIdAndUsuarioId(Long leadId, Long usuarioId);
 
+    // ==========================================
+    // Detección de duplicados (DSW-46 / C06)
+    // ==========================================
+
+    boolean existsByUsuarioIdAndCorreoNorm(Long usuarioId, String correoNorm);
+
+    boolean existsByUsuarioIdAndTelefonoNorm(Long usuarioId, String telefonoNorm);
+
+    boolean existsByUsuarioIdAndCorreoNormAndIdNot(Long usuarioId, String correoNorm, Long id);
+
+    boolean existsByUsuarioIdAndTelefonoNormAndIdNot(Long usuarioId, String telefonoNorm, Long id);
+
     List<Lead> findByUsuarioIdAndEtapa(Long usuarioId, String etapa);
 
     List<Lead> findByUsuarioIdAndProximoSeguimiento(Long usuarioId, LocalDate fecha);
