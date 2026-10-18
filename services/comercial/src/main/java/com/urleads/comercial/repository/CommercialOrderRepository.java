@@ -20,4 +20,14 @@ public interface CommercialOrderRepository extends JpaRepository<CommercialOrder
     boolean existsByQuoteId(Long quoteId);
 
     Page<CommercialOrder> findByOwnerId(String ownerId, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT o.currency AS currency, o.status AS status, COUNT(o) AS count, " +
+        "COALESCE(SUM(o.subtotal), 0) AS subtotal, COALESCE(SUM(o.tax), 0) AS tax, COALESCE(SUM(o.total), 0) AS total " +
+        "FROM CommercialOrder o WHERE o.ownerId = :ownerId " +
+        "GROUP BY o.currency, o.status"
+    )
+    java.util.List<com.urleads.comercial.repository.projection.OrderCurrencyStatusAggregation> aggregateMetricsByOwner(
+        @org.springframework.data.repository.query.Param("ownerId") String ownerId
+    );
 }
