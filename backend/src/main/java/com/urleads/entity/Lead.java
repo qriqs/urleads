@@ -49,6 +49,12 @@ public class Lead {
     @Column(name = "service")
     private String service;
 
+    @Column(name = "priority", nullable = false)
+    private String priority = "MEDIA";
+
+    @Column(name = "origin", nullable = false)
+    private String origin = "MANUAL";
+
     @Column(name = "creado_en", nullable = false, updatable = false)
     private OffsetDateTime creadoEn;
 
@@ -66,6 +72,12 @@ public class Lead {
         OffsetDateTime now = OffsetDateTime.now();
         if (this.creadoEn == null) this.creadoEn = now;
         if (this.actualizadoEn == null) this.actualizadoEn = now;
+        if (this.priority == null || this.priority.isBlank()) {
+            this.priority = "MEDIA";
+        }
+        if (this.origin == null || this.origin.isBlank()) {
+            this.origin = "MANUAL";
+        }
     }
 
     @PreUpdate
@@ -96,6 +108,12 @@ public class Lead {
 
     public String getService() { return service; }
     public void setService(String service) { this.service = service; }
+
+    public String getPriority() { return priority; }
+    public void setPriority(String priority) { this.priority = priority; }
+
+    public String getOrigin() { return origin; }
+    public void setOrigin(String origin) { this.origin = origin; }
 
     public OffsetDateTime getCreadoEn() { return creadoEn; }
     public void setCreadoEn(OffsetDateTime creadoEn) { this.creadoEn = creadoEn; }

@@ -30,6 +30,8 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
             SELECT l FROM Lead l
             WHERE l.usuario.id = :usuarioId
               AND (:etapa = '' OR l.etapa = :etapa)
+              AND (:priority = '' OR l.priority = :priority)
+              AND (:origin = '' OR l.origin = :origin)
               AND (
                     LOWER(l.nombre) LIKE :patron
                  OR (l.telefono IS NOT NULL AND LOWER(l.telefono) LIKE :patron)
@@ -44,6 +46,8 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
     Page<Lead> buscar(
             @Param("usuarioId") Long usuarioId,
             @Param("etapa") String etapa,
+            @Param("priority") String priority,
+            @Param("origin") String origin,
             @Param("patron") String patron,
             @Param("modo") String modo,
             @Param("hoy") LocalDate hoy,
