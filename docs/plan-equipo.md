@@ -1,10 +1,20 @@
 # Plan del equipo y calendario
 
-El equipo organiza tareas en Linear y mantiene código, ramas y pull requests en
-GitHub. La fecha objetivo es tener una versión candidata el 15 de octubre de
-2026 y el MVP validado el 16, con días de margen antes de la exposición.
+> **Actualización Backend V2 (Octubre 2026):** El equipo ha iniciado el plan de
+> arquitectura Backend V2, dividiendo el trabajo en tres microservicios
+> independientes:
+> - **Cris:** Servicio CRM (`backend/`, rama `feat/crm`, puerto 8080).
+> - **Sebas:** Servicio Comercial (`services/comercial/`, rama `feat/comercial`, puerto 8081).
+> - **Alex:** Servicio Agenda y Notificaciones (`services/agenda/`, rama `feat/agenda-notificaciones`, puerto 8082).
+>
+> Para guías detalladas, ramas y contratos, consulta [docs/backend-v2/](backend-v2/)
+> y [docs/plan-tareas-backend.md](plan-tareas-backend.md).
+>
+> A continuación se conserva el reparto y calendario del MVP inicial como línea base histórica.
 
-## Responsabilidades
+---
+
+## Responsabilidades iniciales (Línea base MVP histórico)
 
 Los apodos distinguen a los integrantes del grupo. Confirmen sus nombres
 completos en el informe antes de asignar tareas a cuentas de Linear.

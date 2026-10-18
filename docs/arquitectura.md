@@ -1,10 +1,19 @@
 # Arquitectura y seguridad
 
-UrLeads será una aplicación web de una sola unidad desplegable, con frontend
-React y backend Spring Boot. En producción Spring servirá los archivos del
-frontend y la API desde una misma URL.
+> **Arquitectura Backend V2 (Microservicios):** Para la fase de ampliación, el
+> sistema evoluciona hacia una arquitectura desacoplada en tres microservicios:
+> CRM (`backend/`), Comercial (`services/comercial/`) y Agenda (`services/agenda/`),
+> comunicados mediante contratos REST, mensajería asíncrona RabbitMQ, descubrimiento
+> dinámico con Spring Cloud Netflix Eureka y consulta SOAP GetLead con SoapUI.
+> Consulta la especificación técnica completa en
+> [docs/backend-v2/contratos.md](backend-v2/contratos.md).
+>
+> La arquitectura inicial del MVP monolítico integrada en Spring Boot se
+> describe a continuación como línea base histórica.
 
-## Tecnologías previstas
+---
+
+## Tecnologías previstas (Línea base MVP histórico)
 
 | Capa | Elección | Motivo |
 |---|---|---|
