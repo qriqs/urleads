@@ -76,6 +76,9 @@ jobs:
           TEST_DB_URL: jdbc:postgresql://127.0.0.1:5432/urleads_test
           TEST_DB_USERNAME: urleads_test_user
           TEST_DB_PASSWORD: urleads_test_password
+	  DB_URL: jdbc:postgresql://127.0.0.1:5432/urleads_test
+          DB_USERNAME: urleads_test_user
+          DB_PASSWORD: urleads_test_password
         run: ./scripts/build.sh -Pdb-integration
 
   frontend:
