@@ -41,10 +41,10 @@ class DatabaseMigrationIT {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    @DisplayName("La migracion inicial creo el historial de Flyway y la version 1 fue aplicada")
+    @DisplayName("La migracion inicial creo el historial de Flyway y la version 3 fue aplicada")
     void initialMigrationAppliedSuccessfully() {
         assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2"); //Cambiado
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
         assertThat(flyway.info().current().getState().isApplied()).isTrue();
 
         Integer historyCount = jdbcTemplate.queryForObject(
@@ -68,7 +68,7 @@ class DatabaseMigrationIT {
                 "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
                 String.class
         );
-        assertThat(tables).contains("flyway_schema_history", "usuario", "lead", "nota");
+        assertThat(tables).contains("flyway_schema_history", "usuario", "lead", "nota", "outbox");
 
         List<String> usuarioColumns = jdbcTemplate.queryForList(
                 "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'usuario'",
@@ -90,6 +90,16 @@ class DatabaseMigrationIT {
                 String.class
         );
         assertThat(notaColumns).contains("id", "lead_id", "contenido", "creado_en");
+
+        List<String> outboxColumns = jdbcTemplate.queryForList(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'outbox'",
+                String.class
+        );
+        assertThat(outboxColumns).contains(
+                "id", "event_id", "event_type", "routing_key", "exchange",
+                "payload", "status", "retry_count", "last_error",
+                "created_at", "sent_at", "next_retry_at"
+        );
     }
 
     @Test
