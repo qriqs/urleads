@@ -589,3 +589,66 @@ Migración versionada `V3__create_outbox_table.sql` con constraints de unicidad 
 # 2. Verificación completa del backend y empaquetado JAR (152 pruebas, 0 fallas)
 ./mvnw --batch-mode --no-transfer-progress verify
 ```
+
+---
+
+<a id="9-implementacion-y-verificacion-de-c07-campos-de-prioridad-y-origen"></a>
+## 9. Implementación y verificación de C07 (Campos de prioridad y origen con filtros avanzados)
+
+Esta sección documenta la arquitectura técnica, migración Flyway V5, normalización de datos,
+reglas de validación, filtrado combinado y resultados de verificación de la tarea C07 (DSW-47).
+
+### 9.1. Decisiones de diseño y modelo de datos
+
+1. **Campos y catálogo cerrado:**
+   - `priority`: Valores válidos exactos `BAJA`, `MEDIA`, `ALTA`. Valor por defecto: `MEDIA`.
+   - `origin`: Valores válidos exactos `WEB`, `REFERIDO`, `MANUAL`. Valor por defecto: `MANUAL`.
+   - Persistidos en la entidad `Lead` y expuestos en `CreateLeadRequest`, `UpdateLeadRequest` y `LeadResponse`.
+
+2. **Migración Flyway V5 (`V5__add_priority_and_origin_to_lead.sql`):**
+   - Agrega columnas `priority VARCHAR(20) NOT NULL DEFAULT 'MEDIA'` y `origin VARCHAR(20) NOT NULL DEFAULT 'MANUAL'`.
+   - Restricciones CHECK `chk_lead_priority` y `chk_lead_origin` a nivel de base de datos.
+   - Índices enfocados `idx_lead_priority` e `idx_lead_origin` para optimizar consultas de filtrado.
+   - El mecanismo DDL de PostgreSQL (`NOT NULL DEFAULT ...`) garantiza que filas preexistentes adquieran los valores por defecto automáticamente.
+
+3. **Validación y normalización:**
+   - Los campos son opcionales en creación y actualización.
+   - Entradas no vacías se normalizan de forma insensible a mayúsculas/minúsculas usando `Locale.ROOT` (independiente de la configuración regional de la JVM) y se recortan espacios en blanco antes de persistir.
+   - Cadenas en blanco (`""`, `"   "`), valores fuera del catálogo o valores explícitamente nulos suministrados son rechazados con HTTP 400 (`VALIDATION_ERROR`).
+
+4. **Filtrado combinado y aislamiento de propietario:**
+   - `GET /api/leads` acepta los parámetros de consulta opcionales `priority` y `origin`.
+   - Si se omiten o vienen en blanco, no aplican predicado. Si contienen valores inválidos, responden HTTP 400.
+   - Se combinan de forma conjuntiva (`AND`) con los filtros existentes (`stage`, `followUp`, `search`).
+   - Aislamiento estricto por propietario garantizado a nivel de consulta SQL/JPQL (`l.usuario.id = :usuarioId`).
+
+5. **Compatibilidad con C04 y contratos existentes:**
+   - La estructura de eventos de dominio (`lead.created.v1`, `lead.updated.v1`, `lead.deleted.v1`) y el endpoint interno `GET /internal/v1/leads/{id}` se mantienen intactos y sin PII.
+
+### 9.2. Matriz de aceptación y resultados C07
+
+| ID | Escenario | Resultado esperado | Evidencia |
+|---|---|---|---|
+| **R1** | Aplicar V5 sobre esquema de BD | Versión 5 aplicada; columnas `priority`/`origin` añadidas con constraints CHECK e índices; defaults en inserción verificados | `DatabaseMigrationIT` (39 pruebas contra `urleads_c07_test`) *(Nota: `DatabaseMigrationIT` valida la cadena de migración completa y constraints; la migración de filas heredadas está garantizada por el DDL `NOT NULL DEFAULT` de PostgreSQL)* |
+| **R2** | Creación y actualización con campos válidos | Entradas recortadas y convertidas a mayúsculas con `Locale.ROOT`; omitidos reciben defaults | `LeadServiceImplTest`, `LeadApiIT` |
+| **R2-neg** | Prioridad u origen inválido, en blanco o nulo explícito | Rechazo con HTTP 400 / `LeadValidationException`; sin mutación | `LeadServiceImplTest`, `LeadApiIT` |
+| **R3** | Filtrado combinado de prioridad y origen con etapa y seguimiento | Intersección conjuntiva correcta en paginación y conteos | `LeadRepositoryIT`, `LeadApiIT` |
+| **R4** | Lead coincidente de otro propietario | Excluido de los resultados y de `totalElements` | `LeadRepositoryIT`, `LeadApiIT` |
+| **R5** | Compatibilidad C04 y seguridad | Eventos outbox y respuesta interna permanecen sin cambios; regresiones en verde | `LeadServiceImplOutboxTest`, `OutboxServiceImplTest` |
+| **R6** | Documentación de API | Catálogo, defaults, normalización `Locale.ROOT` y parámetros documentados en `docs/api.md` | `docs/api.md` |
+
+### 9.3. Comandos de verificación ejecutados
+
+```bash
+# 1. Pruebas unitarias focalizadas y de regresión (62 pruebas, 0 fallas)
+cd backend
+./mvnw --batch-mode --no-transfer-progress test \
+  -Dtest=LeadServiceImplTest,LeadControllerTest,LeadServiceImplOutboxTest,OutboxServiceImplTest
+
+# 2. Pruebas de integración con base de datos real aislada urleads_c07_test (74 pruebas, 0 fallas)
+TEST_DB_URL="jdbc:postgresql://127.0.0.1:5432/urleads_c07_test" \
+TEST_DB_USERNAME="urleads_app" \
+TEST_DB_PASSWORD="[PROTECTED]" \
+./mvnw --batch-mode --no-transfer-progress test-compile failsafe:integration-test failsafe:verify \
+  -Pdb-integration -Dit.test=LeadApiIT,LeadRepositoryIT,DatabaseMigrationIT
+```

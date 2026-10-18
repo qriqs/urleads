@@ -77,9 +77,13 @@ credenciales de acceso inter-servicio protegidas por la sesión web existente:
 | POST | `/api/leads/{id}/notes` | Registrar entrada interna; responde 201. |
 | GET | `/api/dashboard` | Resumen y pendientes del usuario. |
 
-La lista acepta `search`, `stage`, `followUp` y `page`; el tamaño de página
+La lista acepta `search`, `stage`, `followUp`, `priority`, `origin` y `page`; el tamaño de página
 será limitado por el servidor. Los valores de `followUp` serán `today`,
-`overdue` o `all`.
+`overdue` o `all`. Los valores de `priority` serán `BAJA`, `MEDIA` o `ALTA`
+(insensibles a mayúsculas/minúsculas y recortados). Los valores de `origin`
+serán `WEB`, `REFERIDO` o `MANUAL` (insensibles a mayúsculas/minúsculas y
+recortados). Todos los filtros se combinan de forma conjuntiva (`AND`) y
+mantienen aislamiento estricto por el usuario autenticado a nivel de consulta en base de datos.
 
 ## Ejemplo de lead
 
@@ -91,6 +95,8 @@ será limitado por el servidor. Los valores de `followUp` serán `today`,
   "phone": "+51 900 000 000",
   "email": "maria@example.test",
   "stage": "EN_SEGUIMIENTO",
+  "priority": "MEDIA",
+  "origin": "MANUAL",
   "nextFollowUp": "2026-10-10",
   "createdAt": "2026-10-06T15:30:00Z",
   "updatedAt": "2026-10-06T15:30:00Z"
@@ -106,6 +112,8 @@ Ejemplo de creación/actualización:
   "phone": "+51 900 000 000",
   "email": "maria@example.test",
   "stage": "NUEVO",
+  "priority": "ALTA",
+  "origin": "WEB",
   "nextFollowUp": null
 }
 ```
@@ -135,6 +143,52 @@ Ejemplos válidos:
 ```
 
 Cuando el valor sea distinto de `null`, el backend devolverá el mismo valor asociado al lead en las respuestas correspondientes.
+
+### Campo `priority` (Backend V2 C07 / DSW-47)
+
+Representa la prioridad asignada a la oportunidad comercial en el CRM.
+
+| Propiedad | Valor |
+|------------|--------|
+| Tipo | string (catálogo cerrado) |
+| Obligatorio | No (opcional en creación y actualización) |
+| Valor por defecto | `MEDIA` |
+| Valores permitidos | `BAJA`, `MEDIA`, `ALTA` |
+| Normalización | Insensible a mayúsculas/minúsculas de forma independiente de la configuración regional (`Locale.ROOT`) y recorta espacios en blanco |
+| Validación | Valores no pertenecientes al catálogo, cadenas en blanco o `null` explícito son rechazados con HTTP 400 (`VALIDATION_ERROR`) |
+| Compatibilidad histórica | La columna en base de datos se agrega con `NOT NULL DEFAULT 'MEDIA'`, asegurando que filas preexistentes reciban este valor por defecto a nivel de esquema |
+
+Ejemplos válidos en peticiones POST/PUT:
+- `"priority": " alta "` -> persistido y devuelto como `"ALTA"`.
+- Omitir el campo -> persistido y devuelto como `"MEDIA"`.
+
+Filtro en `GET /api/leads?priority=alta`:
+- Parámetro opcional. Si se omite o viene vacío/en blanco, no aplica predicado.
+- Valores no válidos responden HTTP 400.
+- Se combina conjuntivamente (`AND`) con los demás filtros activos y restringe estrictamente por el propietario autenticado en la base de datos.
+
+### Campo `origin` (Backend V2 C07 / DSW-47)
+
+Representa el canal o procedencia por la cual ingresó el lead.
+
+| Propiedad | Valor |
+|------------|--------|
+| Tipo | string (catálogo cerrado) |
+| Obligatorio | No (opcional en creación y actualización) |
+| Valor por defecto | `MANUAL` |
+| Valores permitidos | `WEB`, `REFERIDO`, `MANUAL` |
+| Normalización | Insensible a mayúsculas/minúsculas de forma independiente de la configuración regional (`Locale.ROOT`) y recorta espacios en blanco |
+| Validación | Valores no pertenecientes al catálogo, cadenas en blanco o `null` explícito son rechazados con HTTP 400 (`VALIDATION_ERROR`) |
+| Compatibilidad histórica | La columna en base de datos se agrega con `NOT NULL DEFAULT 'MANUAL'`, asegurando que filas preexistentes reciban este valor por defecto a nivel de esquema |
+
+Ejemplos válidos en peticiones POST/PUT:
+- `"origin": "referido"` -> persistido y devuelto como `"REFERIDO"`.
+- Omitir el campo -> persistido y devuelto como `"MANUAL"`.
+
+Filtro en `GET /api/leads?origin=referido`:
+- Parámetro opcional. Si se omite o viene vacío/en blanco, no aplica predicado.
+- Valores no válidos responden HTTP 400.
+- Se combina conjuntivamente (`AND`) con los demás filtros activos y restringe estrictamente por el propietario autenticado en la base de datos.
 
 Ejemplo de entrada interna de bitácora (no se envía al cliente):
 
