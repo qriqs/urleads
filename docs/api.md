@@ -22,6 +22,7 @@ Endpoints planificados para la autenticación y el control de sesiones:
 | POST | `/api/auth/login` | Iniciar sesión y establecer cookie. |
 | GET | `/api/auth/me` | Obtener usuario actual o 401. |
 | POST | `/api/auth/logout` | Invalidar sesión. |
+| POST | `/api/auth/access-token` | Emitir token de acceso JWT (Backend V2 C02). Requiere sesión y CSRF. |
 
 Para login, el cliente obtiene primero el token CSRF. Luego envía el token y
 credenciales:
@@ -35,6 +36,33 @@ credenciales:
 
 El usuario inicial se configurará de manera segura para el entorno; las
 credenciales reales no se incluirán en documentación, fixtures ni repositorio.
+
+### Emisión de tokens de acceso (`POST /api/auth/access-token`)
+
+Endpoint de tiempo de ejecución incorporado en Backend V2 (Tarea C02) para emitir
+credenciales de acceso inter-servicio protegidas por la sesión web existente:
+
+- **Autenticación requerida:** Sesión web activa (cookie `JSESSIONID`) y cabecera
+  CSRF válida (`X-XSRF-TOKEN`). Un token Bearer por sí solo no autoriza este endpoint.
+- **Entrada:** No acepta cuerpo ni parámetros de usuario, audiencia o alcance. La
+  identidad se resuelve exclusivamente en el servidor a partir del usuario en sesión.
+- **Cabeceras de respuesta:** `Cache-Control: no-store` y `Pragma: no-cache`.
+- **Respuesta 200 OK:**
+```json
+{
+  "access_token": "<jwt-firmado-rs256>",
+  "token_type": "Bearer",
+  "expires_in": 600
+}
+```
+- **Códigos de error:**
+  - `401 Unauthorized`: Solicitud sin sesión web activa o usuario no encontrado.
+  - `403 Forbidden`: Token CSRF ausente o inválido.
+  - `503 Service Unavailable`: Servicio de emisión no configurado (`urleads.jwt.enabled=false`).
+- **Vigencia y ciclo de vida:** TTL de 600 segundos (10 minutos) firmado con RS256.
+  No implementa refresh tokens ni revocación distribuida. El cierre de sesión (`/logout`)
+  invalida la sesión web, mientras que los JWT emitidos conservan su vigencia técnica
+  remanente hasta su expiración.
 
 ## Leads
 

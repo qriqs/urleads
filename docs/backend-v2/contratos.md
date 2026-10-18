@@ -76,6 +76,9 @@ configuración local.
 6. **Ruta de emisión en tiempo de ejecución (Tarea C02):**
    - `POST /api/auth/access-token`: Endpoint expuesto por CRM sobre la sesión
      Spring Security existente con cookie `HttpOnly` y validación CSRF.
+   - *Nota de implementación (C02):* Implementado en CRM (`backend/`) mediante
+     `AccessTokenController`, `JwtIssuanceService` y validación estricta en
+     `/internal/**`. Consulta detalles en [guia-cris.md](guia-cris.md#6-implementacion-y-verificacion-de-c02-identidad-y-tokens-jwt).
    - No recibe parámetros de usuario; deriva la identidad y scopes de la sesión.
    - Retorna:
 ```json
