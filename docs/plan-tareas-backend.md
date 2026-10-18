@@ -5,8 +5,8 @@ de UrLeads. Sustituye la propuesta preliminar de 12 tareas por un plan de
 ejecución estructurado de **45 tareas planificadas, ninguna implementada por esta
 preparación**. El horizonte del equipo de dos días representa una ventana de
 planificación inicial, no una promesa de completar 45 tareas complejas en dos días.
-La prioridad del equipo se concentra en **15 tareas principales y 6 de verificación
-técnica e integración**, dejando **24 tareas de ampliación** en backlog para
+La prioridad del equipo se concentra en **16 tareas principales y 6 de verificación
+técnica e integración**, dejando **23 tareas de ampliación** en backlog para
 incorporación progresiva.
 
 El catálogo inicial de ideas de ampliación se preserva íntegro en
@@ -53,20 +53,29 @@ Las tecnologías seleccionadas para el desarrollo de los tres microservicios son
    académica explícita.
 5. **Documentación y pruebas:** **OpenAPI 3 / Swagger UI** y colecciones **Postman**
    versionadas por servicio.
-6. **Integración externa y SOAP (C13):** Servicio SOAP/XML mínimo con WSDL/XSD y
-   pruebas SoapUI. Permanece como tarea de ampliación (stretch) sujeta a confirmación
-   curricular; la importación de Excel (C10) no sustituye un requisito de SOAP.
-7. **Descubrimiento y Gateway:** Eureka y Spring Cloud Gateway son componentes
-   opcionales de infraestructura que no forman parte de las 45 tareas base.
+6. **Integración externa y SOAP obligatorio (C13):** Servicio SOAP 1.1 sobre HTTP
+   contract-first con Spring Web Services (`POST /ws/leads`, WSDL en `GET /ws/leads.wsdl`)
+   para la operación `GetLead`, protegido por token Bearer JWT (`iss: "urleads-crm"`,
+   `aud: "crm-api"`, `scope: "crm.leads.read"`), validación XSD, parser protegido contra
+   XXE y suite obligatoria de pruebas en SoapUI (`backend/soapui/`). La tarea C13 es
+   obligatoria y forma parte del bloque principal de CRM; la ingesta de leads queda
+   fuera de SOAP para no duplicar el CRUD REST.
+7. **Descubrimiento de servicios con Eureka obligatorio:** Servidor independiente
+   Spring Cloud Netflix Eureka Server (`discovery-service`) en `infra/discovery/` (puerto 8761,
+   sin base de datos) como servicio standalone de infraestructura coordinado en C14.
+   Los servicios CRM (`crm-service`), Comercial (`comercial-service`) y Agenda (`agenda-service`)
+   configuran clientes Eureka con registro obligatorio en perfil integrado y Compose
+   (`http://discovery:8761/eureka/`), deshabilitable en perfiles locales y tests unitarios
+   (`eureka.client.enabled=false`). Spring Cloud Gateway permanece como componente opcional.
 
 ---
 
 ## 3. Estructura de las 45 tareas en Linear
 
-Cada integrante tiene asignadas exactamente 15 tareas organizadas en tres bloques:
-- **01–05: PRINCIPAL (Alta prioridad, estado `Todo`):** Núcleo funcional básico y mocks de contrato.
-- **06–13: AMPLIACIÓN (Prioridad media, estado `Backlog`):** Funcionalidades de valor extendido.
-- **14–15: INTEGRACIÓN (Alta prioridad, estado `Todo`):** Pruebas de resiliencia e integración real.
+Cada integrante tiene asignadas exactamente 15 tareas organizadas en bloques según su servicio:
+- **Tareas Principales (Alta prioridad, estado `Todo` / activo):** Núcleo funcional básico, contratos y mocks (16 tareas en total: C01–C05 y C13 para Cris; S01–S05 para Sebas; A01–A05 para Alex).
+- **Tareas de Ampliación (Prioridad media, estado `Backlog`):** Funcionalidades de valor extendido (23 tareas en total: C06–C12 para Cris; S06–S13 para Sebas; A06–A13 para Alex).
+- **Tareas de Integración (Alta prioridad, estado `Todo`):** Pruebas de resiliencia, infraestructura e integración real (6 tareas en total: C14–C15 para Cris; S14–S15 para Sebas; A14–A15 para Alex).
 
 *(Nota: Los estados de las tablas son la fotografía inicial; consulta Linear para el avance en vivo).*
 
@@ -86,7 +95,7 @@ Cada integrante tiene asignadas exactamente 15 tareas organizadas en tres bloque
 | **C10** | Importación acotada de leads desde Excel con plantilla fija | Ampliación | `Backlog` | [DSW-50](https://linear.app/enmanuelprojects/issue/DSW-50) |
 | **C11** | Registro y consulta de historial de importaciones | Ampliación | `Backlog` | [DSW-51](https://linear.app/enmanuelprojects/issue/DSW-51) |
 | **C12** | Flujo de archivar y restaurar leads sin borrado físico | Ampliación | `Backlog` | [DSW-52](https://linear.app/enmanuelprojects/issue/DSW-52) |
-| **C13** | Servicio SOAP/XML mínimo para consulta e ingesta de leads | Ampliación | `Backlog` | [DSW-53](https://linear.app/enmanuelprojects/issue/DSW-53) |
+| **C13** | Servicio SOAP/XML de consulta de lead y pruebas con SoapUI | Principal | `Todo` | [DSW-53](https://linear.app/enmanuelprojects/issue/DSW-53) |
 | **C14** | Configuración de Docker Compose y pipeline de integración local | Integración | `Todo` | [DSW-54](https://linear.app/enmanuelprojects/issue/DSW-54) |
 | **C15** | Verificación integral end-to-end, resiliencia y regresión | Integración | `Todo` | [DSW-55](https://linear.app/enmanuelprojects/issue/DSW-55) |
 

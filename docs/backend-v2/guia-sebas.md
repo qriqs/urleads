@@ -76,25 +76,37 @@ cd services/comercial
 
 ## 4. Pautas clave de implementación
 
-1. **Creación del proyecto y entregables (S01):** Inicializa el proyecto Spring Boot
+1. **Creación del proyecto, Dockerfile y Eureka Client (S01):** Inicializa el proyecto Spring Boot
    en `services/comercial/` con Java 21 y Maven Wrapper. Entrega el `Dockerfile`
    propio del servicio y script de compilación para que C14 pueda integrarlo en Compose.
    Configura PostgreSQL con Flyway (las pruebas de integración usan una base
    PostgreSQL aislada `urleads_comercial_test`; no se utiliza H2 para pruebas de
-   persistencia).
+   persistencia). Configura Eureka Client con el nombre canónico exacto `comercial-service`
+   para el perfil integrado (`http://discovery:8761/eureka/`); mantenlo deshabilitado en
+   pruebas unitarias y perfil local (`eureka.client.enabled=false`) para avanzar sin
+   depender de C14.
 2. **Validación de tokens JWT:** Configura validación RS256 con la clave pública
    del emisor `urleads-crm`. Verifica audiencia `comercial-api` y scope
    `comercial.access`. Extrae el `ownerId` del claim `sub` (cadena decimal como `"42"`).
 3. **Cálculos monetarios y precisión (S03):** Utiliza siempre `BigDecimal` con 2
    decimales y `RoundingMode.HALF_UP`. Soportar divisas ISO 4217 (`PEN`, `USD`)
    y prohibir estrictamente consolidar monedas distintas en una cotización.
-4. **Resiliencia con OpenFeign y WireMock (S04):** Consume `GET /internal/v1/leads/{id}`
-   retransmitiendo el token JWT del usuario. Usa WireMock en tests para simular
-   respuestas (200, 401, 403, 404, latencia). Configura Resilience4j con Circuit
-   Breaker y retorna HTTP 503 ante caída del CRM sin inventar éxitos falsos.
+4. **Resiliencia con OpenFeign, LoadBalancer y Eureka (S04):** Consume `GET /internal/v1/leads/{id}`
+   declarando `@FeignClient(name = "crm-service")` con Spring Cloud LoadBalancer y
+   Eureka Client en perfil integrado, sin URL HTTP fija hacia CRM que anule el
+   descubrimiento. Retransmite el token JWT del usuario (`crm-api`, `crm.leads.read`).
+   Usa WireMock o sobreescritura de URL en tests para simular respuestas (200, 401,
+   403, 404, latencia). Configura Resilience4j con Circuit Breaker y retorna HTTP 503
+   limpio ante caída del CRM sin falsear resultados de éxito.
 5. **Aceptación y publicación outbox (S05):** Endpoint `POST /api/v1/quotes/{id}/accept`.
    Guarda en outbox y cambia estado a `ACCEPTED` en una sola transacción. Publica
    el evento canónico `quotation.accepted.v1` hacia `urleads.events.v1` sin PII.
 6. **Pruebas de integración de Comercial (S14):** S14 no depende de la tarea de
    ampliación S06. Las pruebas de resiliencia cubren los estados principales
    implementados (`DRAFT`, `ACCEPTED`) y se extienden cuando se agregue S06.
+7. **Integración real con CRM vía Eureka, RabbitMQ y Agenda (S15):** Conecta Comercial
+   con la instancia real de CRM descubierta dinámicamente por nombre (`crm-service`)
+   en Eureka Server sobre el entorno Compose (C14) sin WireMock ni URLs fijas.
+   Verifica el comportamiento del Circuit Breaker ante caída de CRM sabiendo que
+   Eureka conserva leases y no detecta caídas de forma instantánea. Corrige defectos
+   propios de Comercial y valida la entrega de eventos hacia Agenda.

@@ -77,11 +77,15 @@ cd services/agenda
 
 ## 4. Pautas clave de implementación
 
-1. **Creación del proyecto y entregables (A01):** Inicializa el proyecto Spring Boot
+1. **Creación del proyecto, Dockerfile y Eureka Client (A01):** Inicializa el proyecto Spring Boot
    en `services/agenda/` con Java 21 y Maven Wrapper. Entrega el `Dockerfile` propio
    y receta de compilación para la integración en Compose de C14. Configura
    PostgreSQL con Flyway (las pruebas de integración usan una base PostgreSQL
    aislada `urleads_agenda_test`; no se utiliza H2 para pruebas de persistencia).
+   Configura Eureka Client con el nombre canónico exacto `agenda-service` para el
+   perfil integrado (`http://discovery:8761/eureka/`); mantenlo deshabilitado en
+   pruebas unitarias y perfil local (`eureka.client.enabled=false`) para avanzar sin
+   depender de C14.
 2. **Consumo fiable de RabbitMQ (A03):** Se suscribe a la cola durable
    `agenda.quotation-accepted.v1` en el exchange `urleads.events.v1` con la clave
    canónica `quotation.accepted.v1`. En la misma transacción SQL persiste la
@@ -100,3 +104,9 @@ cd services/agenda
    recordatorios programados en base de datos, usa Spring Task Scheduler o Quartz
    con identificador único de ocurrencia (`occurrenceId`) para garantizar disparos
    idempotentes tras reinicios del servicio.
+6. **Integración real con CRM, Comercial y Eureka (A15):** Conecta Agenda sobre el
+   entorno Compose levantado por C14 recibiendo eventos `quotation.accepted.v1` de
+   Comercial (Sebas) a través de RabbitMQ. Demuestra el registro activo y continuo
+   del microservicio en Eureka Server bajo el nombre `agenda-service`. Comprueba
+   la reconexión en caliente del WebSocket tras reinicios de contenedores y la
+   disponibilidad de avisos en REST. Corrige los defectos propios de Agenda.
