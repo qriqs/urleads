@@ -41,10 +41,10 @@ class DatabaseMigrationIT {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    @DisplayName("La migracion inicial creo el historial de Flyway y la version 3 fue aplicada")
+    @DisplayName("La migracion inicial creo el historial de Flyway y la version 5 fue aplicada")
     void initialMigrationAppliedSuccessfully() {
         assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
         assertThat(flyway.info().current().getState().isApplied()).isTrue();
 
         Integer historyCount = jdbcTemplate.queryForObject(
@@ -82,7 +82,8 @@ class DatabaseMigrationIT {
         );
         assertThat(leadColumns).contains(
                 "id", "usuario_id", "nombre", "telefono", "correo",
-                "etapa", "proximo_seguimiento", "creado_en", "actualizado_en", "service"
+                "etapa", "proximo_seguimiento", "creado_en", "actualizado_en", "service",
+                "priority", "origin"
         );
 
         List<String> notaColumns = jdbcTemplate.queryForList(
@@ -480,6 +481,66 @@ class DatabaseMigrationIT {
                 usuarioId
         );
         assertThat(userCount).isEqualTo(1);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("C07: lead rechaza prioridad inválida (CHECK chk_lead_priority)")
+    void leadRejectsInvalidPriority() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "INSERT INTO lead (usuario_id, nombre, telefono, etapa, priority, origin) VALUES (?, ?, ?, ?, ?, ?)",
+                usuarioId, "Contacto", "+51900000000", "NUEVO", "URGENTE", "MANUAL"
+        )).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("C07: lead rechaza origen inválido (CHECK chk_lead_origin)")
+    void leadRejectsInvalidOrigin() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "INSERT INTO lead (usuario_id, nombre, telefono, etapa, priority, origin) VALUES (?, ?, ?, ?, ?, ?)",
+                usuarioId, "Contacto", "+51900000000", "NUEVO", "MEDIA", "PARTNER"
+        )).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("C07: lead permite valores válidos de catálogo para priority y origin")
+    void leadAllowsValidPrioritiesAndOrigins() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+
+        Long id1 = jdbcTemplate.queryForObject(
+                "INSERT INTO lead (usuario_id, nombre, telefono, etapa, priority, origin) VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+                Long.class, usuarioId, "Lead 1", "+51900000001", "NUEVO", "BAJA", "WEB"
+        );
+        Long id2 = jdbcTemplate.queryForObject(
+                "INSERT INTO lead (usuario_id, nombre, telefono, etapa, priority, origin) VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+                Long.class, usuarioId, "Lead 2", "+51900000002", "NUEVO", "MEDIA", "REFERIDO"
+        );
+        Long id3 = jdbcTemplate.queryForObject(
+                "INSERT INTO lead (usuario_id, nombre, telefono, etapa, priority, origin) VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+                Long.class, usuarioId, "Lead 3", "+51900000003", "NUEVO", "ALTA", "MANUAL"
+        );
+
+        assertThat(id1).isNotNull();
+        assertThat(id2).isNotNull();
+        assertThat(id3).isNotNull();
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("C07: inserción que omite priority y origin recibe valores por defecto MEDIA y MANUAL en la BD")
+    void leadDefaultsPriorityAndOriginOnRawInsert() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+        Long leadId = createTestLead(usuarioId, "Lead Legacy", "+51900000000", null, "NUEVO", null);
+
+        String priority = jdbcTemplate.queryForObject("SELECT priority FROM lead WHERE id = ?", String.class, leadId);
+        String origin = jdbcTemplate.queryForObject("SELECT origin FROM lead WHERE id = ?", String.class, leadId);
+
+        assertThat(priority).isEqualTo("MEDIA");
+        assertThat(origin).isEqualTo("MANUAL");
     }
 
     private Long createTestUser(String username) {

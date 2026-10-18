@@ -507,4 +507,261 @@ class LeadApiIT {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
+
+    // =========================================================================
+    // TESTS C07: PRIORIDAD, ORIGEN Y FILTROS COMBINADOS (DSW-47)
+    // =========================================================================
+
+    @Test
+    void crear_conPrioridadYOrigenOmitidos_persisteValoresPorDefecto() throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Sin Prioridad","phone":"999111222","stage":"NUEVO"}"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Sin Prioridad"))
+                .andExpect(jsonPath("$.priority").value("MEDIA"))
+                .andExpect(jsonPath("$.origin").value("MANUAL"))
+                .andReturn();
+
+        Long id = ((Number) JsonPath.read(result.getResponse().getContentAsString(), "$.id")).longValue();
+        flushYLimpiar();
+
+        Lead guardado = leadRepository.findById(id).orElseThrow();
+        assertThat(guardado.getPriority()).isEqualTo("MEDIA");
+        assertThat(guardado.getOrigin()).isEqualTo("MANUAL");
+    }
+
+    @Test
+    void crear_conPrioridadYOrigenValidos_normalizaMayusculasYRecorta() throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Con Prioridad","phone":"999111222","stage":"NUEVO",
+                                 "priority":"  alta  ","origin":" referido "}"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.priority").value("ALTA"))
+                .andExpect(jsonPath("$.origin").value("REFERIDO"))
+                .andReturn();
+
+        Long id = ((Number) JsonPath.read(result.getResponse().getContentAsString(), "$.id")).longValue();
+        flushYLimpiar();
+
+        Lead guardado = leadRepository.findById(id).orElseThrow();
+        assertThat(guardado.getPriority()).isEqualTo("ALTA");
+        assertThat(guardado.getOrigin()).isEqualTo("REFERIDO");
+    }
+
+    @Test
+    void crear_conPrioridadInvalidaOEnBlanco_devuelve400() throws Exception {
+        // Prioridad desconocida
+        mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Invalido","phone":"999111222","stage":"NUEVO","priority":"URGENTE"}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        // Prioridad con solo espacios en blanco
+        mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Invalido","phone":"999111222","stage":"NUEVO","priority":"   "}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        // Prioridad explícitamente nula
+        mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Invalido","phone":"999111222","stage":"NUEVO","priority":null}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void crear_conOrigenInvalidoOEnBlanco_devuelve400() throws Exception {
+        // Origen desconocido
+        mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Invalido","phone":"999111222","stage":"NUEVO","origin":"PARTNER"}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        // Origen con solo espacios en blanco
+        mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Invalido","phone":"999111222","stage":"NUEVO","origin":"   "}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        // Origen explícitamente nulo
+        mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Invalido","phone":"999111222","stage":"NUEVO","origin":null}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void actualizar_conPrioridadYOrigen_persisteNuevosValores() throws Exception {
+        Lead lead = crearLead(owner, "Lead Actualizable", "999111222", null, "Web");
+        lead.setPriority("MEDIA");
+        lead.setOrigin("MANUAL");
+        leadRepository.saveAndFlush(lead);
+        flushYLimpiar();
+
+        mockMvc.perform(put("/api/leads/{id}", lead.getId())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Lead Actualizado","phone":"999111222","stage":"EN_SEGUIMIENTO",
+                                 "priority":" baja ","origin":" web "}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.priority").value("BAJA"))
+                .andExpect(jsonPath("$.origin").value("WEB"));
+
+        flushYLimpiar();
+
+        Lead actualizado = leadRepository.findById(lead.getId()).orElseThrow();
+        assertThat(actualizado.getPriority()).isEqualTo("BAJA");
+        assertThat(actualizado.getOrigin()).isEqualTo("WEB");
+    }
+
+    @Test
+    void actualizar_omitiendoPrioridadYOrigen_asignaValoresPorDefecto() throws Exception {
+        Lead lead = crearLead(owner, "Lead Con Datos", "999111222", null, "Web");
+        lead.setPriority("ALTA");
+        lead.setOrigin("WEB");
+        leadRepository.saveAndFlush(lead);
+        flushYLimpiar();
+
+        mockMvc.perform(put("/api/leads/{id}", lead.getId())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Lead Sin Campos Nuevos","phone":"999111222","stage":"NUEVO"}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.priority").value("MEDIA"))
+                .andExpect(jsonPath("$.origin").value("MANUAL"));
+
+        flushYLimpiar();
+
+        Lead actualizado = leadRepository.findById(lead.getId()).orElseThrow();
+        assertThat(actualizado.getPriority()).isEqualTo("MEDIA");
+        assertThat(actualizado.getOrigin()).isEqualTo("MANUAL");
+    }
+
+    @Test
+    void listar_filtrosPriorityYOrigin_combinadosConEtapaYSeguimiento_conAislamientoEstricto() throws Exception {
+        LocalDate hoyLima = LocalDate.now(java.time.ZoneId.of("America/Lima"));
+
+        // 1. Lead owner: ALTA, REFERIDO, EN_SEGUIMIENTO, hoy
+        Lead l1 = crearLead(owner, "Lead A1", "901000001", null, null);
+        l1.setPriority("ALTA");
+        l1.setOrigin("REFERIDO");
+        l1.setEtapa("EN_SEGUIMIENTO");
+        l1.setProximoSeguimiento(hoyLima);
+        leadRepository.saveAndFlush(l1);
+
+        // 2. Lead owner: ALTA, WEB, NUEVO, hoy
+        Lead l2 = crearLead(owner, "Lead A2", "901000002", null, null);
+        l2.setPriority("ALTA");
+        l2.setOrigin("WEB");
+        l2.setEtapa("NUEVO");
+        l2.setProximoSeguimiento(hoyLima);
+        leadRepository.saveAndFlush(l2);
+
+        // 3. Lead owner: MEDIA, REFERIDO, EN_SEGUIMIENTO, hoy
+        Lead l3 = crearLead(owner, "Lead A3", "901000003", null, null);
+        l3.setPriority("MEDIA");
+        l3.setOrigin("REFERIDO");
+        l3.setEtapa("EN_SEGUIMIENTO");
+        l3.setProximoSeguimiento(hoyLima);
+        leadRepository.saveAndFlush(l3);
+
+        // 4. Lead owner: BAJA, MANUAL, CERRADO, sin fecha
+        Lead l4 = crearLead(owner, "Lead A4", "901000004", null, null);
+        l4.setPriority("BAJA");
+        l4.setOrigin("MANUAL");
+        l4.setEtapa("CERRADO");
+        l4.setProximoSeguimiento(null);
+        leadRepository.saveAndFlush(l4);
+
+        // 5. Lead ajeno (other): ALTA, REFERIDO, EN_SEGUIMIENTO, hoy (idéntico a l1)
+        Lead lAjeno = crearLead(other, "Ajeno Gemelo", "901000099", null, null);
+        lAjeno.setPriority("ALTA");
+        lAjeno.setOrigin("REFERIDO");
+        lAjeno.setEtapa("EN_SEGUIMIENTO");
+        lAjeno.setProximoSeguimiento(hoyLima);
+        leadRepository.saveAndFlush(lAjeno);
+
+        flushYLimpiar();
+
+        // Filtro solo priority=alta (case insensitive, trimmed) -> l1 y l2 (ajeno excluido)
+        mockMvc.perform(get("/api/leads").param("priority", "  alta  "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[*].name").value(org.hamcrest.Matchers.containsInAnyOrder("Lead A1", "Lead A2")));
+
+        // Filtro solo origin=referido (case insensitive) -> l1 y l3 (ajeno excluido)
+        mockMvc.perform(get("/api/leads").param("origin", "referido"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[*].name").value(org.hamcrest.Matchers.containsInAnyOrder("Lead A1", "Lead A3")));
+
+        // Filtro combinado priority=alta AND origin=referido -> solo l1
+        mockMvc.perform(get("/api/leads")
+                        .param("priority", "alta")
+                        .param("origin", "referido"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Lead A1"));
+
+        // Filtro combinado total: priority=alta AND origin=referido AND stage=EN_SEGUIMIENTO AND followUp=today -> solo l1
+        mockMvc.perform(get("/api/leads")
+                        .param("priority", "alta")
+                        .param("origin", "referido")
+                        .param("stage", "EN_SEGUIMIENTO")
+                        .param("followUp", "today"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Lead A1"));
+
+        // Filtro combinado sin coincidencia: priority=baja AND stage=EN_SEGUIMIENTO -> 0
+        mockMvc.perform(get("/api/leads")
+                        .param("priority", "baja")
+                        .param("stage", "EN_SEGUIMIENTO"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+
+        // Parámetro vacío/en blanco no aplica filtro
+        mockMvc.perform(get("/api/leads")
+                        .param("priority", "   ")
+                        .param("origin", ""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(4));
+    }
+
+    @Test
+    void listar_conFiltrosPriorityYOriginInvalidos_devuelve400() throws Exception {
+        mockMvc.perform(get("/api/leads").param("priority", "URGENTE"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        mockMvc.perform(get("/api/leads").param("origin", "PARTNER"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
 }

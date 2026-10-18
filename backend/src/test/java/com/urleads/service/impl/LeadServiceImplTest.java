@@ -12,6 +12,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -231,13 +232,13 @@ class LeadServiceImplTest {
         Clock clockFijo = Clock.fixed(Instant.parse("2026-10-12T02:00:00Z"), ZoneOffset.UTC);
         LeadServiceImpl serviceConReloj = new LeadServiceImpl(leadRepository, usuarioRepository, clockFijo);
 
-        when(leadRepository.buscar(eq(1L), eq(""), eq("%%"), eq("today"), any(LocalDate.class), any(Pageable.class)))
+        when(leadRepository.buscar(eq(1L), eq(""), eq(""), eq(""), eq("%%"), eq("today"), any(LocalDate.class), any(Pageable.class)))
                 .thenReturn(Page.empty());
 
         serviceConReloj.listarPaginado(1L, null, "today", null, 0);
 
         ArgumentCaptor<LocalDate> fechaCaptor = ArgumentCaptor.forClass(LocalDate.class);
-        verify(leadRepository).buscar(eq(1L), eq(""), eq("%%"), eq("today"), fechaCaptor.capture(), any(Pageable.class));
+        verify(leadRepository).buscar(eq(1L), eq(""), eq(""), eq(""), eq("%%"), eq("today"), fechaCaptor.capture(), any(Pageable.class));
 
         // Debe ser 2026-10-11 (Lima), NO 2026-10-12 (UTC)
         assertThat(fechaCaptor.getValue()).isEqualTo(LocalDate.of(2026, 10, 11));
@@ -312,5 +313,289 @@ class LeadServiceImplTest {
         assertThat(response.stage()).isEqualTo("CERRADO");
         assertThat(response.nextFollowUp()).isNull();
         verify(leadRepository).findByIdAndUsuarioId(200L, 42L);
+    }
+
+    // =========================================================================
+    // TESTS C07: PRIORIDAD Y ORIGEN (DSW-47)
+    // =========================================================================
+
+    @Test
+    @DisplayName("C07: Crear lead con prioridad y origen omitidos asigna valores por defecto MEDIA y MANUAL")
+    void crear_conPrioridadYOrigenOmitidos_asignaValoresPorDefecto() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Lead Sin Prioridad");
+        request.setTelefono("999888777");
+        request.setEtapa("NUEVO");
+
+        Usuario usuario = new Usuario();
+        usuario.setId(1L);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(leadRepository.save(any(Lead.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = service.crear(1L, request);
+
+        ArgumentCaptor<Lead> captor = ArgumentCaptor.forClass(Lead.class);
+        verify(leadRepository).save(captor.capture());
+        Lead guardado = captor.getValue();
+
+        assertThat(guardado.getPriority()).isEqualTo("MEDIA");
+        assertThat(guardado.getOrigin()).isEqualTo("MANUAL");
+        assertThat(response.getPriority()).isEqualTo("MEDIA");
+        assertThat(response.getOrigin()).isEqualTo("MANUAL");
+    }
+
+    @Test
+    @DisplayName("C07: Crear lead con prioridad y origen válidos normaliza a mayúsculas y recorta")
+    void crear_conPrioridadYOrigenValidos_normalizaAMayusculasYRecorta() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Lead Alta Prioridad");
+        request.setTelefono("999888777");
+        request.setEtapa("NUEVO");
+        request.setPriority("  alta  ");
+        request.setOrigin(" referido ");
+
+        Usuario usuario = new Usuario();
+        usuario.setId(1L);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(leadRepository.save(any(Lead.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = service.crear(1L, request);
+
+        ArgumentCaptor<Lead> captor = ArgumentCaptor.forClass(Lead.class);
+        verify(leadRepository).save(captor.capture());
+        Lead guardado = captor.getValue();
+
+        assertThat(guardado.getPriority()).isEqualTo("ALTA");
+        assertThat(guardado.getOrigin()).isEqualTo("REFERIDO");
+        assertThat(response.getPriority()).isEqualTo("ALTA");
+        assertThat(response.getOrigin()).isEqualTo("REFERIDO");
+    }
+
+    @Test
+    @DisplayName("C07: Crear lead con prioridad inválida lanza LeadValidationException")
+    void crear_conPrioridadInvalida_lanzaLeadValidationException() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Lead Inválido");
+        request.setTelefono("999888777");
+        request.setEtapa("NUEVO");
+        request.setPriority("URGENTE");
+
+        assertThatThrownBy(() -> service.crear(1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessageContaining("Prioridad no válida");
+
+        verifyNoInteractions(usuarioRepository, leadRepository);
+    }
+
+    @Test
+    @DisplayName("C07: Crear lead con prioridad en blanco lanza LeadValidationException")
+    void crear_conPrioridadEnBlanco_lanzaLeadValidationException() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Lead Inválido");
+        request.setTelefono("999888777");
+        request.setEtapa("NUEVO");
+        request.setPriority("   ");
+
+        assertThatThrownBy(() -> service.crear(1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessageContaining("Prioridad no válida");
+
+        verifyNoInteractions(usuarioRepository, leadRepository);
+    }
+
+    @Test
+    @DisplayName("C07: Crear lead con prioridad nula explícitamente suministrada lanza LeadValidationException")
+    void crear_conPrioridadNulaExplicita_lanzaLeadValidationException() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Lead Inválido");
+        request.setTelefono("999888777");
+        request.setEtapa("NUEVO");
+        request.setPriority(null);
+
+        assertThatThrownBy(() -> service.crear(1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessageContaining("Prioridad no válida: no se permite valor nulo");
+
+        verifyNoInteractions(usuarioRepository, leadRepository);
+    }
+
+    @Test
+    @DisplayName("C07: Crear lead con origen inválido lanza LeadValidationException")
+    void crear_conOrigenInvalido_lanzaLeadValidationException() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Lead Inválido");
+        request.setTelefono("999888777");
+        request.setEtapa("NUEVO");
+        request.setOrigin("PARTNER");
+
+        assertThatThrownBy(() -> service.crear(1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessageContaining("Origen no válido");
+
+        verifyNoInteractions(usuarioRepository, leadRepository);
+    }
+
+    @Test
+    @DisplayName("C07: Crear lead con origen en blanco lanza LeadValidationException")
+    void crear_conOrigenEnBlanco_lanzaLeadValidationException() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Lead Inválido");
+        request.setTelefono("999888777");
+        request.setEtapa("NUEVO");
+        request.setOrigin("   ");
+
+        assertThatThrownBy(() -> service.crear(1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessageContaining("Origen no válido");
+
+        verifyNoInteractions(usuarioRepository, leadRepository);
+    }
+
+    @Test
+    @DisplayName("C07: Crear lead con origen nulo explícitamente suministrado lanza LeadValidationException")
+    void crear_conOrigenNuloExplicito_lanzaLeadValidationException() {
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setNombre("Lead Inválido");
+        request.setTelefono("999888777");
+        request.setEtapa("NUEVO");
+        request.setOrigin(null);
+
+        assertThatThrownBy(() -> service.crear(1L, request))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessageContaining("Origen no válido: no se permite valor nulo");
+
+        verifyNoInteractions(usuarioRepository, leadRepository);
+    }
+
+    @Test
+    @DisplayName("C07: Actualizar lead con prioridad y origen válidos actualiza correctamente")
+    void actualizar_conPrioridadYOrigenValidos_actualizaCorrectamente() {
+        Lead existente = new Lead();
+        existente.setId(10L);
+        existente.setNombre("Lead Existente");
+        existente.setTelefono("999111222");
+        existente.setEtapa("NUEVO");
+        existente.setPriority("MEDIA");
+        existente.setOrigin("MANUAL");
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(existente));
+        when(leadRepository.save(any(Lead.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateLeadRequest request = new UpdateLeadRequest();
+        request.setNombre("Lead Existente Modificado");
+        request.setTelefono("999111222");
+        request.setEtapa("EN_SEGUIMIENTO");
+        request.setPriority(" baja ");
+        request.setOrigin(" web ");
+
+        var response = service.actualizar(10L, 1L, request);
+
+        assertThat(response.getPriority()).isEqualTo("BAJA");
+        assertThat(response.getOrigin()).isEqualTo("WEB");
+        assertThat(existente.getPriority()).isEqualTo("BAJA");
+        assertThat(existente.getOrigin()).isEqualTo("WEB");
+    }
+
+    @Test
+    @DisplayName("C07: Actualizar lead omitiendo prioridad y origen asigna valores por defecto MEDIA y MANUAL")
+    void actualizar_conPrioridadYOrigenOmitidos_asignaValoresPorDefecto() {
+        Lead existente = new Lead();
+        existente.setId(10L);
+        existente.setNombre("Lead Existente");
+        existente.setTelefono("999111222");
+        existente.setEtapa("NUEVO");
+        existente.setPriority("ALTA");
+        existente.setOrigin("WEB");
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(existente));
+        when(leadRepository.save(any(Lead.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateLeadRequest request = new UpdateLeadRequest();
+        request.setNombre("Lead Modificado");
+        request.setTelefono("999111222");
+        request.setEtapa("EN_SEGUIMIENTO");
+
+        var response = service.actualizar(10L, 1L, request);
+
+        assertThat(response.getPriority()).isEqualTo("MEDIA");
+        assertThat(response.getOrigin()).isEqualTo("MANUAL");
+        assertThat(existente.getPriority()).isEqualTo("MEDIA");
+        assertThat(existente.getOrigin()).isEqualTo("MANUAL");
+    }
+
+    @Test
+    @DisplayName("C07: Listar paginado con filtros de prioridad y origen válidos pasa parámetros normalizados al repositorio")
+    void listarPaginado_conFiltrosPrioridadYOrigenValidos_pasaParametrosAlRepositorio() {
+        when(leadRepository.buscar(eq(1L), eq(""), eq("ALTA"), eq("WEB"), eq("%%"), eq("all"), any(LocalDate.class), any(Pageable.class)))
+                .thenReturn(Page.empty());
+
+        service.listarPaginado(1L, null, "all", null, " alta ", " web ", 0);
+
+        verify(leadRepository).buscar(eq(1L), eq(""), eq("ALTA"), eq("WEB"), eq("%%"), eq("all"), any(LocalDate.class), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("C07: Listar paginado con prioridad de filtro inválida lanza LeadValidationException")
+    void listarPaginado_conFiltroPrioridadInvalido_lanzaLeadValidationException() {
+        assertThatThrownBy(() -> service.listarPaginado(1L, null, "all", null, "INVENTADA", null, 0))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessageContaining("Prioridad no válida para filtro");
+
+        verifyNoInteractions(leadRepository);
+    }
+
+    @Test
+    @DisplayName("C07: Listar paginado con origen de filtro inválido lanza LeadValidationException")
+    void listarPaginado_conFiltroOrigenInvalido_lanzaLeadValidationException() {
+        assertThatThrownBy(() -> service.listarPaginado(1L, null, "all", null, null, "INVENTADO", 0))
+                .isInstanceOf(LeadValidationException.class)
+                .hasMessageContaining("Origen no válido para filtro");
+
+        verifyNoInteractions(leadRepository);
+    }
+
+    @Test
+    @DisplayName("C07: Normalización de prioridad y origen es independiente de la configuración regional (Locale.ROOT bajo Locale turco)")
+    void normalizacionPrioridadYOrigen_esIndependienteDeLocaleTurco() {
+        Locale defaultPrevio = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+
+            // 1. DTO de creación: "referido" con 'i' minúscula debe normalizar a exacto "REFERIDO" (no dotted-I)
+            CreateLeadRequest createReq = new CreateLeadRequest();
+            createReq.setNombre("Lead Locale");
+            createReq.setTelefono("999111222");
+            createReq.setEtapa("NUEVO");
+            createReq.setPriority("media");
+            createReq.setOrigin("referido");
+
+            assertThat(createReq.getPriority()).isEqualTo("MEDIA");
+            assertThat(createReq.getOrigin()).isEqualTo("REFERIDO");
+
+            // Validar que LeadValidator lo acepte bajo el catálogo exacto
+            com.urleads.service.LeadValidator.validate(createReq);
+
+            // 2. DTO de actualización
+            UpdateLeadRequest updateReq = new UpdateLeadRequest();
+            updateReq.setNombre("Lead Locale");
+            updateReq.setTelefono("999111222");
+            updateReq.setEtapa("NUEVO");
+            updateReq.setPriority("baja");
+            updateReq.setOrigin("referido");
+
+            assertThat(updateReq.getPriority()).isEqualTo("BAJA");
+            assertThat(updateReq.getOrigin()).isEqualTo("REFERIDO");
+            com.urleads.service.LeadValidator.validate(updateReq);
+
+            // 3. Normalización de filtros en listarPaginado bajo Locale turco
+            when(leadRepository.buscar(eq(1L), eq(""), eq("MEDIA"), eq("REFERIDO"), eq("%%"), eq("all"), any(LocalDate.class), any(Pageable.class)))
+                    .thenReturn(Page.empty());
+
+            service.listarPaginado(1L, null, "all", null, "media", "referido", 0);
+
+            verify(leadRepository).buscar(eq(1L), eq(""), eq("MEDIA"), eq("REFERIDO"), eq("%%"), eq("all"), any(LocalDate.class), any(Pageable.class));
+        } finally {
+            Locale.setDefault(defaultPrevio);
+        }
     }
 }

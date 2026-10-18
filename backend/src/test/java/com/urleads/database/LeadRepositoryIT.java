@@ -354,4 +354,141 @@ class LeadRepositoryIT {
         assertThat(atrasados.get(1).getNombre()).isEqualTo("Beta Mas Antiguo");
         assertThat(atrasados.get(2).getNombre()).isEqualTo("Ayer");
     }
+
+    // =========================================================================
+    // TESTS C07: PRIORIDAD Y ORIGEN (DSW-47)
+    // =========================================================================
+
+    @Test
+    @DisplayName("C07: Persiste y recupera campos priority y origin, aplicando defaults cuando se omiten")
+    void shouldPersistAndRetrievePriorityAndOrigin() {
+        Usuario usuario = new Usuario();
+        usuario.setUsername("priorityUser");
+        usuario.setPasswordHash("hash");
+        usuario = usuarioRepository.save(usuario);
+
+        // Lead con valores explícitos
+        Lead lead1 = new Lead();
+        lead1.setUsuario(usuario);
+        lead1.setNombre("Lead Explicito");
+        lead1.setTelefono("999111222");
+        lead1.setEtapa("NUEVO");
+        lead1.setPriority("ALTA");
+        lead1.setOrigin("REFERIDO");
+        lead1 = leadRepository.save(lead1);
+
+        // Lead con valores omitidos (debe recibir defaults MEDIA y MANUAL)
+        Lead lead2 = new Lead();
+        lead2.setUsuario(usuario);
+        lead2.setNombre("Lead Omitido");
+        lead2.setTelefono("999333444");
+        lead2.setEtapa("NUEVO");
+        lead2 = leadRepository.save(lead2);
+
+        Lead rec1 = leadRepository.findById(lead1.getId()).orElseThrow();
+        assertThat(rec1.getPriority()).isEqualTo("ALTA");
+        assertThat(rec1.getOrigin()).isEqualTo("REFERIDO");
+
+        Lead rec2 = leadRepository.findById(lead2.getId()).orElseThrow();
+        assertThat(rec2.getPriority()).isEqualTo("MEDIA");
+        assertThat(rec2.getOrigin()).isEqualTo("MANUAL");
+    }
+
+    @Test
+    @DisplayName("C07: Filtros combinados de prioridad, origen y etapa con aislamiento estricto de propietario")
+    void shouldFilterByPriorityAndOriginCombined() {
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("filterUserA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("filterUserB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        LocalDate hoy = LocalDate.now();
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+
+        // Usuario A
+        Lead l1 = new Lead();
+        l1.setUsuario(usuarioA);
+        l1.setNombre("Lead A1");
+        l1.setTelefono("101");
+        l1.setEtapa("NUEVO");
+        l1.setPriority("BAJA");
+        l1.setOrigin("WEB");
+        leadRepository.save(l1);
+
+        Lead l2 = new Lead();
+        l2.setUsuario(usuarioA);
+        l2.setNombre("Lead A2");
+        l2.setTelefono("102");
+        l2.setEtapa("NUEVO");
+        l2.setPriority("MEDIA");
+        l2.setOrigin("WEB");
+        leadRepository.save(l2);
+
+        Lead l3 = new Lead();
+        l3.setUsuario(usuarioA);
+        l3.setNombre("Lead A3");
+        l3.setTelefono("103");
+        l3.setEtapa("NUEVO");
+        l3.setPriority("ALTA");
+        l3.setOrigin("WEB");
+        leadRepository.save(l3);
+
+        Lead l4 = new Lead();
+        l4.setUsuario(usuarioA);
+        l4.setNombre("Lead A4");
+        l4.setTelefono("104");
+        l4.setEtapa("NUEVO");
+        l4.setPriority("ALTA");
+        l4.setOrigin("REFERIDO");
+        leadRepository.save(l4);
+
+        Lead l5 = new Lead();
+        l5.setUsuario(usuarioA);
+        l5.setNombre("Lead A5");
+        l5.setTelefono("105");
+        l5.setEtapa("EN_SEGUIMIENTO");
+        l5.setPriority("ALTA");
+        l5.setOrigin("REFERIDO");
+        leadRepository.save(l5);
+
+        // Usuario B: mismo ALTA + REFERIDO + EN_SEGUIMIENTO (no debe aparecer para usuario A)
+        Lead lB = new Lead();
+        lB.setUsuario(usuarioB);
+        lB.setNombre("Lead B Ajeno");
+        lB.setTelefono("999");
+        lB.setEtapa("EN_SEGUIMIENTO");
+        lB.setPriority("ALTA");
+        lB.setOrigin("REFERIDO");
+        leadRepository.save(lB);
+
+        // 1. Filtrar solo prioridad ALTA para usuario A: l3, l4, l5 (3)
+        var resAlta = leadRepository.buscar(usuarioA.getId(), "", "ALTA", "", "%%", "all", hoy, pageable);
+        assertThat(resAlta.getTotalElements()).isEqualTo(3);
+        assertThat(resAlta.getContent()).extracting(Lead::getNombre).containsExactlyInAnyOrder("Lead A3", "Lead A4", "Lead A5");
+
+        // 2. Filtrar solo origen REFERIDO para usuario A: l4, l5 (2)
+        var resReferido = leadRepository.buscar(usuarioA.getId(), "", "", "REFERIDO", "%%", "all", hoy, pageable);
+        assertThat(resReferido.getTotalElements()).isEqualTo(2);
+        assertThat(resReferido.getContent()).extracting(Lead::getNombre).containsExactlyInAnyOrder("Lead A4", "Lead A5");
+
+        // 3. Filtrar combinado prioridad ALTA y origen REFERIDO para usuario A: l4, l5 (2)
+        var resAltaReferido = leadRepository.buscar(usuarioA.getId(), "", "ALTA", "REFERIDO", "%%", "all", hoy, pageable);
+        assertThat(resAltaReferido.getTotalElements()).isEqualTo(2);
+        assertThat(resAltaReferido.getContent()).extracting(Lead::getNombre).containsExactlyInAnyOrder("Lead A4", "Lead A5");
+
+        // 4. Filtrar combinado prioridad ALTA, origen REFERIDO y etapa EN_SEGUIMIENTO: solo l5 (1)
+        var resCombinadoTodo = leadRepository.buscar(usuarioA.getId(), "EN_SEGUIMIENTO", "ALTA", "REFERIDO", "%%", "all", hoy, pageable);
+        assertThat(resCombinadoTodo.getTotalElements()).isEqualTo(1);
+        assertThat(resCombinadoTodo.getContent().get(0).getNombre()).isEqualTo("Lead A5");
+
+        // 5. Verificar que usuario B solo ve su propio lead
+        var resUsuarioB = leadRepository.buscar(usuarioB.getId(), "EN_SEGUIMIENTO", "ALTA", "REFERIDO", "%%", "all", hoy, pageable);
+        assertThat(resUsuarioB.getTotalElements()).isEqualTo(1);
+        assertThat(resUsuarioB.getContent().get(0).getNombre()).isEqualTo("Lead B Ajeno");
+    }
 }
