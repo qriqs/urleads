@@ -764,4 +764,86 @@ class LeadApiIT {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
+
+    // C06 duplicate-detection regressions
+
+    @Test
+    void crear_conCorreoDuplicadoMismoPropietario_devuelve400() throws Exception {
+        crearLead(owner, "Ana Original", null, "ana@mail.com", "Web");
+        flushYLimpiar();
+
+        mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Ana Copia","email":"  ANA@Mail.COM  ","stage":"NUEVO"}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este correo"));
+    }
+
+    @Test
+    void crear_conTelefonoDuplicadoMismoPropietario_devuelve400() throws Exception {
+        crearLead(owner, "Beto Original", "999-111-222", null, "SEO");
+        flushYLimpiar();
+
+        mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Beto Copia","phone":"(999) 111.222","stage":"NUEVO"}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este teléfono"));
+    }
+
+    @Test
+    void crear_conMismoContactoEnOtroPropietario_devuelve201() throws Exception {
+        crearLead(other, "Ajeno", "999-111-222", "compartido@mail.com", null);
+        flushYLimpiar();
+
+        mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Mio","phone":"(999) 111-222","email":"COMPARTIDO@mail.com","stage":"NUEVO"}"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Mio"))
+                .andExpect(jsonPath("$.phone").value("(999) 111-222"))
+                .andExpect(jsonPath("$.email").value("COMPARTIDO@mail.com"));
+    }
+
+    @Test
+    void actualizar_conservandoMismosDatosDelLead_devuelve200() throws Exception {
+        Lead lead = crearLead(owner, "Original", "999-111-222", "propio@mail.com", null);
+        flushYLimpiar();
+
+        mockMvc.perform(put("/api/leads/{id}", lead.getId())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Original Renombrado","phone":"999111222","email":"PROPIO@mail.com","stage":"EN_SEGUIMIENTO"}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Original Renombrado"))
+                .andExpect(jsonPath("$.stage").value("EN_SEGUIMIENTO"));
+    }
+
+    @Test
+    void actualizar_colisionConOtroLeadDelMismoPropietario_devuelve400() throws Exception {
+        Lead l1 = crearLead(owner, "Primero", "999-111-222", "primero@mail.com", null);
+        Lead l2 = crearLead(owner, "Segundo", "888-222-333", "segundo@mail.com", null);
+        flushYLimpiar();
+
+        mockMvc.perform(put("/api/leads/{id}", l1.getId())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Primero Modificado","email":"segundo@mail.com","stage":"NUEVO"}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este correo"));
+    }
 }

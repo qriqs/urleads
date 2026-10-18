@@ -729,4 +729,75 @@ Execute the following commands from the `backend/` directory:
 # 4. Postman collection JSON validation
 python3 -m json.tool postman/urleads-crm.postman_collection.json > /dev/null
 python3 -m json.tool postman/urleads-crm.postman_environment.json > /dev/null
+## 9. Implementación y verificación de C06 (Detección de duplicados por contacto normalizado)
+
+Esta sección documenta la arquitectura técnica, normalización determinista,
+migración Flyway V4, restricciones de base de datos PostgreSQL, manejo seguro de errores
+y matriz de validación de la tarea C06 (DSW-46) para el servicio CRM.
+
+### 9.1. Decisiones de diseño y reglas de normalización
+
+1. **Normalización de correo electrónico (R1):**
+   - Implementado en `LeadNormalizer.normalizeEmail(String email)`.
+   - Recorta espacios en blanco al inicio y al final (`trim()`).
+   - Convierte a minúsculas canónicas (`Locale.ROOT`).
+   - Valores nulos, cadenas vacías o solo espacios se consideran ausentes (`null`).
+   - El almacenamiento crudo en `lead.correo` y la representación API se preservan intactos sin exponer campos internos.
+
+2. **Normalización de número telefónico (R2):**
+   - Implementado en `LeadNormalizer.normalizePhone(String phone)`.
+   - Extrae estrictamente dígitos ASCII (`'0'` a `'9'`). No impone formatos E.164 ni supuestos de país.
+   - Puntuación, espacios, símbolos y dígitos no ASCII (ej. árabes o fullwidth) son descartados.
+   - Valores nulos, cadenas vacías, solo espacios o cadenas sin dígitos ASCII (`"---"`, `"+ - ()"`) se consideran ausentes (`null`).
+
+3. **Reglas de detección y alcance por propietario (R3):**
+   - En creación (`POST /api/leads`) y actualización (`PUT /api/leads/{id}`), se rechaza una solicitud si su correo normalizado no vacío O su teléfono normalizado no vacío coincide con otro lead perteneciente al mismo propietario autenticado.
+   - En actualización, la entidad actual se auto-excluye de la validación (`id != leadId`).
+   - Medios de contacto nulos o ausentes no colisionan.
+   - Mismos valores de contacto están permitidos entre distintos propietarios.
+
+4. **Restricciones de unicidad en PostgreSQL (R4 / Flyway V4):**
+   - Migración `V4__owner_normalized_contact_uniqueness.sql` añade columnas generadas almacenadas:
+     `telefono_norm TEXT GENERATED ALWAYS AS (NULLIF(regexp_replace(telefono, '[^0-9]', '', 'g'), '')) STORED`
+     `correo_norm TEXT GENERATED ALWAYS AS (NULLIF(lower(btrim(correo, E' \t\n\r\013\f\x01\x02\x03\x04\x05\x06\x07\x08\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f')), '')) STORED`
+   - Restricciones de tabla únicas:
+     `CONSTRAINT uq_lead_owner_telefono_norm UNIQUE (usuario_id, telefono_norm)`
+     `CONSTRAINT uq_lead_owner_correo_norm UNIQUE (usuario_id, correo_norm)`
+   - La unicidad en PostgreSQL permite múltiples valores NULL para un mismo propietario sin violar la restricción.
+   - Colisiones preexistentes provocan un fallo fail-fast en la migración sin reparación ni borrado automático.
+
+5. **Manejo seguro de errores y ausencia de fugas (R5):**
+   - Tanto los conflictos detectados a nivel de servicio (`LeadValidationException`) como las violaciones de integridad concurrentes en BD (`DataIntegrityViolationException`) se mapean a HTTP 400 (`VALIDATION_ERROR`).
+   - No se filtran trazas, nombres de restricciones SQL, valores crudos ni datos de otros propietarios.
+
+6. **Transaccionalidad y outbox (R6):**
+   - La detección de duplicados previene mutaciones en base de datos y la inserción de eventos en la tabla `outbox`. En caso de conflicto concurrente, el rollback transaccional revierte cualquier inserción pendiente.
+
+### 9.2. Matriz de aceptación y resultados C06
+
+| ID | Escenario | Resultado esperado | Evidencia |
+|---|---|---|---|
+| **R1** | Normalización de correo | Minúsculas, trim, null/blanco ausente | `LeadNormalizerTest` |
+| **R2** | Normalización de teléfono | Dígitos ASCII puros, ignora no-dígitos y no-ASCII, ausente si sin dígitos | `LeadNormalizerTest` |
+| **R3** | Rechazo de duplicados en create/update | Reitera colisión por correo o teléfono en mismo owner, auto-excluye en update, admite entre owners | `LeadServiceImplTest`, `LeadApiIT` |
+| **R4** | Unicidad en PostgreSQL (V4) | Restricciones uq_lead_owner_* en BD, fail-fast ante colisión | `DatabaseMigrationIT`, `LeadRepositoryIT` |
+| **R5** | Contrato seguro de error | HTTP 400 VALIDATION_ERROR sin fuga de SQL ni PII | `LeadControllerTest`, `LeadApiIT` |
+| **R6** | Integridad transaccional de outbox | Fallo de duplicado nunca persiste evento en outbox | `LeadServiceImplOutboxTest` |
+| **R7** | Cobertura integral | Pruebas unitarias, slice y de integración DB en verde | 178 Surefire + 95 Failsafe exitosas |
+
+### 9.3. Comandos reproducibles de verificación
+
+```bash
+# 1. Pruebas unitarias focalizadas C06 (68 pruebas, 0 fallas)
+./mvnw --batch-mode --no-transfer-progress test \
+  -Dtest=LeadNormalizerTest,LeadServiceImplTest,LeadServiceImplOutboxTest,LeadControllerTest
+
+# 2. Verificación completa del backend no-IT y empaquetado JAR (178 pruebas, 0 fallas)
+./mvnw --batch-mode --no-transfer-progress verify
+
+# 3. Verificación con base de datos real aislada (95 pruebas Failsafe, 0 fallas)
+TEST_DB_URL="jdbc:postgresql://127.0.0.1:5432/urleads_c06_test" \
+TEST_DB_USERNAME="urleads_app" \
+TEST_DB_PASSWORD="..." \
+./mvnw --batch-mode --no-transfer-progress verify -Pdb-integration
 ```

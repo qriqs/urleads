@@ -83,7 +83,7 @@ class DatabaseMigrationIT {
         assertThat(leadColumns).contains(
                 "id", "usuario_id", "nombre", "telefono", "correo",
                 "etapa", "proximo_seguimiento", "creado_en", "actualizado_en", "service",
-                "priority", "origin"
+                "priority", "origin", "telefono_norm", "correo_norm"
         );
 
         List<String> notaColumns = jdbcTemplate.queryForList(
@@ -543,6 +543,57 @@ class DatabaseMigrationIT {
         assertThat(origin).isEqualTo("MANUAL");
     }
 
+    // C06 V4 normalized-contact migration regressions
+
+    @Test
+    @Transactional
+    @DisplayName("lead V4: columnas generadas normalizan teléfono y correo preservando valores crudos")
+    void leadNormalizationColumnsComputeCorrectly() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+        String rawPhone = "+1 (212) 555-0100";
+        String rawEmail = "\t\n  Test.User@Example.COM  \r\n";
+        Long leadId = createTestLead(usuarioId, "Lead Normalizado", rawPhone, rawEmail, "NUEVO", null);
+        assertThat(jdbcTemplate.queryForObject("SELECT telefono FROM lead WHERE id = ?", String.class, leadId)).isEqualTo(rawPhone);
+        assertThat(jdbcTemplate.queryForObject("SELECT correo FROM lead WHERE id = ?", String.class, leadId)).isEqualTo(rawEmail);
+        assertThat(jdbcTemplate.queryForObject("SELECT telefono_norm FROM lead WHERE id = ?", String.class, leadId)).isEqualTo("12125550100");
+        assertThat(jdbcTemplate.queryForObject("SELECT correo_norm FROM lead WHERE id = ?", String.class, leadId)).isEqualTo("test.user@example.com");
+    }
+
+    @Test
+    @Transactional
+    void leadUniqueConstraintRejectsDuplicateNormalizedEmailForSameOwner() {
+        Long owner = createTestUser("synthetic_user_" + UUID.randomUUID());
+        createTestLead(owner, "First", null, "ana@example.com", "NUEVO", null);
+        assertThatThrownBy(() -> createTestLead(owner, "Second", null, " ANA@EXAMPLE.COM ", "NUEVO", null))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    void leadUniqueConstraintRejectsDuplicateNormalizedPhoneForSameOwner() {
+        Long owner = createTestUser("synthetic_user_" + UUID.randomUUID());
+        createTestLead(owner, "First", "+51 (999) 111-222", null, "NUEVO", null);
+        assertThatThrownBy(() -> createTestLead(owner, "Second", "51.999.111.222", null, "NUEVO", null))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    void leadAllowsSameContactsForDifferentOwners() {
+        Long ownerA = createTestUser("synthetic_user_a_" + UUID.randomUUID());
+        Long ownerB = createTestUser("synthetic_user_b_" + UUID.randomUUID());
+        assertThat(createTestLead(ownerA, "A", "+51999111222", "same@example.com", "NUEVO", null)).isNotNull();
+        assertThat(createTestLead(ownerB, "B", "51 999 111 222", "SAME@example.com", "NUEVO", null)).isNotNull();
+    }
+
+    @Test
+    @Transactional
+    void leadAllowsMultipleMissingOrNonNumericContactValues() {
+        Long owner = createTestUser("synthetic_user_" + UUID.randomUUID());
+        assertThat(createTestLead(owner, "A", "---", "a@example.com", "NUEVO", null)).isNotNull();
+        assertThat(createTestLead(owner, "B", "+ - ()", "b@example.com", "NUEVO", null)).isNotNull();
+    }
+
     private Long createTestUser(String username) {
         return jdbcTemplate.queryForObject(
                 "INSERT INTO usuario (username, password_hash) VALUES (?, ?) RETURNING id",
@@ -564,4 +615,5 @@ class DatabaseMigrationIT {
                 proximoSeguimiento != null ? java.sql.Date.valueOf(proximoSeguimiento) : null
         );
     }
+
 }
