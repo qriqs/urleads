@@ -53,6 +53,12 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/health", "/error").permitAll()
+                .requestMatchers(
+                    "/swagger-ui.html",
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**",
+                    "/api-docs/**"
+                ).permitAll()
                 .requestMatchers("/api/v1/**").hasAuthority("SCOPE_" + jwtProperties.getRequiredScope())
                 .anyRequest().authenticated()
             )
