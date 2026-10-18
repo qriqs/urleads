@@ -28,8 +28,8 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_DB: urleads_test
-          POSTGRES_USER: urleads_test_user
-          POSTGRES_PASSWORD: urleads_test_password
+          POSTGRES_USER: urleads_app
+          POSTGRES_PASSWORD: sql
         ports:
           - 5432:5432
         options: >-
@@ -73,12 +73,15 @@ jobs:
 
       - name: Verify integrated application
         env:
+          DB_URL: jdbc:postgresql://127.0.0.1:5432/urleads_test
+          DB_USERNAME: urleads_app
+          DB_PASSWORD: sql
           TEST_DB_URL: jdbc:postgresql://127.0.0.1:5432/urleads_test
-          TEST_DB_USERNAME: urleads_test_user
-          TEST_DB_PASSWORD: urleads_test_password
-	  DB_URL: jdbc:postgresql://127.0.0.1:5432/urleads_test
-          DB_USERNAME: urleads_test_user
-          DB_PASSWORD: urleads_test_password
+          TEST_DB_USERNAME: urleads_app
+          TEST_DB_PASSWORD: sql
+          SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/urleads_test
+          SPRING_DATASOURCE_USERNAME: urleads_app
+          SPRING_DATASOURCE_PASSWORD: sql
         run: ./scripts/build.sh -Pdb-integration
 
   frontend:
