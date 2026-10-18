@@ -39,8 +39,10 @@ class LeadAuditSchemaTest {
         // C09 migration V7 must exist
         assertThat(filenames).anyMatch(f -> f.startsWith("V7__create_lead_audit_log_table.sql"));
 
-        // No migrations beyond V8 (C10 reserves V8; sibling C12 reserves V9)
-        assertThat(filenames).noneMatch(f -> f.startsWith("V9__"));
+        // C10 and C12 add V8 and V9 to the migration chain.
+        assertThat(filenames).anyMatch(f -> f.startsWith("V8__create_lead_import_receipt_table"));
+        assertThat(filenames).anyMatch(f -> f.startsWith("V9__add_archived_at_to_lead"));
+        assertThat(filenames).noneMatch(f -> f.startsWith("V10__"));
     }
 
     @Test

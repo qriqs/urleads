@@ -281,8 +281,8 @@ class LeadImportServiceImplTest {
 
         // 2. Mockear creación de leads
         OffsetDateTime now = OffsetDateTime.now(clock);
-        LeadResponse resp1 = new LeadResponse(101L, "Lead Uno", "987654321", "uno@example.com", "NUEVO", LocalDate.of(2026, 11, 1), now, now, "Serv", "MEDIA", "MANUAL", List.of());
-        LeadResponse resp2 = new LeadResponse(102L, "Lead Dos", "987654322", "dos@example.com", "EN_SEGUIMIENTO", LocalDate.of(2026, 11, 2), now, now, "Serv", "ALTA", "WEB", List.of());
+        LeadResponse resp1 = new LeadResponse(101L, "Lead Uno", "987654321", "uno@example.com", "NUEVO", LocalDate.of(2026, 11, 1), now, now, "Serv", "MEDIA", "MANUAL", List.of(), null);
+        LeadResponse resp2 = new LeadResponse(102L, "Lead Dos", "987654322", "dos@example.com", "EN_SEGUIMIENTO", LocalDate.of(2026, 11, 2), now, now, "Serv", "ALTA", "WEB", List.of(), null);
 
         when(receiptRepository.findByPreviewId(previewId)).thenReturn(Optional.empty());
         when(leadService.crear(eq(1L), any(CreateLeadRequest.class))).thenReturn(resp1, resp2);

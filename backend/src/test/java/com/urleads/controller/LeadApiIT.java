@@ -941,4 +941,250 @@ class LeadApiIT {
                 Integer.class, leadAjeno.getId(), other.getId());
         assertThat(otherAuditRows).isEqualTo(1);
     }
+
+    // =========================================================================
+    // TESTS C12: ARCHIVO Y RESTAURACION LOGICA (DSW-52)
+    // =========================================================================
+
+    @Test
+    void archivar_leadActivoPropio_asignaTimestampEnBd_yExcluyeDeConsultasActivas() throws Exception {
+        LocalDate hoyLima = LocalDate.now(java.time.ZoneId.of("America/Lima"));
+        Lead lead = crearLead(owner, "Lead Para Archivar", "999000111", "activo@test.com", "Web");
+        lead.setEtapa("EN_SEGUIMIENTO");
+        lead.setProximoSeguimiento(hoyLima);
+        leadRepository.saveAndFlush(lead);
+        flushYLimpiar();
+
+        // 1. Archivar con sesión y CSRF
+        mockMvc.perform(post("/api/leads/{id}/archive", lead.getId())
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(lead.getId()))
+                .andExpect(jsonPath("$.archivedAt").isNotEmpty());
+
+        flushYLimpiar();
+
+        // 2. Comprobación directa en PostgreSQL: archived_at no es nulo
+        java.sql.Timestamp archivedAt = jdbcTemplate.queryForObject(
+                "SELECT archived_at FROM lead WHERE id = ?",
+                java.sql.Timestamp.class,
+                lead.getId()
+        );
+        assertThat(archivedAt).isNotNull();
+
+        // 3. Excluido del detalle estándar (404)
+        mockMvc.perform(get("/api/leads/{id}", lead.getId()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        // 4. Excluido del listado activo
+        mockMvc.perform(get("/api/leads"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+
+        // 5. Presente en el listado de archivados
+        mockMvc.perform(get("/api/leads/archived"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(lead.getId()))
+                .andExpect(jsonPath("$.content[0].archivedAt").isNotEmpty());
+    }
+
+    @Test
+    void archivar_repetido_oAjeno_devuelve404() throws Exception {
+        // Lead propio archivado
+        Lead propioArchivado = crearLead(owner, "Ya Archivado", "999000222", null, null);
+        propioArchivado.setArchivedAt(java.time.OffsetDateTime.now());
+        leadRepository.saveAndFlush(propioArchivado);
+
+        // Lead ajeno activo
+        Lead ajenoActivo = crearLead(other, "Ajeno", "999000333", null, null);
+        flushYLimpiar();
+
+        // Archivar un lead que ya está archivado devuelve 404
+        mockMvc.perform(post("/api/leads/{id}/archive", propioArchivado.getId())
+                        .with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        // Archivar un lead de otro propietario devuelve 404
+        mockMvc.perform(post("/api/leads/{id}/archive", ajenoActivo.getId())
+                        .with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void restaurar_leadArchivado_limpiaTimestampEnBd_yVuelveAparecerEnActivos() throws Exception {
+        Lead lead = crearLead(owner, "Lead Restaurable", "999000444", "restaurable@test.com", "SEO");
+        lead.setArchivedAt(java.time.OffsetDateTime.now());
+        leadRepository.saveAndFlush(lead);
+        flushYLimpiar();
+
+        // 1. Restaurar lead archivado
+        mockMvc.perform(post("/api/leads/{id}/restore", lead.getId())
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(lead.getId()))
+                .andExpect(jsonPath("$.archivedAt").doesNotExist());
+
+        flushYLimpiar();
+
+        // 2. Comprobación directa en PostgreSQL: archived_at es NULL
+        java.sql.Timestamp archivedAt = jdbcTemplate.queryForObject(
+                "SELECT archived_at FROM lead WHERE id = ?",
+                java.sql.Timestamp.class,
+                lead.getId()
+        );
+        assertThat(archivedAt).isNull();
+
+        // 3. Vuelve a ser visible en detalle estándar
+        mockMvc.perform(get("/api/leads/{id}", lead.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(lead.getId()));
+
+        // 4. Vuelve a aparecer en el listado activo
+        mockMvc.perform(get("/api/leads"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        // 5. Ya no aparece en listado de archivados
+        mockMvc.perform(get("/api/leads/archived"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+
+        // 6. Restauración repetida sobre lead ya activo devuelve 404
+        mockMvc.perform(post("/api/leads/{id}/restore", lead.getId())
+                        .with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        // 7. Restauración sobre lead de otro usuario devuelve 404
+        Lead ajenoArchivado = crearLead(other, "Ajeno", "999000555", null, null);
+        ajenoArchivado.setArchivedAt(java.time.OffsetDateTime.now());
+        leadRepository.saveAndFlush(ajenoArchivado);
+        flushYLimpiar();
+
+        mockMvc.perform(post("/api/leads/{id}/restore", ajenoArchivado.getId())
+                        .with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void archivoYRestauracion_preservanNotasAuditoriaEtiquetasYOutbox_sinEventosInventados() throws Exception {
+        // 1. Crear lead con notas, auditoría, etiqueta y registro de outbox inicial
+        Lead lead = crearLead(owner, "Lead Completo Ciclo", "999000666", "completo@test.com", "Plan Pro");
+        flushYLimpiar();
+
+        // Crear etiqueta propia y asociar
+        Long tagId = jdbcTemplate.queryForObject(
+                "INSERT INTO tag (usuario_id, nombre) VALUES (?, ?) RETURNING id",
+                Long.class, owner.getId(), "Tag C12"
+        );
+        jdbcTemplate.update("INSERT INTO lead_tag (lead_id, tag_id) VALUES (?, ?)", lead.getId(), tagId);
+
+        // Crear nota privada
+        jdbcTemplate.update("INSERT INTO nota (lead_id, contenido) VALUES (?, ?)", lead.getId(), "Nota historica importante");
+
+        // Crear registro de auditoría
+        jdbcTemplate.update("""
+                INSERT INTO lead_audit_log (lead_id, usuario_id, field_name, old_value, new_value)
+                VALUES (?, ?, 'stage', 'NUEVO', 'EN_SEGUIMIENTO')
+                """, lead.getId(), owner.getId());
+
+        // Conteo inicial de registros en BD
+        Integer notesBefore = jdbcTemplate.queryForObject("SELECT count(*) FROM nota WHERE lead_id = ?", Integer.class, lead.getId());
+        Integer auditBefore = jdbcTemplate.queryForObject("SELECT count(*) FROM lead_audit_log WHERE lead_id = ?", Integer.class, lead.getId());
+        Integer tagsBefore = jdbcTemplate.queryForObject("SELECT count(*) FROM lead_tag WHERE lead_id = ?", Integer.class, lead.getId());
+        Integer outboxBefore = jdbcTemplate.queryForObject("SELECT count(*) FROM outbox", Integer.class);
+
+        assertThat(notesBefore).isEqualTo(1);
+        assertThat(auditBefore).isEqualTo(1);
+        assertThat(tagsBefore).isEqualTo(1);
+
+        // 2. Archivar lead vía API
+        mockMvc.perform(post("/api/leads/{id}/archive", lead.getId()).with(csrf()))
+                .andExpect(status().isOk());
+        flushYLimpiar();
+
+        // 3. Comprobar que en SQL las notas, auditoría y tags permanecen intactos (sin borrado en cascada)
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM nota WHERE lead_id = ?", Integer.class, lead.getId())).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM lead_audit_log WHERE lead_id = ?", Integer.class, lead.getId())).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM lead_tag WHERE lead_id = ?", Integer.class, lead.getId())).isEqualTo(1);
+        // Ningún evento de outbox inventado para archive
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM outbox", Integer.class)).isEqualTo(outboxBefore);
+
+        // 4. Restaurar lead vía API
+        mockMvc.perform(post("/api/leads/{id}/restore", lead.getId()).with(csrf()))
+                .andExpect(status().isOk());
+        flushYLimpiar();
+
+        // 5. Comprobar que tras restaurar, todo el historial sigue exactamente presente
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM nota WHERE lead_id = ?", Integer.class, lead.getId())).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM lead_audit_log WHERE lead_id = ?", Integer.class, lead.getId())).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM lead_tag WHERE lead_id = ?", Integer.class, lead.getId())).isEqualTo(1);
+        // Ningún evento de outbox inventado para restore
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM outbox", Integer.class)).isEqualTo(outboxBefore);
+    }
+
+    @Test
+    void leadArchivado_retieneReservaDeUnicidadDeContactoNormalizadoC06() throws Exception {
+        // 1. Crear y archivar lead con contacto determinado
+        Lead lead = crearLead(owner, "Lead Reservado", "(999) 777-888", "reservado@test.com", null);
+        flushYLimpiar();
+
+        mockMvc.perform(post("/api/leads/{id}/archive", lead.getId()).with(csrf()))
+                .andExpect(status().isOk());
+        flushYLimpiar();
+
+        // 2. Intentar crear un nuevo lead con el mismo correo normalizado debe fallar por duplicado (400)
+        mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Intento Correo Duplicado","email":"  RESERVADO@test.com  ","stage":"NUEVO"}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este correo"));
+
+        // 3. Intentar crear un nuevo lead con el mismo teléfono normalizado debe fallar por duplicado (400)
+        mockMvc.perform(post("/api/leads")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Intento Tel Duplicado","phone":"999.777.888","stage":"NUEVO"}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Ya existe un lead con este teléfono"));
+    }
+
+    @Test
+    void dashboard_excluyeLeadsArchivadosDeTotalesEtapasYSeguimientos() throws Exception {
+        LocalDate hoyLima = LocalDate.now(java.time.ZoneId.of("America/Lima"));
+
+        // 1. Lead activo para hoy
+        Lead activo = crearLead(owner, "Lead Activo Hoy", "999888001", null, null);
+        activo.setEtapa("EN_SEGUIMIENTO");
+        activo.setProximoSeguimiento(hoyLima);
+        leadRepository.saveAndFlush(activo);
+
+        // 2. Lead archivado para hoy
+        Lead archivado = crearLead(owner, "Lead Archivado Hoy", "999888002", null, null);
+        archivado.setEtapa("EN_SEGUIMIENTO");
+        archivado.setProximoSeguimiento(hoyLima);
+        archivado.setArchivedAt(java.time.OffsetDateTime.now());
+        leadRepository.saveAndFlush(archivado);
+        flushYLimpiar();
+
+        // 3. Consultar dashboard: métricas deben reflejar solo el lead activo
+        mockMvc.perform(get("/api/dashboard"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalLeads").value(1))
+                .andExpect(jsonPath("$.leadsPorEtapa.EN_SEGUIMIENTO").value(1))
+                .andExpect(jsonPath("$.seguimientos.hoy").value(1))
+                .andExpect(jsonPath("$.seguimientos.leadsHoy.length()").value(1))
+                .andExpect(jsonPath("$.seguimientos.leadsHoy[0].id").value(activo.getId()))
+                .andExpect(jsonPath("$.seguimientos.leadsHoy[0].nombre").value("Lead Activo Hoy"));
+    }
 }

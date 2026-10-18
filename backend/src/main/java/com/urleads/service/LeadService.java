@@ -56,5 +56,11 @@ public interface LeadService {
 
     LeadResponse actualizarTags(Long leadId, Long usuarioId, List<Long> tagIds);
 
+    LeadResponse archivar(Long leadId, Long usuarioId);
+
+    LeadResponse restaurar(Long leadId, Long usuarioId);
+
+    PageResponse<LeadResponse> listarArchivados(Long usuarioId, int page);
+
     void eliminar(Long leadId, Long usuarioId);
 }

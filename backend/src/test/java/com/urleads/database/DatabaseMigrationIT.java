@@ -41,10 +41,10 @@ class DatabaseMigrationIT {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    @DisplayName("La migracion inicial creo el historial de Flyway y la version 6 fue aplicada")
+    @DisplayName("La migracion inicial creo el historial de Flyway y la version 9 fue aplicada a traves del salto de V8")
     void initialMigrationAppliedSuccessfully() {
         assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("7");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("9");
         assertThat(flyway.info().current().getState().isApplied()).isTrue();
 
         Integer historyCount = jdbcTemplate.queryForObject(
@@ -55,6 +55,12 @@ class DatabaseMigrationIT {
         Integer historyCountV7 = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM flyway_schema_history WHERE version = '7' AND success = true", Integer.class);
         assertThat(historyCountV7).isNotNull().isEqualTo(1);
+        Integer historyCountV9 = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM flyway_schema_history WHERE version = '9' AND success = true", Integer.class);
+        assertThat(historyCountV9).isNotNull().isEqualTo(1);
+        Integer historyCountV8 = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM flyway_schema_history WHERE version = '8'", Integer.class);
+        assertThat(historyCountV8).isZero();
     }
 
     @Test
@@ -86,7 +92,7 @@ class DatabaseMigrationIT {
         assertThat(leadColumns).contains(
                 "id", "usuario_id", "nombre", "telefono", "correo",
                 "etapa", "proximo_seguimiento", "creado_en", "actualizado_en", "service",
-                "priority", "origin", "telefono_norm", "correo_norm"
+                "priority", "origin", "telefono_norm", "correo_norm", "archived_at"
         );
 
         List<String> tagColumns = jdbcTemplate.queryForList(
@@ -232,11 +238,11 @@ class DatabaseMigrationIT {
     void leadAllowsValidNames() {
         Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
 
-        Long leadIdMin = createTestLead(usuarioId, "AB", "+51900000000", null, "NUEVO", null);
+        Long leadIdMin = createTestLead(usuarioId, "AB", "+51900000001", null, "NUEVO", null);
         assertThat(leadIdMin).isNotNull();
 
         String valid120Name = "A".repeat(120);
-        Long leadIdMax = createTestLead(usuarioId, valid120Name, "+51900000000", null, "NUEVO", null);
+        Long leadIdMax = createTestLead(usuarioId, valid120Name, "+51900000002", null, "NUEVO", null);
         assertThat(leadIdMax).isNotNull();
     }
 
@@ -327,9 +333,9 @@ class DatabaseMigrationIT {
     void leadAllowsValidStages() {
         Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
 
-        Long idNuevo = createTestLead(usuarioId, "Lead 1", "+51900000000", null, "NUEVO", null);
-        Long idSeguimiento = createTestLead(usuarioId, "Lead 2", "+51900000000", null, "EN_SEGUIMIENTO", LocalDate.now());
-        Long idCerrado = createTestLead(usuarioId, "Lead 3", "+51900000000", null, "CERRADO", null);
+        Long idNuevo = createTestLead(usuarioId, "Lead 1", "+51900000001", null, "NUEVO", null);
+        Long idSeguimiento = createTestLead(usuarioId, "Lead 2", "+51900000002", null, "EN_SEGUIMIENTO", LocalDate.now());
+        Long idCerrado = createTestLead(usuarioId, "Lead 3", "+51900000003", null, "CERRADO", null);
 
         assertThat(idNuevo).isNotNull();
         assertThat(idSeguimiento).isNotNull();
@@ -597,16 +603,16 @@ class DatabaseMigrationIT {
     void leadAllowsSameContactsForDifferentOwners() {
         Long ownerA = createTestUser("synthetic_user_a_" + UUID.randomUUID());
         Long ownerB = createTestUser("synthetic_user_b_" + UUID.randomUUID());
-        assertThat(createTestLead(ownerA, "A", "+51999111222", "same@example.com", "NUEVO", null)).isNotNull();
-        assertThat(createTestLead(ownerB, "B", "51 999 111 222", "SAME@example.com", "NUEVO", null)).isNotNull();
+        assertThat(createTestLead(ownerA, "Lead A", "+51999111222", "same@example.com", "NUEVO", null)).isNotNull();
+        assertThat(createTestLead(ownerB, "Lead B", "51 999 111 222", "SAME@example.com", "NUEVO", null)).isNotNull();
     }
 
     @Test
     @Transactional
     void leadAllowsMultipleMissingOrNonNumericContactValues() {
         Long owner = createTestUser("synthetic_user_" + UUID.randomUUID());
-        assertThat(createTestLead(owner, "A", "---", "a@example.com", "NUEVO", null)).isNotNull();
-        assertThat(createTestLead(owner, "B", "+ - ()", "b@example.com", "NUEVO", null)).isNotNull();
+        assertThat(createTestLead(owner, "Lead A", "---", "a@example.com", "NUEVO", null)).isNotNull();
+        assertThat(createTestLead(owner, "Lead B", "+ - ()", "b@example.com", "NUEVO", null)).isNotNull();
     }
 
     @Test
@@ -715,6 +721,64 @@ class DatabaseMigrationIT {
         // El lead y su nota continuan existiendo
         assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM lead WHERE id = ?", Integer.class, lead)).isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM nota WHERE lead_id = ?", Integer.class, lead)).isEqualTo(1);
+    }
+
+    // =========================================================================
+    // TESTS C12: ARCHIVO LOGICO (V9)
+    // =========================================================================
+
+    @Test
+    @DisplayName("C12: columna archived_at existe con tipo TIMESTAMP WITH TIME ZONE, es nullable y posee indice")
+    void leadArchivedAtColumnPropertiesAndIndex() {
+        String dataType = jdbcTemplate.queryForObject(
+                "SELECT data_type FROM information_schema.columns " +
+                "WHERE table_schema = 'public' AND table_name = 'lead' AND column_name = 'archived_at'",
+                String.class
+        );
+        assertThat(dataType).isEqualToIgnoringCase("timestamp with time zone");
+
+        String isNullable = jdbcTemplate.queryForObject(
+                "SELECT is_nullable FROM information_schema.columns " +
+                "WHERE table_schema = 'public' AND table_name = 'lead' AND column_name = 'archived_at'",
+                String.class
+        );
+        assertThat(isNullable).isEqualToIgnoringCase("YES");
+
+        Integer indexCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM pg_indexes " +
+                "WHERE schemaname = 'public' AND tablename = 'lead' AND indexname = 'idx_lead_usuario_archived_at'",
+                Integer.class
+        );
+        assertThat(indexCount).isNotNull().isEqualTo(1);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("C12: insercion que omite archived_at asigna NULL por defecto (activo) y permite timestamp UTC explicito")
+    void leadArchivedAtDefaultsToNullForLegacyRows() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+
+        // Inserción legacy sin archived_at
+        Long leadActivoId = createTestLead(usuarioId, "Lead Activo Default", "+51900000001", null, "NUEVO", null);
+        java.sql.Timestamp archivedAtActivo = jdbcTemplate.queryForObject(
+                "SELECT archived_at FROM lead WHERE id = ?",
+                java.sql.Timestamp.class,
+                leadActivoId
+        );
+        assertThat(archivedAtActivo).isNull();
+
+        // Inserción con archived_at explícito
+        Long leadArchivadoId = jdbcTemplate.queryForObject(
+                "INSERT INTO lead (usuario_id, nombre, telefono, etapa, archived_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) RETURNING id",
+                Long.class,
+                usuarioId, "Lead Archivado Explicito", "+51900000002", "NUEVO"
+        );
+        java.sql.Timestamp archivedAtArchivado = jdbcTemplate.queryForObject(
+                "SELECT archived_at FROM lead WHERE id = ?",
+                java.sql.Timestamp.class,
+                leadArchivadoId
+        );
+        assertThat(archivedAtArchivado).isNotNull();
     }
 
     private Long createTestTag(Long usuarioId, String nombre) {

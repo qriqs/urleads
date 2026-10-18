@@ -226,6 +226,9 @@ public class LeadServiceImpl implements LeadService {
     public LeadResponse obtener(Long leadId, Long usuarioId) {
         Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
                 .orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
+        if (lead.isArchived()) {
+            throw new LeadNotFoundException("Lead no encontrado");
+        }
 
         return toResponse(lead);
     }
@@ -235,6 +238,9 @@ public class LeadServiceImpl implements LeadService {
     public InternalLeadResponse obtenerInterno(Long leadId, Long usuarioId) {
         Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
                 .orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
+        if (lead.isArchived()) {
+            throw new LeadNotFoundException("Lead no encontrado");
+        }
 
         return new InternalLeadResponse(
                 lead.getId(),
@@ -290,6 +296,9 @@ public class LeadServiceImpl implements LeadService {
 
         Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
                 .orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
+        if (lead.isArchived()) {
+            throw new LeadNotFoundException("Lead no encontrado");
+        }
 
         validarDuplicados(usuarioId, leadId, request.getCorreo(), request.getTelefono());
 
@@ -357,8 +366,8 @@ public class LeadServiceImpl implements LeadService {
     public PageResponse<LeadAuditResponse> listarAuditoria(Long leadId, Long usuarioId, int page) {
         Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
                 .orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
-        if (leadAuditLogRepository == null) {
-            throw new IllegalStateException("LeadAuditLogRepository no configurado");
+        if (lead.isArchived()) {
+            throw new LeadNotFoundException("Lead no encontrado");
         }
         if (leadAuditLogRepository == null) {
             throw new IllegalStateException("LeadAuditLogRepository no configurado");
@@ -396,6 +405,9 @@ public class LeadServiceImpl implements LeadService {
     public LeadResponse actualizarTags(Long leadId, Long usuarioId, List<Long> tagIds) {
         Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
                 .orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
+        if (lead.isArchived()) {
+            throw new LeadNotFoundException("Lead no encontrado");
+        }
 
         if (tagIds == null) {
             throw new IllegalArgumentException("tagIds no puede ser nulo");
@@ -423,9 +435,68 @@ public class LeadServiceImpl implements LeadService {
     }
 
     @Override
+    public LeadResponse archivar(Long leadId, Long usuarioId) {
+        Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
+                .orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
+
+        if (lead.isArchived()) {
+            throw new LeadNotFoundException("Lead no encontrado");
+        }
+
+        lead.setArchivedAt(Instant.now(clock).atOffset(ZoneOffset.UTC));
+        Lead guardado = leadRepository.save(lead);
+        return toResponse(guardado);
+    }
+
+    @Override
+    public LeadResponse restaurar(Long leadId, Long usuarioId) {
+        Lead lead = leadRepository.findByIdAndUsuarioIdAndArchivedAtIsNotNull(leadId, usuarioId)
+                .orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
+
+        lead.setArchivedAt(null);
+        Lead guardado = leadRepository.save(lead);
+        return toResponse(guardado);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<LeadResponse> listarArchivados(Long usuarioId, int page) {
+        PageRequest pageable = PageRequest.of(
+                Math.max(page, 0),
+                PAGE_SIZE,
+                Sort.by(Sort.Order.desc("creadoEn"), Sort.Order.desc("id")));
+
+        Page<Lead> resultado = leadRepository.findArchivedByUsuarioId(usuarioId, pageable);
+
+        List<Lead> leadsEnPagina = resultado.getContent();
+        if (leadsEnPagina.isEmpty()) {
+            return PageResponse.from(resultado.map(this::toResponse));
+        }
+
+        List<Long> leadIds = leadsEnPagina.stream().map(Lead::getId).toList();
+        List<Lead> leadsConTags = leadRepository.findAllWithTagsByIdIn(leadIds, usuarioId);
+
+        Map<Long, List<TagResponse>> tagsPorLead = leadsConTags.stream()
+                .collect(Collectors.toMap(
+                        Lead::getId,
+                        l -> l.getTags() == null ? List.of() : l.getTags().stream()
+                                .sorted(Comparator.comparing(Tag::getNombre, String.CASE_INSENSITIVE_ORDER))
+                                .map(t -> new TagResponse(t.getId(), t.getNombre(), t.getCreadoEn()))
+                                .toList(),
+                        (existing, replacement) -> existing
+                ));
+
+        return PageResponse.from(resultado.map(lead ->
+                toResponse(lead, tagsPorLead.getOrDefault(lead.getId(), List.of()))));
+    }
+
+    @Override
     public void eliminar(Long leadId, Long usuarioId) {
         Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
                 .orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
+        if (lead.isArchived()) {
+            throw new LeadNotFoundException("Lead no encontrado");
+        }
 
         Long idEliminado = lead.getId();
         leadRepository.delete(lead);
@@ -457,6 +528,7 @@ public class LeadServiceImpl implements LeadService {
         response.setCreadoEn(lead.getCreadoEn());
         response.setActualizadoEn(lead.getActualizadoEn());
         response.setTags(tags);
+        response.setArchivedAt(lead.getArchivedAt());
 
         return response;
     }

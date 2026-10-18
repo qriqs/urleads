@@ -1127,4 +1127,266 @@ class LeadServiceImplTest {
         verify(leadRepository).save(any(Lead.class));
         verify(leadAuditLogRepository).saveAll(any());
     }
+
+    // =========================================================================
+    // DSW-52 / C12: Pruebas unitarias de archivo y restauración lógica
+    // =========================================================================
+
+    @Test
+    @DisplayName("C12: archivar lead activo propio asigna timestamp UTC y persiste sin invocar outbox ni delete")
+    void archivar_leadActivoPropio_asignaTimestampYPersiste() {
+        Lead lead = new Lead();
+        lead.setId(10L);
+        lead.setNombre("Lead Activo");
+        lead.setTelefono("999111222");
+        lead.setEtapa("NUEVO");
+        lead.setArchivedAt(null);
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(lead));
+        when(leadRepository.save(any(Lead.class))).thenAnswer(i -> i.getArgument(0));
+
+        LeadResponse response = service.archivar(10L, 1L);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getArchivedAt()).isNotNull();
+        ArgumentCaptor<Lead> captor = ArgumentCaptor.forClass(Lead.class);
+        verify(leadRepository).save(captor.capture());
+        assertThat(captor.getValue().getArchivedAt()).isNotNull();
+        verify(leadRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("C12: archivar lead inexistente lanza LeadNotFoundException")
+    void archivar_leadInexistente_lanzaLeadNotFound() {
+        when(leadRepository.findByIdAndUsuarioId(999L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.archivar(999L, 1L))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("C12: archivar lead ajeno lanza LeadNotFoundException")
+    void archivar_leadAjeno_lanzaLeadNotFound() {
+        when(leadRepository.findByIdAndUsuarioId(10L, 2L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.archivar(10L, 2L))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("C12: archivar lead ya archivado lanza LeadNotFoundException (404 preferido)")
+    void archivar_leadYaArchivado_lanzaLeadNotFound() {
+        Lead yaArchivado = new Lead();
+        yaArchivado.setId(10L);
+        yaArchivado.setNombre("Ya Archivado");
+        yaArchivado.setTelefono("999111222");
+        yaArchivado.setEtapa("NUEVO");
+        yaArchivado.setArchivedAt(OffsetDateTime.parse("2026-10-18T10:00:00Z"));
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(yaArchivado));
+
+        assertThatThrownBy(() -> service.archivar(10L, 1L))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("C12: restaurar lead archivado propio limpia timestamp archived_at y persiste")
+    void restaurar_leadArchivadoPropio_limpiaTimestampYPersiste() {
+        Lead leadArchivado = new Lead();
+        leadArchivado.setId(10L);
+        leadArchivado.setNombre("Lead Archivado");
+        leadArchivado.setTelefono("999111222");
+        leadArchivado.setEtapa("NUEVO");
+        leadArchivado.setArchivedAt(OffsetDateTime.parse("2026-10-18T10:00:00Z"));
+
+        when(leadRepository.findByIdAndUsuarioIdAndArchivedAtIsNotNull(10L, 1L)).thenReturn(Optional.of(leadArchivado));
+        when(leadRepository.save(any(Lead.class))).thenAnswer(i -> i.getArgument(0));
+
+        LeadResponse response = service.restaurar(10L, 1L);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getArchivedAt()).isNull();
+        ArgumentCaptor<Lead> captor = ArgumentCaptor.forClass(Lead.class);
+        verify(leadRepository).save(captor.capture());
+        assertThat(captor.getValue().getArchivedAt()).isNull();
+        verify(leadRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("C12: restaurar lead inexistente lanza LeadNotFoundException")
+    void restaurar_leadInexistente_lanzaLeadNotFound() {
+        when(leadRepository.findByIdAndUsuarioIdAndArchivedAtIsNotNull(999L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.restaurar(999L, 1L))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("C12: restaurar lead ajeno lanza LeadNotFoundException")
+    void restaurar_leadAjeno_lanzaLeadNotFound() {
+        when(leadRepository.findByIdAndUsuarioIdAndArchivedAtIsNotNull(10L, 2L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.restaurar(10L, 2L))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("C12: restaurar lead activo (no archivado) lanza LeadNotFoundException")
+    void restaurar_leadActivo_lanzaLeadNotFound() {
+        when(leadRepository.findByIdAndUsuarioIdAndArchivedAtIsNotNull(10L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.restaurar(10L, 1L))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("C12: listarArchivados solicita orden estable createdAt DESC, id DESC")
+    void listarArchivados_devuelveSoloArchivadosPaginadosConOrdenCreatedAtIdDesc() {
+        Lead lead = new Lead();
+        lead.setId(10L);
+        lead.setNombre("Archivado");
+        lead.setTelefono("999111222");
+        lead.setEtapa("NUEVO");
+        lead.setArchivedAt(OffsetDateTime.parse("2026-10-18T10:00:00Z"));
+
+        org.springframework.data.domain.Page<Lead> page = new org.springframework.data.domain.PageImpl<>(
+                List.of(lead),
+                org.springframework.data.domain.PageRequest.of(0, 20),
+                1
+        );
+
+        when(leadRepository.findArchivedByUsuarioId(eq(1L), any(org.springframework.data.domain.PageRequest.class)))
+                .thenReturn(page);
+        when(leadRepository.findAllWithTagsByIdIn(eq(List.of(10L)), eq(1L)))
+                .thenReturn(List.of(lead));
+
+        PageResponse<LeadResponse> response = service.listarArchivados(1L, 0);
+
+        assertThat(response).isNotNull();
+        assertThat(response.totalElements()).isEqualTo(1);
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).getArchivedAt()).isEqualTo(OffsetDateTime.parse("2026-10-18T10:00:00Z"));
+
+        ArgumentCaptor<org.springframework.data.domain.PageRequest> captor =
+                ArgumentCaptor.forClass(org.springframework.data.domain.PageRequest.class);
+        verify(leadRepository).findArchivedByUsuarioId(eq(1L), captor.capture());
+        org.springframework.data.domain.PageRequest pageRequest = captor.getValue();
+        assertThat(pageRequest.getSort().getOrderFor("creadoEn")).isNotNull();
+        assertThat(pageRequest.getSort().getOrderFor("creadoEn").getDirection()).isEqualTo(org.springframework.data.domain.Sort.Direction.DESC);
+        assertThat(pageRequest.getSort().getOrderFor("id")).isNotNull();
+        assertThat(pageRequest.getSort().getOrderFor("id").getDirection()).isEqualTo(org.springframework.data.domain.Sort.Direction.DESC);
+    }
+
+    @Test
+    @DisplayName("C12: obtener lead archivado devuelve 404 LeadNotFoundException")
+    void obtener_leadArchivado_lanzaLeadNotFound() {
+        Lead archivado = new Lead();
+        archivado.setId(10L);
+        archivado.setArchivedAt(OffsetDateTime.now());
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(archivado));
+
+        assertThatThrownBy(() -> service.obtener(10L, 1L))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+    }
+
+    @Test
+    @DisplayName("C12: obtenerInterno lead archivado devuelve 404 LeadNotFoundException")
+    void obtenerInterno_leadArchivado_lanzaLeadNotFound() {
+        Lead archivado = new Lead();
+        archivado.setId(10L);
+        archivado.setArchivedAt(OffsetDateTime.now());
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(archivado));
+
+        assertThatThrownBy(() -> service.obtenerInterno(10L, 1L))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+    }
+
+    @Test
+    @DisplayName("C12: actualizar lead archivado devuelve 404 LeadNotFoundException")
+    void actualizar_leadArchivado_lanzaLeadNotFound() {
+        Lead archivado = new Lead();
+        archivado.setId(10L);
+        archivado.setArchivedAt(OffsetDateTime.now());
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(archivado));
+
+        UpdateLeadRequest request = new UpdateLeadRequest();
+        request.setNombre("Nombre");
+        request.setTelefono("999111222");
+        request.setEtapa("NUEVO");
+
+        assertThatThrownBy(() -> service.actualizar(10L, 1L, request))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("C12: listarAuditoria lead archivado devuelve 404 LeadNotFoundException")
+    void listarAuditoria_leadArchivado_lanzaLeadNotFound() {
+        Lead archivado = new Lead();
+        archivado.setId(10L);
+        archivado.setArchivedAt(OffsetDateTime.now());
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(archivado));
+
+        assertThatThrownBy(() -> service.listarAuditoria(10L, 1L, 0))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+    }
+
+    @Test
+    @DisplayName("C12: actualizarTags lead archivado devuelve 404 LeadNotFoundException")
+    void actualizarTags_leadArchivado_lanzaLeadNotFound() {
+        Lead archivado = new Lead();
+        archivado.setId(10L);
+        archivado.setArchivedAt(OffsetDateTime.now());
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(archivado));
+
+        assertThatThrownBy(() -> service.actualizarTags(10L, 1L, List.of(1L)))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("C12: eliminar lead archivado devuelve 404 LeadNotFoundException")
+    void eliminar_leadArchivado_lanzaLeadNotFound() {
+        Lead archivado = new Lead();
+        archivado.setId(10L);
+        archivado.setArchivedAt(OffsetDateTime.now());
+
+        when(leadRepository.findByIdAndUsuarioId(10L, 1L)).thenReturn(Optional.of(archivado));
+
+        assertThatThrownBy(() -> service.eliminar(10L, 1L))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository, never()).delete(any());
+    }
 }

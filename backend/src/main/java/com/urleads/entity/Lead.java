@@ -65,6 +65,9 @@ public class Lead {
     @Column(name = "correo_norm", insertable = false, updatable = false)
     private String correoNorm;
 
+    @Column(name = "archived_at")
+    private OffsetDateTime archivedAt;
+
     @Column(name = "creado_en", nullable = false, updatable = false)
     private OffsetDateTime creadoEn;
 
@@ -136,6 +139,10 @@ public class Lead {
     public String getTelefonoNorm() { return telefonoNorm; }
 
     public String getCorreoNorm() { return correoNorm; }
+
+    public OffsetDateTime getArchivedAt() { return archivedAt; }
+    public void setArchivedAt(OffsetDateTime archivedAt) { this.archivedAt = archivedAt; }
+    public boolean isArchived() { return archivedAt != null; }
 
     public OffsetDateTime getCreadoEn() { return creadoEn; }
     public void setCreadoEn(OffsetDateTime creadoEn) { this.creadoEn = creadoEn; }

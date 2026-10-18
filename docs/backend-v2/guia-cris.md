@@ -516,7 +516,7 @@ for task C03 (DSW-43) in the CRM service.
 | **R15** | Non-numeric path variable | `InternalLeadSecurityWebTest#rutaInvalida_IdNoNumerico_Retorna400BadRequestSin500` | Returns HTTP 400 Bad Request; no 500 error or stack trace. |
 | **REG1** | Unit tests for `LeadService.obtenerInterno` | `LeadServiceImplTest` (4 new tests, 15 total) | All pass; verifies owner scoping, DTO mapping, and exception handling. |
 | **REG2** | Full non-IT regression suite | Maven verify command | 131 tests executed with 0 failures, 0 errors, 0 skipped. |
-| **DEP1** | Archived-lead 404 check | Deferred to task C12 (DSW-52) | Documented limitation; no archive state exists in current schema. |
+| **DEP1** | Archived-lead 404 check | Implemented in task C12 (DSW-52) | Validated via `InternalLeadSecurityWebTest#c12_LeadArchivado_Retorna404Identico` and `LeadServiceImplTest`. |
 | **RUN1** | Live port 8080 smoke test | Deferred due to pre-existing process | Documented limitation; PID 95948 preserved on host. |
 
 ### 7.4. Runnable validation commands
@@ -879,3 +879,56 @@ La suite estándar `./mvnw --batch-mode --no-transfer-progress verify` valida
 las pruebas unitarias y web. Las pruebas de migración y PostgreSQL requieren una
 base aislada configurada y autorizada mediante `TEST_DB_URL`, `TEST_DB_USERNAME`
 y `TEST_DB_PASSWORD`.
+
+---
+
+## 14. Implementación y verificación de C12: archivo y restauración lógica de leads (DSW-52)
+
+Esta sección documenta la arquitectura técnica, modelo de datos, exclusión activa, operaciones de archivo/restauración y resultados de verificación de la tarea C12 (DSW-52).
+
+### 14.1. Decisiones de diseño y modelo de datos
+
+1. **Columna y migración Flyway V9 (`V9__add_archived_at_to_lead.sql`):**
+   - Agrega `archived_at TIMESTAMP WITH TIME ZONE NULL` a la tabla `lead`.
+   - Crea el índice compuesto `idx_lead_usuario_archived_at` sobre `(usuario_id, archived_at)`.
+   - `NULL` representa un lead activo (valor por defecto para filas heredadas y nuevas inserciones).
+   - Un valor `TIMESTAMPTZ` no nulo marca el lead como archivado con marca de tiempo UTC.
+
+2. **Diferenciación de la eliminación física (DELETE):**
+   - El archivo lógico es una operación independiente de `DELETE`. No invoca borrado físico ni cascada sobre notas (`nota`), auditoría (`lead_audit_log`), etiquetas (`lead_tag`) ni eventos de outbox históricos.
+   - El archivo y la restauración no emiten eventos outbox de dominio (se preserva estrictamente el contrato existente de outbox `created`, `updated`, `deleted`).
+   - La operación legacy `DELETE /api/leads/{id}` mantiene inalterada su semántica física de eliminación y emisión de evento outbox.
+
+3. **Exclusión estricta en consultas activas:**
+   - Todas las consultas activas filtran explícitamente `l.archivedAt IS NULL`:
+     - Detalle `GET /api/leads/{id}` -> 404 Not Found si está archivado.
+     - Edición `PUT /api/leads/{id}` -> 404 Not Found si está archivado.
+     - Reemplazo de etiquetas `PUT /api/leads/{id}/tags` -> 404 Not Found si está archivado.
+     - Bitácora de notas `GET/POST /api/leads/{id}/notes` -> 404 Not Found si está archivado.
+     - Historial de auditoría `GET /api/leads/{id}/audit` -> 404 Not Found si está archivado.
+     - Eliminación `DELETE /api/leads/{id}` -> 404 Not Found si está archivado.
+     - Consulta interna inter-servicios `GET /internal/v1/leads/{id}` -> 404 Not Found indistinguible.
+     - Dashboard `GET /api/dashboard` -> métricas totales, distribución por etapa, seguimientos de hoy y atrasados excluyen filas archivadas.
+     - Listado y búsqueda activa `GET /api/leads` -> excluye filas archivadas.
+
+4. **Operaciones dedicadas de archivo y restauración:**
+   - `POST /api/leads/{id}/archive`: Requiere sesión web activa y cabecera `X-XSRF-TOKEN`. Transiciona un lead propio activo asignando `archived_at = now()`. Responde 200 OK con `LeadResponse` conteniendo `archivedAt`. Si el lead no existe, es ajeno o ya está archivado, responde 404 (semántica de no-existencia).
+   - `POST /api/leads/{id}/restore`: Requiere sesión web activa y cabecera `X-XSRF-TOKEN`. Transiciona un lead propio archivado reactivándolo (`archived_at = null`). Responde 200 OK con `LeadResponse` conteniendo `archivedAt: null`. Si el lead no existe, es ajeno o está activo, responde 404.
+   - `GET /api/leads/archived`: Retorna listado paginado `PageResponse<LeadResponse>` conteniendo exclusivamente leads archivados del usuario autenticado, ordenados por `createdAt DESC, id DESC`.
+
+5. **Preservación de unicidad de contactos normalizados C06:**
+   - Las restricciones de unicidad de `telefono_norm` y `correo_norm` aplican sobre la tabla completa. Los contactos de leads archivados permanecen reservados y restaurar un lead no evade las reglas de unicidad.
+
+### 14.2. Matriz de aceptación y resultados C12
+
+| ID | Escenario | Resultado esperado | Evidencia |
+|---|---|---|---|
+| **R1** | Migración Flyway V9 | Agrega columna nullable `archived_at` e índice en PostgreSQL | `V9__add_archived_at_to_lead.sql` |
+| **R2** | Archivar lead activo propio | Asigna timestamp UTC, responde 200 OK; archivo repetido responde 404 | `LeadControllerTest`, `LeadServiceImplTest` |
+| **R3** | Restaurar lead archivado propio | Limpia timestamp (`archived_at = null`), responde 200 OK; restauración repetida responde 404 | `LeadControllerTest`, `LeadServiceImplTest` |
+| **R4** | Listado de archivados (`GET /api/leads/archived`) | Retorna exclusivamente archivados del usuario con paginación y orden `createdAt DESC, id DESC` | `LeadControllerTest`, `LeadServiceImplTest` |
+| **R5** | Exclusión en consultas y mutaciones estándar | Detalle, edición, notas, auditoría, tags, DELETE y dashboard excluyen archivados (404) | `LeadServiceImplTest`, `NotaServiceTest`, `LeadRepository` |
+| **R6** | Exclusión en consulta interna (`GET /internal/v1/leads/{id}`) | Lead archivado responde 404 indistinguible de inexistente o ajeno | `InternalLeadSecurityWebTest#c12_LeadArchivado_Retorna404Identico`, `LeadServiceImplTest` |
+| **R7** | Seguridad y CSRF | `POST /archive` y `POST /restore` requieren sesión y CSRF (401/403); `GET /archived` requiere sesión (401); ignora ownerId del cliente | `LeadControllerTest`, `OpenApiSecurityWebTest` |
+| **R8** | Sin borrado en cascada ni eventos outbox inventados | Notas, auditoría, tags y outbox persisten; outbox no emite eventos en archive/restore | `LeadServiceImplTest` |
+| **R9** | Preservación de unicidad de contactos | Unicidad C06 de correo y teléfono normalizados se mantiene sobre filas archivadas | `LeadRepository`, `LeadServiceImpl` |

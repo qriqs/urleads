@@ -50,9 +50,12 @@ public class LeadResponse {
     @JsonProperty("tags")
     private List<TagResponse> tags = new ArrayList<>();
 
+    @JsonProperty("archivedAt")
+    private OffsetDateTime archivedAt;
+
     public LeadResponse(Long id, String nombre, String telefono, String correo, String etapa,
                         LocalDate proximoSeguimiento, OffsetDateTime creadoEn, OffsetDateTime actualizadoEn,
                         String service) {
-        this(id, nombre, telefono, correo, etapa, proximoSeguimiento, creadoEn, actualizadoEn, service, "MEDIA", "MANUAL", new ArrayList<>());
+        this(id, nombre, telefono, correo, etapa, proximoSeguimiento, creadoEn, actualizadoEn, service, "MEDIA", "MANUAL", new ArrayList<>(), null);
     }
 }
