@@ -19,10 +19,10 @@ class FlywayMigrationTests {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    @DisplayName("Flyway migration executes successfully and applies V1")
+    @DisplayName("Flyway migration executes successfully and applies migrations")
     void flywayMigrationApplied() {
         assertThat(flyway.info().applied()).isNotEmpty();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("1");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
     }
 
     @Test
