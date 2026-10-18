@@ -3,6 +3,8 @@ import { Button } from "./ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+import { UrLeadsLogo } from "./UrLeadsLogo";
+
 export const Navbar: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
@@ -12,10 +14,9 @@ export const Navbar: React.FC = () => {
       <div className="flex items-center gap-2">
         <Link
           to="/"
-          className="text-xl font-semibold tracking-tight text-foreground hover:opacity-90 transition-opacity flex items-center gap-1.5"
+          className="text-xl font-semibold tracking-tight text-foreground hover:opacity-90 transition-opacity flex items-center gap-1.5 group"
         >
-          <span className="text-base select-none text-foreground">✦</span>
-          <span>UrLeads</span>
+          <UrLeadsLogo size={28} showText />
         </Link>
       </div>
 
