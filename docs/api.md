@@ -73,6 +73,7 @@ credenciales de acceso inter-servicio protegidas por la sesión web existente:
 | POST | `/api/leads` | Crear lead; responde 201 y representación. |
 | PUT | `/api/leads/{id}` | Reemplazar campos editables; responde 200. |
 | DELETE | `/api/leads/{id}` | Eliminar lead y notas; responde 204. |
+| PUT | `/api/leads/{id}/tags` | Reemplazar conjunto de etiquetas del lead; responde 200. |
 | GET | `/api/leads/{id}/notes` | Listar entradas internas de bitácora cronológicamente. |
 | POST | `/api/leads/{id}/notes` | Registrar entrada interna; responde 201. |
 | GET | `/api/dashboard` | Resumen y pendientes del usuario. |
@@ -84,6 +85,10 @@ será limitado por el servidor. Los valores de `followUp` serán `today`,
 serán `WEB`, `REFERIDO` o `MANUAL` (insensibles a mayúsculas/minúsculas y
 recortados). Todos los filtros se combinan de forma conjuntiva (`AND`) y
 mantienen aislamiento estricto por el usuario autenticado a nivel de consulta en base de datos.
+El parámetro `tagIds` es repetible (por ejemplo, `?tagIds=1&tagIds=2`) y filtra
+bajo semántica OR (coincide si el lead posee al menos una de las etiquetas
+especificadas pertenecientes al usuario). Todos los filtros se combinan por AND
+y mantienen aislamiento estricto por el usuario autenticado a nivel de consulta.
 
 ## Ejemplo de lead
 
@@ -99,7 +104,14 @@ mantienen aislamiento estricto por el usuario autenticado a nivel de consulta en
   "origin": "MANUAL",
   "nextFollowUp": "2026-10-10",
   "createdAt": "2026-10-06T15:30:00Z",
-  "updatedAt": "2026-10-06T15:30:00Z"
+  "updatedAt": "2026-10-06T15:30:00Z",
+  "tags": [
+    {
+      "id": 1,
+      "name": "VIP",
+      "createdAt": "2026-10-06T12:00:00Z"
+    }
+  ]
 }
 ```
 
@@ -202,6 +214,50 @@ Cada entrada devuelve su identificador y fecha de registro, además del
 contenido. El listado se ordena del más antiguo al más reciente para facilitar
 la lectura del progreso; la interfaz puede desplazarse a la entrada más nueva
 al agregar una actualización. El contenido se trata siempre como texto plano.
+
+## Etiquetas (Tags - Backend V2 C08)
+
+Endpoints para la administración de etiquetas y su asignación a leads (Tarea C08 / DSW-48):
+
+| Método | Ruta | Resultado |
+|---|---|---|
+| GET | `/api/tags` | Listar etiquetas del usuario autenticado ordenadas por nombre ASC. |
+| GET | `/api/tags/{id}` | Obtener una etiqueta propia o 404. |
+| POST | `/api/tags` | Crear etiqueta propia (201 Created); rechaza duplicados (409 Conflict). |
+| PUT | `/api/tags/{id}` | Renombrar etiqueta propia (200 OK); rechaza duplicados (409 Conflict). |
+| DELETE | `/api/tags/{id}` | Eliminar etiqueta y sus asociaciones en leads (204 No Content). |
+| PUT | `/api/leads/{id}/tags` | Reemplazar atómicamente las etiquetas del lead propio (200 OK). |
+
+### Reglas y contratos de etiquetas
+
+- **Aislamiento por propietario:** Cada etiqueta y relación está estrictamente aislada por el `usuario_id` del usuario en sesión.
+- **Normalización de nombre:** Los nombres se recortan (`trim`); nombres vacíos o con solo espacios se rechazan con `400 Bad Request` (`VALIDATION_ERROR`).
+- **Unicidad:** La unicidad del nombre es por propietario e insensible a mayúsculas/minúsculas (`case-insensitive`). Propietarios distintos pueden utilizar el mismo nombre. Si se intenta crear o renombrar con un nombre existente para el mismo usuario, responde `409 Conflict` (`CONFLICT`).
+- **Asociación de etiquetas:** `PUT /api/leads/{id}/tags` recibe `{"tagIds": [1, 2]}` y reemplaza el conjunto completo de etiquetas asignadas al lead. Una lista vacía `{"tagIds": []}` desasocia todas las etiquetas. IDs duplicados en la petición no generan duplicados en base de datos. Si el lead o alguna de las etiquetas no existe o pertenece a otro propietario, la solicitud se rechaza con `404 Not Found` de forma atómica sin mutación parcial.
+- **Filtro de leads por etiquetas:** `GET /api/leads?tagIds=1&tagIds=2` aplica semántica **OR** (retorna leads que tengan al menos una de las etiquetas indicadas pertenecientes al usuario). Etiquetas inexistentes o ajenas en el filtro devuelven 0 coincidencias de forma segura sin revelar la existencia del recurso.
+
+Ejemplo de cuerpo para `POST /api/tags` y `PUT /api/tags/{id}`:
+```json
+{
+  "name": "Cliente VIP"
+}
+```
+
+Ejemplo de respuesta de etiqueta (`TagResponse`):
+```json
+{
+  "id": 1,
+  "name": "Cliente VIP",
+  "createdAt": "2026-10-18T10:00:00Z"
+}
+```
+
+Ejemplo de cuerpo para `PUT /api/leads/{id}/tags`:
+```json
+{
+  "tagIds": [1, 2]
+}
+```
 
 ## Monitoreo y salud
 

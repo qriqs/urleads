@@ -22,13 +22,29 @@ public class GlobalExceptionHandler {
             "correo", "email",
             "etapa", "stage",
             "proximoSeguimiento", "nextFollowUp",
-            "service", "service");
+            "service", "service",
+            "name", "name",
+            "tagIds", "tagIds");
 
     @ExceptionHandler(LeadNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleLeadNotFound(LeadNotFoundException ex) {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(404, "NOT_FOUND", ex.getMessage()));
+    }
+
+    @ExceptionHandler(TagNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleTagNotFound(TagNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(404, "NOT_FOUND", ex.getMessage()));
+    }
+
+    @ExceptionHandler(TagDuplicateException.class)
+    public ResponseEntity<ErrorResponse> handleTagDuplicate(TagDuplicateException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(409, "CONFLICT", ex.getMessage()));
     }
 
     @ExceptionHandler(UsuarioNotFoundException.class)

@@ -1,5 +1,7 @@
 package com.urleads.controller;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +19,7 @@ import com.urleads.dto.CreateLeadRequest;
 import com.urleads.dto.LeadResponse;
 import com.urleads.dto.PageResponse;
 import com.urleads.dto.UpdateLeadRequest;
+import com.urleads.dto.UpdateLeadTagsRequest;
 import com.urleads.exception.ErrorResponse;
 import com.urleads.security.CurrentUserProvider;
 import com.urleads.service.LeadService;
@@ -55,9 +58,11 @@ public class LeadController {
             @Parameter(description = "Filtro por etapa: 'NUEVO', 'EN_SEGUIMIENTO', 'CERRADO'") @RequestParam(required = false) String stage,
             @Parameter(description = "Filtro por prioridad: 'BAJA', 'MEDIA' o 'ALTA'") @RequestParam(required = false) String priority,
             @Parameter(description = "Filtro por origen: 'WEB', 'REFERIDO' o 'MANUAL'") @RequestParam(required = false) String origin,
+            @Parameter(description = "IDs de etiquetas (OR)") @RequestParam(required = false) List<Long> tagIds,
             @Parameter(description = "Número de página (base 0)") @RequestParam(required = false, defaultValue = "0") int page) {
 
-        if (priority == null && origin == null) {
+        if ((priority == null || priority.isBlank()) && (origin == null || origin.isBlank())
+                && (tagIds == null || tagIds.isEmpty())) {
             return leadService.listarPaginado(
                     currentUserProvider.getCurrentUserId(),
                     search,
@@ -73,6 +78,7 @@ public class LeadController {
                 stage,
                 priority,
                 origin,
+                tagIds,
                 page);
     }
 
@@ -146,8 +152,20 @@ public class LeadController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void eliminar(@Parameter(description = "ID del lead a eliminar") @PathVariable Long id) {
 
-        leadService.eliminar(
-                id,
-                currentUserProvider.getCurrentUserId());
+        leadService.eliminar(id, currentUserProvider.getCurrentUserId());
     }
+
+    @Operation(summary = "Reemplazar etiquetas de un lead", description = "Reemplaza las etiquetas propias asociadas al lead.")
+    @ApiResponse(responseCode = "200", description = "Etiquetas actualizadas")
+    @PutMapping("/{id}/tags")
+    public LeadResponse actualizarTags(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateLeadTagsRequest request) {
+
+        return leadService.actualizarTags(
+                id,
+                currentUserProvider.getCurrentUserId(),
+                request.tagIds());
+    }
+
 }

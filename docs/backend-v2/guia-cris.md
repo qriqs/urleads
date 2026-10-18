@@ -60,7 +60,7 @@ cd backend
 | **C05** | Documentación OpenAPI, Postman y regresión de seguridad CRM | Principal | `Todo` | C01, C02, C03 | [DSW-45](https://linear.app/enmanuelprojects/issue/DSW-45) |
 | **C06** | Detección de duplicados por correo y teléfono normalizados | Ampliación | `Backlog` | C01 | [DSW-46](https://linear.app/enmanuelprojects/issue/DSW-46) |
 | **C07** | Campos de prioridad y origen con filtros avanzados | Ampliación | `Backlog` | C01 | [DSW-47](https://linear.app/enmanuelprojects/issue/DSW-47) |
-| **C08** | Gestión de etiquetas y relaciones por propietario | Ampliación | `Backlog` | C01 | [DSW-48](https://linear.app/enmanuelprojects/issue/DSW-48) |
+| **C08** | Gestión de etiquetas y relaciones por propietario | Ampliación | `In Progress` | C01 | [DSW-48](https://linear.app/enmanuelprojects/issue/DSW-48) |
 | **C09** | Historial de cambios y auditoría independiente de notas | Ampliación | `Backlog` | C01 | [DSW-49](https://linear.app/enmanuelprojects/issue/DSW-49) |
 | **C10** | Importación acotada de leads desde Excel con plantilla fija | Ampliación | `Backlog` | C01, C06 | [DSW-50](https://linear.app/enmanuelprojects/issue/DSW-50) |
 | **C11** | Registro y consulta de historial de importaciones | Ampliación | `Backlog` | C01, C10 | [DSW-51](https://linear.app/enmanuelprojects/issue/DSW-51) |
@@ -729,7 +729,7 @@ Execute the following commands from the `backend/` directory:
 # 4. Postman collection JSON validation
 python3 -m json.tool postman/urleads-crm.postman_collection.json > /dev/null
 python3 -m json.tool postman/urleads-crm.postman_environment.json > /dev/null
-## 9. Implementación y verificación de C06 (Detección de duplicados por contacto normalizado)
+## 11. Implementación y verificación de C06 (Detección de duplicados por contacto normalizado)
 
 Esta sección documenta la arquitectura técnica, normalización determinista,
 migración Flyway V4, restricciones de base de datos PostgreSQL, manejo seguro de errores
@@ -784,8 +784,50 @@ y matriz de validación de la tarea C06 (DSW-46) para el servicio CRM.
 | **R5** | Contrato seguro de error | HTTP 400 VALIDATION_ERROR sin fuga de SQL ni PII | `LeadControllerTest`, `LeadApiIT` |
 | **R6** | Integridad transaccional de outbox | Fallo de duplicado nunca persiste evento en outbox | `LeadServiceImplOutboxTest` |
 | **R7** | Cobertura integral | Pruebas unitarias, slice y de integración DB en verde | 178 Surefire + 95 Failsafe exitosas |
+## 12. Guía de implementación tarea C08: Gestión de etiquetas y relaciones por propietario (DSW-48)
 
-### 9.3. Comandos reproducibles de verificación
+### 9.1. Decisiones arquitectónicas y de diseño
+
+1. **Migración Flyway V6 (`V6__create_tags_and_lead_tags.sql`):**
+   - Tabla `tag`: Clave primaria autoincremental `id`, `usuario_id` con FK a `usuario(id) ON DELETE CASCADE`, `nombre VARCHAR(100)` con restricción `chk_tag_nombre` (no vacío y entre 1 y 100 caracteres tras trim) y `creado_en`.
+   - Restricción de unicidad: Índice único `uq_tag_usuario_nombre_lower ON tag (usuario_id, lower(trim(nombre)))` que garantiza unicidad case-insensitive por propietario permitiendo nombres idénticos entre propietarios distintos.
+   - Tabla asociativa `lead_tag`: `(lead_id, tag_id)` con FKs en cascada a `lead(id)` y `tag(id)`.
+   - Disparador de integridad `trg_check_lead_tag_owner`: Función PL/pgSQL `check_lead_tag_owner()` que verifica que `lead.usuario_id == tag.usuario_id` en cada inserción/actualización de `lead_tag`, impidiendo a nivel de base de datos asociaciones cruzadas entre propietarios distintos.
+   - Cascada segura: Eliminar un lead remueve sus notas y sus filas en `lead_tag` pero conserva intactas las etiquetas. Eliminar una etiqueta remueve sus filas en `lead_tag` sin alterar los leads ni sus notas asociadas.
+
+2. **Endpoints CRUD de etiquetas (`/api/tags`):**
+   - Rutas: `GET /api/tags`, `GET /api/tags/{id}`, `POST /api/tags`, `PUT /api/tags/{id}`, `DELETE /api/tags/{id}`.
+   - Seguridad: Requieren sesión activa y protección CSRF para mutaciones; el `usuario_id` se resuelve exclusivamente desde `CurrentUserProvider` en el servidor, sin aceptar identificadores de usuario en parámetros ni cuerpo.
+   - Normalización y códigos de error: Nombres recortados (`trim`); nombres vacíos devuelven `400 Bad Request` (`VALIDATION_ERROR`). Conflictos por nombre duplicado devuelven `409 Conflict` (`CONFLICT`). Etiquetas inexistentes o de otros propietarios devuelven `404 Not Found` (`NOT_FOUND`) sin revelar la existencia del recurso ajeno.
+
+3. **Reemplazo atómico de etiquetas en leads (`PUT /api/leads/{id}/tags`):**
+   - Recibe `{"tagIds": [1, 2]}`. Reemplaza el conjunto completo de etiquetas asignadas al lead propio de forma atómica.
+   - Lista vacía `[]` desasocia todas las etiquetas. IDs duplicados en la petición no generan filas duplicadas en la base de datos.
+   - Si el lead o alguna de las etiquetas indicadas no pertenece al usuario autenticado o no existe, la petición aborta con `404 Not Found` sin aplicar modificaciones parciales.
+
+4. **Filtro de leads por etiquetas (`GET /api/leads?tagIds=1&tagIds=2`):**
+   - Parámetro `tagIds` repetible con semántica **OR** (coincide si el lead posee al menos una de las etiquetas indicadas).
+   - Consulta eficiente con subconsulta `EXISTS (SELECT 1 FROM l.tags t WHERE t.id IN :tagIds AND t.usuario.id = :usuarioId)` para garantizar que cada lead se liste exactamente una vez sin duplicar filas ni alterar la paginación.
+   - Prevención de N+1: La consulta paginada recupera en lote las etiquetas de los leads de la página actual mediante `findAllWithTagsByIdIn(leadIds)`.
+   - Etiquetas ajenas o inexistentes en el filtro devuelven 0 coincidencias de forma segura sin revelar información de otros propietarios.
+
+### 9.2. Matriz de aceptación y resultados C08
+
+| ID | Escenario | Resultado esperado | Evidencia |
+|---|---|---|---|
+| **R1a** | Aplicación de migraciones V1 a V6 en PostgreSQL | Migración exitosa; tablas `tag`, `lead_tag`, índices y disparador creados | `DatabaseMigrationIT` |
+| **R1b** | Cascada al eliminar lead con notas y tags | Notas y asociaciones `lead_tag` eliminadas en cascada; etiquetas y usuario conservados | `DatabaseMigrationIT`, `TagApiIT` |
+| **R2a** | CRUD y listado de etiquetas por propietario | Cada propietario accede solo a sus etiquetas; mismo nombre permitido entre usuarios | `TagServiceTest`, `TagControllerTest`, `TagRepositoryIT`, `TagApiIT` |
+| **R2b** | Normalización y validación de nombres de etiquetas | Trim de espacios, rechazo de blancos (400), rechazo de duplicados case-insensitive (409) | `TagServiceTest`, `TagControllerTest`, `TagApiIT` |
+| **R2c** | Acceso a etiqueta ajena (GET/PUT/DELETE) | Retorna 404 indistinguible de inexistente sin mutar datos | `TagServiceTest`, `TagControllerTest`, `TagRepositoryIT`, `TagApiIT` |
+| **R3a** | Reemplazo atómico de etiquetas en lead propio | Conjunto reemplazado, `[]` limpia, repetidos no duplican filas | `LeadServiceImplTagsTest`, `LeadControllerTest`, `TagApiIT` |
+| **R3b** | Asignación de tag ajeno o en lead ajeno | Retorna 404 atómico sin mutaciones parciales | `LeadServiceImplTagsTest`, `TagApiIT` |
+| **R4a** | Filtro de leads con múltiples etiquetas | Semántica OR; sin leads duplicados; orden y paginación estables | `LeadServiceImplTagsTest`, `LeadControllerTest`, `TagApiIT` |
+| **R4b** | Filtro con etiquetas ajenas o inexistentes | Retorna 0 coincidencias sin exponer existencia ajena | `TagApiIT` |
+| **REG1** | Regresión completa no-IT (`mvn verify`) | 185 pruebas unitarias/slice en verde sin fallas | `mvn verify` exitoso (0 fallas) |
+| **REG2** | Seguridad web y CSRF en etiquetas | Sesión obligatoria (401), CSRF requerido en mutaciones (403) | `TagControllerTest`, `TagApiIT` |
+
+### 11.3. Comandos reproducibles de verificación
 
 ```bash
 # 1. Pruebas unitarias focalizadas C06 (68 pruebas, 0 fallas)
@@ -800,4 +842,18 @@ TEST_DB_URL="jdbc:postgresql://127.0.0.1:5432/urleads_c06_test" \
 TEST_DB_USERNAME="urleads_app" \
 TEST_DB_PASSWORD="..." \
 ./mvnw --batch-mode --no-transfer-progress verify -Pdb-integration
+
+# 1. Pruebas unitarias focalizadas de C08 y regresión de servicios (67 pruebas, 0 fallas)
+./mvnw --batch-mode --no-transfer-progress test \
+  -Dtest=TagServiceTest,LeadServiceImplTagsTest,LeadServiceImplTest,TagControllerTest,LeadControllerTest
+
+# 2. Verificación estándar completa del backend y empaquetado (185 pruebas, 0 fallas)
+./mvnw --batch-mode --no-transfer-progress verify
+
+# 3. Integración con PostgreSQL aislada (perfil db-integration en puerto 5433)
+TEST_DB_URL=jdbc:postgresql://127.0.0.1:5433/urleads_c08_test \
+TEST_DB_USERNAME=testuser \
+TEST_DB_PASSWORD=testpass \
+./mvnw --batch-mode --no-transfer-progress verify -Pdb-integration \
+  -Dit.test=DatabaseMigrationIT,TagRepositoryIT,TagApiIT
 ```
