@@ -7,9 +7,11 @@ import com.urleads.comercial.dto.QuoteItemRequest;
 import com.urleads.comercial.dto.QuoteOutcomeRequest;
 import com.urleads.comercial.dto.QuoteResponse;
 import com.urleads.comercial.dto.QuoteUpdateRequest;
+import com.urleads.comercial.dto.InstantiateQuoteRequest;
 import com.urleads.comercial.entity.QuoteOutcomeReason;
 import com.urleads.comercial.entity.QuoteStatus;
 import com.urleads.comercial.service.QuoteService;
+import com.urleads.comercial.service.QuoteTemplateService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,9 +32,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class QuoteController {
 
     private final QuoteService quoteService;
+    private final QuoteTemplateService quoteTemplateService;
 
-    public QuoteController(QuoteService quoteService) {
+    public QuoteController(QuoteService quoteService, QuoteTemplateService quoteTemplateService) {
         this.quoteService = quoteService;
+        this.quoteTemplateService = quoteTemplateService;
     }
 
     @PostMapping
@@ -174,5 +178,16 @@ public class QuoteController {
         String ownerId = jwt.getSubject();
         QuoteDetailResponse response = quoteService.acceptQuote(ownerId, id);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/from-template/{templateId}")
+    public ResponseEntity<QuoteDetailResponse> createFromTemplate(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable Long templateId,
+        @Valid @RequestBody InstantiateQuoteRequest request
+    ) {
+        String ownerId = jwt.getSubject();
+        QuoteDetailResponse response = quoteTemplateService.instantiateQuote(ownerId, templateId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }
