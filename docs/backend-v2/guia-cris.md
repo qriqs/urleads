@@ -652,3 +652,81 @@ TEST_DB_PASSWORD="[PROTECTED]" \
 ./mvnw --batch-mode --no-transfer-progress test-compile failsafe:integration-test failsafe:verify \
   -Pdb-integration -Dit.test=LeadApiIT,LeadRepositoryIT,DatabaseMigrationIT
 ```
+
+---
+
+<a id="10-implementacion-y-verificacion-de-c05-documentacion-openapi-postman-y-regresion"></a>
+## 10. Implementation and verification of C05 (OpenAPI docs, Postman collection, and security regression)
+
+This section documents the technical implementation, security schemes, password privacy verification, Postman collection, and automated regression suite for task C05 (DSW-45) in the CRM service.
+
+### 10.1. OpenAPI 3 and Swagger UI runtime architecture
+
+1. **Dependency and runtime contract:**
+   - Incorporates the human-approved dependency `org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0` in `backend/pom.xml`.
+   - Generates valid OpenAPI 3 specification at `GET /v3/api-docs` and interactive documentation at `GET /swagger-ui.html` (redirecting to `/swagger-ui/index.html`).
+   - Prioritized over client-side SPA routing through `SwaggerUiResourceController` in `OpenApiConfig`, guaranteeing static Swagger UI assets are served without collision with SPA catch-all routes.
+   - All documented REST paths reflect operative endpoints:
+     - Public: `GET /api/health`, `GET /api/auth/csrf`, `POST /api/auth/login`.
+     - Session & CSRF protected: `GET /api/auth/me`, `GET /api/auth/session`, `POST /api/auth/logout`, `GET/POST /api/leads`, `GET/PUT/DELETE /api/leads/{id}`, `GET/POST /api/leads/{id}/notes`, `GET /api/dashboard`.
+     - Token issuance: `POST /api/auth/access-token` (requires session and CSRF).
+     - Inter-service internal: `GET /internal/v1/leads/{id}` (requires Bearer JWT RS256).
+   - No nonexistent or future routes (such as SOAP `/ws/leads`) are claimed or documented.
+
+2. **Security schemes and authentication semantics:**
+   - `cookieAuth`: ApiKey in cookie (`JSESSIONID`) representing session authentication for web endpoints.
+   - `X-XSRF-TOKEN`: Parameter in header (`in: header`) required on all mutating endpoints (`POST`, `PUT`, `DELETE`). Mutating routes require session cookie `cookieAuth` AND the header parameter `X-XSRF-TOKEN`. `POST /api/auth/login` is unauthenticated (no session cookie) but requires the `X-XSRF-TOKEN` header parameter.
+   - `bearerJwt`: HTTP Bearer JWT RS256 with issuer `urleads-crm`, audience `crm-api`, and scope `crm.leads.read` exclusively for `/internal/**`.
+   - Swagger documentation endpoints (`/v3/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html`) are permitted without authentication, while `/api/**` and `/internal/**` protections remain strictly enforced. Try-it-out does not bypass server-side security.
+
+3. **Strict password privacy (R4):**
+   - Verified that no user/auth response or OpenAPI response schema exposes `password`, `passwordHash`, or `password_hash`.
+   - Internal entity `Usuario` is never exposed in response DTOs or OpenAPI schemas.
+   - `UserResponse` exposes strictly `id` and `username`.
+   - Automated test assertions explicitly verify absence of password fields in both OpenAPI schema trees and live authentication responses (`/api/auth/login`, `/api/auth/me`).
+
+4. **Postman collection v2.1 (R3):**
+   - Exported and versioned at `backend/postman/urleads-crm.postman_collection.json` with environment `backend/postman/urleads-crm.postman_environment.json` and `backend/postman/README.md`.
+   - Validated syntax with `python3 -m json.tool`.
+   - 8 folders covering all operative endpoints: Health, Auth (CSRF, Login, Me, Session, Logout), Token Issuance, Leads CRUD & filters, Notes, Dashboard, Internal lookup, and OpenAPI/Swagger.
+   - All requests use safe variables (`{{baseUrl}}`, `{{username}}`, `{{password}}`, `{{csrfToken}}`, `{{accessToken}}`, `{{leadId}}`). No real credentials, cookies, tokens, or production URLs.
+
+5. **Security and owner-scoping regression (R5):**
+   - Automated tests in `LeadServiceImplTest` (3 dedicated cross-owner tests), `OpenApiSecurityWebTest`, `InternalLeadSecurityWebTest`, and `LeadControllerTest` prove that:
+     - Unauthenticated requests receive 401.
+     - Internal requests without valid JWT receive 401; without required scope receive 403.
+     - Attempted read, update, or deletion of a lead belonging to another owner fails with `LeadNotFoundException` (404), with zero mutation (`never().save()`, `never().delete()`) and strictly owner-scoped queries (`never().findById()`).
+     - Lookups for nonexistent leads and leads belonging to another owner return identical 404 responses.
+     - Ownership is derived strictly on the server from the authenticated session or verified JWT `sub` claim. Client-supplied owner parameters are ignored.
+
+### 10.2. Acceptance and verification matrix
+
+| ID | Scenario | Automated Test / Check | Outcome |
+|:---:|---|---|:---:|
+| **R1a** | OpenAPI 3 spec at `/v3/api-docs` | `OpenApiSecurityWebTest#openApiDocsReturnsValidSpecificationWithAllExpectedRoutes` | HTTP 200, valid OpenAPI 3.0.1 JSON containing all 12 operative routes, required `X-XSRF-TOKEN` headers, and accurate security requirements. |
+| **R1b** | Swagger UI at `/swagger-ui.html` | `OpenApiSecurityWebTest#swaggerUiIsAccessible` | HTTP 302 redirecting to `/swagger-ui/index.html` which returns HTTP 200 HTML. |
+| **R2** | OpenAPI is public without weakening API | `OpenApiSecurityWebTest#swaggerIsPublicWithoutWeakeningApiOrInternalSecurity` | `/v3/api-docs` and Swagger UI return 200; `/api/leads` and `/internal/v1/leads/42` remain protected (401). |
+| **R3** | Postman collection v2.1 JSON | `python3 -m json.tool` on collection and environment | Valid JSON; covers all CRM operations with safe variables and non-executable test scripts. |
+| **R4** | Password privacy in schemas and responses | `OpenApiSecurityWebTest#passwordPrivacyInOpenApiSchemas`, `#passwordNotExposedInAuthResponses` | No password/hash exposed in schemas or auth responses. |
+| **R5** | Owner scoping & internal JWT regression | `LeadServiceImplTest` (3 tests), `OpenApiSecurityWebTest`, `InternalLeadSecurityWebTest` | Identical 404 for missing/other owner; no mutation of foreign records; identity derived strictly from session or JWT `sub`. |
+| **REG1** | Full non-IT regression suite | Maven wrapper `test` / `verify` | 140 tests executed with 0 failures, 0 errors, 0 skipped (corrected from 137 in A1 baseline + 3 new cross-owner unit tests). |
+| **LIVE1** | Live port 8080 smoke check | Runtime curl on port 8080 | Verified if port 8080 is free; executed and reported truthfully. |
+
+### 10.3. Runnable validation commands
+
+Execute the following commands from the `backend/` directory:
+
+```bash
+# 1. Focused test suite for OpenAPI and security regression (6 tests, 0 failures)
+./mvnw --batch-mode --no-transfer-progress test -Dtest=OpenApiSecurityWebTest
+
+# 2. Combined security regression suite (39 tests, 0 failures)
+./mvnw --batch-mode --no-transfer-progress test -Dtest=OpenApiSecurityWebTest,InternalLeadSecurityWebTest,LeadServiceImplTest
+
+# 3. Full non-IT regression suite (140 tests, 0 failures)
+./mvnw --batch-mode --no-transfer-progress verify
+
+# 4. Postman collection JSON validation
+python3 -m json.tool postman/urleads-crm.postman_collection.json > /dev/null
+python3 -m json.tool postman/urleads-crm.postman_environment.json > /dev/null
+```

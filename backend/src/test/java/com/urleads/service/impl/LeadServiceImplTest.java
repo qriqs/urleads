@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -27,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 
 import com.urleads.dto.CreateLeadRequest;
 import com.urleads.dto.InternalLeadResponse;
+import com.urleads.dto.LeadResponse;
 import com.urleads.dto.UpdateLeadRequest;
 import com.urleads.entity.Lead;
 import com.urleads.entity.Usuario;
@@ -597,5 +599,95 @@ class LeadServiceImplTest {
         } finally {
             Locale.setDefault(defaultPrevio);
         }
+    }
+
+    // TESTS C05: REGRESIÓN DE AISLAMIENTO DE PROPIETARIOS EN CRUD (NON-IT)
+    // =========================================================================
+
+    @Test
+    @DisplayName("C05: Consulta de lead de otro propietario lanza LeadNotFoundException y no invoca findById global")
+    void foreignOwnerLead_obtenerComoOwnerA_fallaConLeadNotFoundYNoConsultaGlobal() {
+        Long ownerA = 10L;
+        Long ownerB = 20L;
+        Long leadId = 500L;
+
+        Usuario userB = new Usuario(ownerB, "userB", "hashB");
+        Lead leadDeB = new Lead();
+        leadDeB.setId(leadId);
+        leadDeB.setUsuario(userB);
+        leadDeB.setNombre("Lead Privado de B");
+        leadDeB.setEtapa("NUEVO");
+
+        // 1. El propietario legítimo ownerB puede consultar el lead exitosamente
+        when(leadRepository.findByIdAndUsuarioId(leadId, ownerB)).thenReturn(Optional.of(leadDeB));
+        LeadResponse respB = service.obtener(leadId, ownerB);
+        assertThat(respB).isNotNull();
+        assertThat(respB.getId()).isEqualTo(leadId);
+
+        // 2. Pero cuando el usuario ajeno ownerA intenta consultarlo, el repositorio acotado retorna vacío
+        when(leadRepository.findByIdAndUsuarioId(leadId, ownerA)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.obtener(leadId, ownerA))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository).findByIdAndUsuarioId(leadId, ownerA);
+        verify(leadRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("C05: Intento de actualizar lead de otro propietario falla con LeadNotFoundException y no muta el registro de B")
+    void foreignOwnerLead_actualizarComoOwnerA_fallaConLeadNotFoundYNoMutaRegistroDeOwnerB() {
+        Long ownerA = 10L;
+        Long ownerB = 20L;
+        Long leadId = 500L;
+
+        Usuario userB = new Usuario(ownerB, "userB", "hashB");
+        Lead leadDeB = new Lead();
+        leadDeB.setId(leadId);
+        leadDeB.setUsuario(userB);
+        leadDeB.setNombre("Lead Privado de B");
+        leadDeB.setEtapa("NUEVO");
+
+        when(leadRepository.findByIdAndUsuarioId(leadId, ownerA)).thenReturn(Optional.empty());
+
+        UpdateLeadRequest updateRequest = new UpdateLeadRequest();
+        updateRequest.setNombre("Nombre Alterado");
+        updateRequest.setCorreo("alterado@example.com");
+        updateRequest.setEtapa("EN_SEGUIMIENTO");
+        updateRequest.setProximoSeguimiento(LocalDate.of(2026, 11, 1));
+
+        assertThatThrownBy(() -> service.actualizar(leadId, ownerA, updateRequest))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository).findByIdAndUsuarioId(leadId, ownerA);
+        verify(leadRepository, never()).save(any(Lead.class));
+        verify(leadRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("C05: Intento de eliminar lead de otro propietario falla con LeadNotFoundException y no elimina el registro de B")
+    void foreignOwnerLead_eliminarComoOwnerA_fallaConLeadNotFoundYNoEliminaRegistroDeOwnerB() {
+        Long ownerA = 10L;
+        Long ownerB = 20L;
+        Long leadId = 500L;
+
+        Usuario userB = new Usuario(ownerB, "userB", "hashB");
+        Lead leadDeB = new Lead();
+        leadDeB.setId(leadId);
+        leadDeB.setUsuario(userB);
+        leadDeB.setNombre("Lead Privado de B");
+        leadDeB.setEtapa("NUEVO");
+
+        when(leadRepository.findByIdAndUsuarioId(leadId, ownerA)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.eliminar(leadId, ownerA))
+                .isInstanceOf(LeadNotFoundException.class)
+                .hasMessage("Lead no encontrado");
+
+        verify(leadRepository).findByIdAndUsuarioId(leadId, ownerA);
+        verify(leadRepository, never()).delete(any(Lead.class));
+        verify(leadRepository, never()).findById(any());
     }
 }
