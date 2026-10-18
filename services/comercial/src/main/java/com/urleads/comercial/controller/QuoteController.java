@@ -7,6 +7,7 @@ import com.urleads.comercial.dto.QuoteItemRequest;
 import com.urleads.comercial.dto.QuoteOutcomeRequest;
 import com.urleads.comercial.dto.QuoteResponse;
 import com.urleads.comercial.dto.QuoteUpdateRequest;
+import com.urleads.comercial.entity.QuoteOutcomeReason;
 import com.urleads.comercial.entity.QuoteStatus;
 import com.urleads.comercial.service.QuoteService;
 import jakarta.validation.Valid;
@@ -50,11 +51,33 @@ public class QuoteController {
         @RequestParam(required = false) Long leadId,
         @RequestParam(required = false) QuoteStatus status,
         @RequestParam(required = false) String currency,
+        @RequestParam(required = false) QuoteOutcomeReason outcomeReason,
+        @RequestParam(name = "dateFrom", required = false) String dateFrom,
+        @RequestParam(name = "from", required = false) String from,
+        @RequestParam(name = "dateTo", required = false) String dateTo,
+        @RequestParam(name = "to", required = false) String to,
+        @RequestParam(name = "q", required = false) String q,
+        @RequestParam(name = "search", required = false) String search,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size
     ) {
         String ownerId = jwt.getSubject();
-        PageResponse<QuoteResponse> result = quoteService.list(ownerId, leadId, status, currency, page, size);
+        String effectiveDateFrom = dateFrom != null ? dateFrom : from;
+        String effectiveDateTo = dateTo != null ? dateTo : to;
+        String effectiveSearch = q != null ? q : search;
+
+        PageResponse<QuoteResponse> result = quoteService.list(
+            ownerId,
+            leadId,
+            status,
+            currency,
+            outcomeReason,
+            effectiveDateFrom,
+            effectiveDateTo,
+            effectiveSearch,
+            page,
+            size
+        );
         return ResponseEntity.ok(result);
     }
 
