@@ -28,10 +28,12 @@ public class NotificationController {
     }
 
     /**
-     * Consulta paginada y determinista de notificaciones para el usuario autenticado.
+     * Consulta paginada y determinista de notificaciones para el usuario autenticado,
+     * con soporte opcional de filtrado por estado de lectura (read=true/false).
      */
     @GetMapping
     public ResponseEntity<PageResponse<NotificationResponse>> listNotifications(
+            @RequestParam(required = false) Boolean read,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
@@ -40,7 +42,7 @@ public class NotificationController {
         Pageable pageable = PageRequest.of(validatedPage, validatedSize);
 
         Long usuarioId = currentUserProvider.getCurrentUserId();
-        return ResponseEntity.ok(PageResponse.from(notificationService.obtenerNotificaciones(usuarioId, pageable)));
+        return ResponseEntity.ok(PageResponse.from(notificationService.obtenerNotificaciones(usuarioId, read, pageable)));
     }
 
     /**

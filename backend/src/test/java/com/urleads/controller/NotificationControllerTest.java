@@ -4,9 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.urleads.dto.CreateNotificationRequest;
 import com.urleads.dto.NotificationResponse;
 import com.urleads.dto.SnoozeNotificationRequest;
+import com.urleads.entity.Usuario;
+import com.urleads.exception.ResourceNotFoundException;
 import com.urleads.repository.NotaRepository;
 import com.urleads.repository.UsuarioRepository;
 import com.urleads.security.CurrentUserProvider;
+import com.urleads.security.JwtService;
 import com.urleads.service.NotificationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,9 +25,11 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -38,6 +43,9 @@ class NotificationControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private JwtService jwtService;
 
     @MockBean
     private NotificationService notificationService;
@@ -63,8 +71,8 @@ class NotificationControllerTest {
 
     @Test
     @WithMockUser(username = "admin")
-    @DisplayName("Listar notificaciones paginadas con usuario autenticado retorna 200 OK")
-    void listNotifications_Authenticated_ReturnsOk() throws Exception {
+    @DisplayName("Listar notificaciones con formato paginado completo conforme a contrato (incluyendo 'last')")
+    void listNotifications_Authenticated_ReturnsOkWithContract() throws Exception {
         when(currentUserProvider.getCurrentUserId()).thenReturn(1L);
 
         NotificationResponse responseDto = NotificationResponse.builder()
@@ -76,14 +84,33 @@ class NotificationControllerTest {
                 .creadoEn(Instant.now())
                 .build();
 
-        when(notificationService.obtenerNotificaciones(eq(1L), any(PageRequest.class)))
+        when(notificationService.obtenerNotificaciones(eq(1L), isNull(), any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of(responseDto), PageRequest.of(0, 20), 1));
 
         mockMvc.perform(get("/api/v1/notifications?page=0&size=20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(10))
                 .andExpect(jsonPath("$.content[0].tipo").value("COTIZACION_ACEPTADA"))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.last").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "admin")
+    @DisplayName("Listar notificaciones con filtro read=false retorna solo no leídas")
+    void listNotifications_FilterReadFalse_ReturnsOk() throws Exception {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(1L);
+
+        when(notificationService.obtenerNotificaciones(eq(1L), eq(false), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+        mockMvc.perform(get("/api/v1/notifications?read=false&page=0&size=20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.last").value(true));
     }
 
     @Test
@@ -116,6 +143,19 @@ class NotificationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(10))
                 .andExpect(jsonPath("$.leida").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "admin")
+    @DisplayName("Marcar notificación de otro usuario retorna 404 Not Found (aislamiento)")
+    void markAsRead_BelongsToAnotherUser_ReturnsNotFound() throws Exception {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(1L);
+
+        when(notificationService.marcarComoLeida(99L, 1L))
+                .thenThrow(new ResourceNotFoundException("Notificación no encontrada o no pertenece al usuario autenticado"));
+
+        mockMvc.perform(patch("/api/v1/notifications/99/read"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -173,5 +213,27 @@ class NotificationControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(99))
                 .andExpect(jsonPath("$.eventId").value("evt-12345"));
+    }
+
+    @Test
+    @DisplayName("Autenticación con Bearer JWT usando claim sub como cadena decimal de usuario.id")
+    void authWithJwtBearerToken_DecimalUserIdSub_AllowsAccess() throws Exception {
+        // sub="42" (cadena decimal de usuario.id)
+        String token = jwtService.generateToken("42", 60);
+
+        Usuario user = new Usuario();
+        user.setId(42L);
+        user.setUsername("usuario42");
+        user.setPasswordHash("hash");
+        when(usuarioRepository.findById(42L)).thenReturn(Optional.of(user));
+        when(usuarioRepository.findByUsername("usuario42")).thenReturn(Optional.of(user));
+        when(currentUserProvider.getCurrentUserId()).thenReturn(42L);
+
+        when(notificationService.contarNoLeidas(42L)).thenReturn(0L);
+
+        mockMvc.perform(get("/api/v1/notifications/unread-count")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unreadCount").value(0));
     }
 }

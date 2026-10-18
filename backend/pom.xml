@@ -37,6 +37,12 @@
 			<artifactId>spring-boot-starter-websocket</artifactId>
 		</dependency>
 
+		<!-- RabbitMQ (Spring AMQP) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-amqp</artifactId>
+		</dependency>
+
 		<!-- JSON Web Token (JJWT) -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
@@ -115,6 +121,12 @@
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.amqp</groupId>
+			<artifactId>spring-rabbit-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 

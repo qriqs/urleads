@@ -15,7 +15,9 @@ import java.util.Optional;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-    Page<Notification> findByUsuarioIdOrderByCreadoEnDesc(Long usuarioId, Pageable pageable);
+    Page<Notification> findByUsuarioIdOrderByCreadoEnDescIdDesc(Long usuarioId, Pageable pageable);
+
+    Page<Notification> findByUsuarioIdAndLeidaOrderByCreadoEnDescIdDesc(Long usuarioId, boolean leida, Pageable pageable);
 
     Optional<Notification> findByIdAndUsuarioId(Long id, Long usuarioId);
 

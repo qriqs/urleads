@@ -77,9 +77,19 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
+    public Page<NotificationResponse> obtenerNotificaciones(Long usuarioId, Boolean read, Pageable pageable) {
+        if (notificationRepository == null) {
+            return Page.empty(pageable);
+        }
+        Page<Notification> pagina = (read == null)
+                ? notificationRepository.findByUsuarioIdOrderByCreadoEnDescIdDesc(usuarioId, pageable)
+                : notificationRepository.findByUsuarioIdAndLeidaOrderByCreadoEnDescIdDesc(usuarioId, read, pageable);
+        return pagina.map(NotificationResponse::fromEntity);
+    }
+
+    @Transactional(readOnly = true)
     public Page<NotificationResponse> obtenerNotificaciones(Long usuarioId, Pageable pageable) {
-        return notificationRepository.findByUsuarioIdOrderByCreadoEnDesc(usuarioId, pageable)
-                .map(NotificationResponse::fromEntity);
+        return obtenerNotificaciones(usuarioId, null, pageable);
     }
 
     @Transactional

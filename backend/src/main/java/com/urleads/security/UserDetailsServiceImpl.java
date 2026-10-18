@@ -30,13 +30,23 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         }
 
         String sanitizedUsername = username.trim();
-        log.debug("Buscando credenciales para usuario: {}", sanitizedUsername);
+        log.debug("Buscando credenciales para usuario/identificador: {}", sanitizedUsername);
 
-        Usuario usuario = usuarioRepository.findByUsername(sanitizedUsername)
-            .orElseThrow(() -> {
-                log.warn("Intento de autenticacion fallido: usuario no encontrado");
-                return new UsernameNotFoundException("Credenciales invalidas");
-            });
+        Usuario usuario = null;
+        if (sanitizedUsername.matches("\\d+")) {
+            try {
+                usuario = usuarioRepository.findById(Long.parseLong(sanitizedUsername)).orElse(null);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        if (usuario == null) {
+            usuario = usuarioRepository.findByUsername(sanitizedUsername)
+                .orElseThrow(() -> {
+                    log.warn("Intento de autenticacion fallido: usuario no encontrado");
+                    return new UsernameNotFoundException("Credenciales invalidas");
+                });
+        }
 
         return new User(
             usuario.getUsername(),
