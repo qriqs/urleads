@@ -10,8 +10,9 @@ frontend, backend, database, or deployment already exists. Inspect the current r
 > architecture of three independent backend services (CRM, Comercial, Agenda).
 > While the existing single Spring Boot app remains the baseline, approved V2
 > service work incorporates the planned product catalogue, commercial quotes,
-> Excel intake, agenda tasks/appointments, durable reminders, and RabbitMQ
-> eventing. Strict security, owner scoping, BCrypt hashing, and active permission
+> Excel intake, agenda tasks/appointments, durable reminders, RabbitMQ eventing,
+> mandatory dynamic discovery with Eureka, and mandatory SOAP GetLead with SoapUI.
+> Strict security, owner scoping, BCrypt hashing, and active permission
 > policies apply across all services.
 
 ## Product and MVP

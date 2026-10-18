@@ -65,16 +65,20 @@ cd backend
 | **C10** | Importación acotada de leads desde Excel con plantilla fija | Ampliación | `Backlog` | C01, C06 | [DSW-50](https://linear.app/enmanuelprojects/issue/DSW-50) |
 | **C11** | Registro y consulta de historial de importaciones | Ampliación | `Backlog` | C01, C10 | [DSW-51](https://linear.app/enmanuelprojects/issue/DSW-51) |
 | **C12** | Flujo de archivar y restaurar leads sin borrado físico | Ampliación | `Backlog` | C01, C03 | [DSW-52](https://linear.app/enmanuelprojects/issue/DSW-52) |
-| **C13** | Servicio SOAP/XML mínimo para consulta e ingesta de leads | Ampliación | `Backlog` | C01 | [DSW-53](https://linear.app/enmanuelprojects/issue/DSW-53) |
+| **C13** | Servicio SOAP/XML de consulta de lead y pruebas con SoapUI | Principal | `Todo` | C02, C03 | [DSW-53](https://linear.app/enmanuelprojects/issue/DSW-53) |
 | **C14** | Configuración de Docker Compose y pipeline de integración local | Integración | `Todo` | C01, S01, A01 | [DSW-54](https://linear.app/enmanuelprojects/issue/DSW-54) |
-| **C15** | Verificación integral end-to-end, resiliencia y regresión | Integración | `Todo` | C04, C05, C14, S15, A15 | [DSW-55](https://linear.app/enmanuelprojects/issue/DSW-55) |
+| **C15** | Verificación integral end-to-end, resiliencia y regresión | Integración | `Todo` | C04, C05, C13, C14, S15, A15 | [DSW-55](https://linear.app/enmanuelprojects/issue/DSW-55) |
 
 ---
 
 ## 4. Pautas clave de implementación
 
-1. **Reutilización y auditoría (C01):** Reutiliza la base de código probada en
-   `backend/`. Audita y unifica las etapas (`NUEVO`, `EN_SEGUIMIENTO`, `CERRADO`).
+1. **Reutilización, auditoría y cliente Eureka (C01):** Reutiliza la base de código
+   probada en `backend/`. Audita y unifica las etapas (`NUEVO`, `EN_SEGUIMIENTO`, `CERRADO`).
+   Configura Eureka Client con el nombre canónico exacto `crm-service` para el
+   perfil integrado (`http://discovery:8761/eureka/`); mantenlo deshabilitado en
+   pruebas unitarias y perfil local (`eureka.client.enabled=false`) para avanzar sin
+   depender de que el servidor esté levantado.
 2. **Emisión de tokens en tiempo de ejecución (C02):** Implementa el endpoint
    `POST /api/auth/access-token` sobre la sesión autenticada con CSRF. Firma con
    RS256 usando la clave privada de CRM. Emite claims: `iss: "urleads-crm"`,
@@ -87,10 +91,28 @@ cd backend
 4. **Eventos CRM (C04):** Publica eventos `lead.created.v1`, `lead.updated.v1`,
    `lead.deleted.v1` hacia `urleads.events.v1` con outbox y publisher confirms.
    El payload mínimo es `{ leadId, stage, nextFollowUp }` (o `{ leadId }` al eliminar).
-5. **Orquestación e integración Compose (C14):** C14 depende de que Sebas (S01) y
-   Alex (A01) entreguen sus respectivos Dockerfiles en sus carpetas de servicio.
-   Cris es dueño del `docker-compose.yml` raíz, scripts de integración y ajustes de CI.
-6. **Verificación de resiliencia y respaldo (C15):** Incluye prueba explícita de
-   **restauración de copia de seguridad (backup restore)** en una base PostgreSQL
-   aislada (`_test`), demostrando que reiniciar un contenedor no sustituye un
-   procedimiento de recuperación ante desastres.
+5. **Servidor Eureka e integración Compose (C14):** Estructurado en dos hitos
+   claros: 1) Hito temprano de implementación del servidor independiente Spring
+   Cloud Netflix Eureka Server (`discovery-service`, puerto 8761, sin base de datos)
+   en `infra/discovery/` con su Dockerfile; 2) Hito final con `docker-compose.yml`
+   raíz integrando los tres microservicios reales (`crm-service:8080`,
+   `comercial-service:8081`, `agenda-service:8082`), Eureka (`discovery:8761`) y
+   RabbitMQ (`rabbitmq:5672`). C14 depende de C01, S01 y A01 para su aceptación
+   completa con los Dockerfiles de cada servicio, sin generar ciclos.
+6. **Servicio SOAP GetLead y suite SoapUI (C13):** Implementa Spring Web Services
+   contract-first para la operación `GetLead` en `/ws/leads` con WSDL documentado en
+   `/ws/leads.wsdl` (namespace `urn:urleads:crm:leads:v1`). Protegido obligatoriamente
+   con cabecera HTTP `Authorization: Bearer <token>` validando RS256, emisor
+   `urleads-crm`, audiencia `crm-api` y scope `crm.leads.read`. Reutiliza el servicio
+   de consulta por propietario de C03 sin autoconsumo HTTP. Protege el parser contra
+   XXE y schemas validados. Mapea 401/403 a nivel HTTP, y SOAP Fault Client o
+   `LEAD_NOT_FOUND` a nivel SOAP (HTTP 500). Construye y versiona la suite de
+   pruebas parametrizadas de SoapUI en `backend/soapui/`.
+7. **Verificación integral, SoapUI y respaldo (C15):** Valida el ecosistema completo
+   levantado en Compose. Verifica el flujo comercial con Feign resuelto por Eureka
+   (`crm-service`). Ejecuta la suite de pruebas SoapUI contra CRM registrando la
+   evidencia obligatoria de los resultados. Comprueba resiliencia ante reinicios y
+   caída simulada de CRM (verificando Circuit Breaker y expiración de leases en Eureka).
+   Incluye prueba explícita de **restauración de copia de seguridad (backup restore)**
+   en una base PostgreSQL aislada (`_test`), demostrando que reiniciar un contenedor
+   no sustituye un procedimiento de recuperación ante desastres.
