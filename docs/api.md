@@ -74,6 +74,7 @@ credenciales de acceso inter-servicio protegidas por la sesión web existente:
 | PUT | `/api/leads/{id}` | Reemplazar campos editables; responde 200. |
 | DELETE | `/api/leads/{id}` | Eliminar lead y notas; responde 204. |
 | PUT | `/api/leads/{id}/tags` | Reemplazar conjunto de etiquetas del lead; responde 200. |
+| GET | `/api/leads/{id}/audit` | Consultar historial paginado de cambios del lead. |
 | GET | `/api/leads/{id}/notes` | Listar entradas internas de bitácora cronológicamente. |
 | POST | `/api/leads/{id}/notes` | Registrar entrada interna; responde 201. |
 | GET | `/api/dashboard` | Resumen y pendientes del usuario. |

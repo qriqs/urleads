@@ -856,4 +856,26 @@ TEST_DB_USERNAME=testuser \
 TEST_DB_PASSWORD=testpass \
 ./mvnw --batch-mode --no-transfer-progress verify -Pdb-integration \
   -Dit.test=DatabaseMigrationIT,TagRepositoryIT,TagApiIT
+
+# 4. Regresión de auditoría C09; ejecutar contra una base de datos aislada autorizada
+./mvnw --batch-mode --no-transfer-progress verify -Pdb-integration \
+  -Dit.test=DatabaseMigrationIT,LeadAuditSchemaTest,LeadApiIT
 ```
+
+## 13. Implementación y verificación de C09: auditoría de cambios de lead
+
+C09 registra los cambios de campos editables en una tabla independiente de las
+notas y expone el historial del lead bajo el aislamiento del propietario.
+
+- La migración Flyway V7 crea `lead_audit_log` con propietario, lead, campo,
+  valores anterior/nuevo y timestamp UTC.
+- `PUT /api/leads/{id}` persiste deltas en la misma transacción que la edición;
+  los cambios sin diferencias no generan auditoría.
+- `GET /api/leads/{id}/audit` pagina a tamaño fijo 20 y requiere que el lead
+  pertenezca al usuario autenticado. Un lead ajeno o inexistente responde 404.
+- La auditoría no contiene notas privadas ni reemplaza el registro conversacional.
+
+La suite estándar `./mvnw --batch-mode --no-transfer-progress verify` valida
+las pruebas unitarias y web. Las pruebas de migración y PostgreSQL requieren una
+base aislada configurada y autorizada mediante `TEST_DB_URL`, `TEST_DB_USERNAME`
+y `TEST_DB_PASSWORD`.

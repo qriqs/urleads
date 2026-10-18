@@ -7,6 +7,7 @@ import com.urleads.dto.UpdateLeadRequest;
 import com.urleads.entity.Lead;
 import com.urleads.entity.Usuario;
 import com.urleads.repository.LeadRepository;
+import com.urleads.repository.LeadAuditLogRepository;
 import com.urleads.repository.NotaRepository;
 import com.urleads.repository.UsuarioRepository;
 import com.urleads.security.JwtTestFixtureHelper;
@@ -82,6 +83,9 @@ class OpenApiSecurityWebTest {
 
     @MockBean
     private LeadRepository leadRepository;
+
+    @MockBean
+    private LeadAuditLogRepository leadAuditLogRepository;
 
     @MockBean
     private NotaRepository notaRepository;

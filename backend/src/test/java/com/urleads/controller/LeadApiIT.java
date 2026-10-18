@@ -2,6 +2,7 @@ package com.urleads.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.contains;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -27,6 +28,7 @@ import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -845,5 +847,98 @@ class LeadApiIT {
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.message").value("Ya existe un lead con este correo"));
+    }
+
+    // C09 audit API integration regressions
+
+    @Test
+    void actualizar_persisteDeltasEnBaseDeDatosYExponeAuditoriaPaginadaConAislamiento() throws Exception {
+        // 1. Crear lead propio en estado inicial
+        Lead lead = crearLead(owner, "Carlos Inicial", "999111222", "carlos@test.com", "Consultoria");
+        lead.setEtapa("EN_SEGUIMIENTO");
+        lead.setProximoSeguimiento(LocalDate.of(2026, 11, 20));
+        leadRepository.saveAndFlush(lead);
+        flushYLimpiar();
+
+        // 2. Asociar nota privada para verificar estricta separación de notas (R6 / Req 3)
+        jdbcTemplate.update("INSERT INTO nota (lead_id, contenido) VALUES (?, ?)", lead.getId(), "Nota privada confidencial");
+        assertThat(contarNotas(lead.getId())).isEqualTo(1);
+
+        // 3. Actualizar lead vía PUT /api/leads/{id} modificando nombre, pasando service a null (transición a null)
+        // y pasando etapa a CERRADO (lo que normaliza proximoSeguimiento a null). Telefono y correo se conservan.
+        mockMvc.perform(put("/api/leads/{id}", lead.getId())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Carlos Actualizado","phone":"999111222","email":"carlos@test.com",
+                                 "stage":"CERRADO","service":null,"nextFollowUp":"2026-12-01"}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Carlos Actualizado"))
+                .andExpect(jsonPath("$.service").value(nullValue()))
+                .andExpect(jsonPath("$.stage").value("CERRADO"))
+                .andExpect(jsonPath("$.nextFollowUp").value(nullValue()));
+
+        flushYLimpiar();
+
+        // 4. Verificación directa en base de datos PostgreSQL: se deben haber persistido exactamente 4 deltas
+        // (name, service, stage, nextFollowUp) con usuario_id del propietario autenticado
+        Integer auditRowsCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM lead_audit_log WHERE lead_id = ? AND usuario_id = ?",
+                Integer.class, lead.getId(), owner.getId());
+        assertThat(auditRowsCount).isEqualTo(4);
+
+        // La cantidad y contenido de notas privadas no fueron alterados
+        assertThat(contarNotas(lead.getId())).isEqualTo(1);
+
+        // 5. Verificación vía endpoint GET /api/leads/{id}/audit: formato paginado, tamaño 20, deltas exactos y sin notas
+        mockMvc.perform(get("/api/leads/{id}/audit", lead.getId()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(4))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.content.length()").value(4))
+                .andExpect(jsonPath("$.content[?(@.field == 'name')].oldValue").value("Carlos Inicial"))
+                .andExpect(jsonPath("$.content[?(@.field == 'name')].newValue").value("Carlos Actualizado"))
+                .andExpect(jsonPath("$.content[?(@.field == 'service')].oldValue").value("Consultoria"))
+                .andExpect(jsonPath("$.content[?(@.field == 'service')].newValue").value(contains(nullValue())))
+                .andExpect(jsonPath("$.content[?(@.field == 'stage')].oldValue").value("EN_SEGUIMIENTO"))
+                .andExpect(jsonPath("$.content[?(@.field == 'stage')].newValue").value("CERRADO"))
+                .andExpect(jsonPath("$.content[?(@.field == 'nextFollowUp')].oldValue").value("2026-11-20"))
+                .andExpect(jsonPath("$.content[?(@.field == 'nextFollowUp')].newValue").value(contains(nullValue())))
+                // R6: No expone contenido de notas privadas
+                .andExpect(jsonPath("$.content[*].contenido").doesNotExist())
+                .andExpect(jsonPath("$.content[*].content").doesNotExist());
+    }
+
+    @Test
+    void auditoriaDeOtroUsuario_devuelve404_eIgnoraOwnerIdSpoofing() throws Exception {
+        // 1. Crear lead perteneciente a 'other' y persistir un delta de auditoría en base de datos
+        Lead leadAjeno = crearLead(other, "Cliente Ajeno", "987654321", "ajeno@test.com", "Plan X");
+        flushYLimpiar();
+
+        jdbcTemplate.update("""
+                INSERT INTO lead_audit_log (lead_id, usuario_id, field_name, old_value, new_value)
+                VALUES (?, ?, 'stage', 'NUEVO', 'EN_SEGUIMIENTO')
+                """, leadAjeno.getId(), other.getId());
+
+        // 2. El usuario autenticado actual ('owner') consulta el lead de 'other': responde 404 indistinguible
+        mockMvc.perform(get("/api/leads/{id}/audit", leadAjeno.getId()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Lead no encontrado"));
+
+        // 3. Intento de manipulación de parámetro ?ownerId= no altera el aislamiento: responde 404
+        mockMvc.perform(get("/api/leads/{id}/audit", leadAjeno.getId())
+                        .param("ownerId", String.valueOf(other.getId())))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        // 4. Confirmar que el registro ajeno en base de datos no fue modificado ni expuesto
+        Integer otherAuditRows = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM lead_audit_log WHERE lead_id = ? AND usuario_id = ?",
+                Integer.class, leadAjeno.getId(), other.getId());
+        assertThat(otherAuditRows).isEqualTo(1);
     }
 }

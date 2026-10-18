@@ -44,7 +44,7 @@ class DatabaseMigrationIT {
     @DisplayName("La migracion inicial creo el historial de Flyway y la version 6 fue aplicada")
     void initialMigrationAppliedSuccessfully() {
         assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("7");
         assertThat(flyway.info().current().getState().isApplied()).isTrue();
 
         Integer historyCount = jdbcTemplate.queryForObject(
@@ -52,6 +52,9 @@ class DatabaseMigrationIT {
                 Integer.class
         );
         assertThat(historyCount).isNotNull().isEqualTo(1);
+        Integer historyCountV7 = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM flyway_schema_history WHERE version = '7' AND success = true", Integer.class);
+        assertThat(historyCountV7).isNotNull().isEqualTo(1);
     }
 
     @Test
@@ -68,7 +71,7 @@ class DatabaseMigrationIT {
                 "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
                 String.class
         );
-        assertThat(tables).contains("flyway_schema_history", "usuario", "lead", "nota", "outbox", "tag", "lead_tag");
+        assertThat(tables).contains("flyway_schema_history", "usuario", "lead", "nota", "outbox", "tag", "lead_tag", "lead_audit_log");
 
         List<String> usuarioColumns = jdbcTemplate.queryForList(
                 "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'usuario'",
@@ -94,6 +97,9 @@ class DatabaseMigrationIT {
                 "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'lead_tag'",
                 String.class);
         assertThat(leadTagColumns).contains("lead_id", "tag_id");
+        List<String> auditColumns = jdbcTemplate.queryForList(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'lead_audit_log'", String.class);
+        assertThat(auditColumns).contains("id", "lead_id", "usuario_id", "field_name", "old_value", "new_value", "created_at");
 
         List<String> notaColumns = jdbcTemplate.queryForList(
                 "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'nota'",

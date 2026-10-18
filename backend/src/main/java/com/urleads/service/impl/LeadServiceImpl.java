@@ -1,7 +1,11 @@
 package com.urleads.service.impl;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -20,11 +24,13 @@ import org.springframework.transaction.annotation.Transactional;
 import com.urleads.config.ClockConfig;
 import com.urleads.dto.CreateLeadRequest;
 import com.urleads.dto.InternalLeadResponse;
+import com.urleads.dto.LeadAuditResponse;
 import com.urleads.dto.LeadResponse;
 import com.urleads.dto.PageResponse;
 import com.urleads.dto.TagResponse;
 import com.urleads.dto.UpdateLeadRequest;
 import com.urleads.entity.Lead;
+import com.urleads.entity.LeadAuditLog;
 import com.urleads.entity.LeadStage;
 import com.urleads.entity.Tag;
 import com.urleads.entity.Usuario;
@@ -34,6 +40,7 @@ import com.urleads.exception.LeadValidationException;
 import com.urleads.exception.TagNotFoundException;
 import com.urleads.exception.UsuarioNotFoundException;
 import com.urleads.repository.LeadRepository;
+import com.urleads.repository.LeadAuditLogRepository;
 import com.urleads.repository.TagRepository;
 import com.urleads.repository.UsuarioRepository;
 import com.urleads.service.LeadNormalizer;
@@ -51,6 +58,7 @@ public class LeadServiceImpl implements LeadService {
     private final UsuarioRepository usuarioRepository;
     private final TagRepository tagRepository;
     private final OutboxService outboxService;
+    private final LeadAuditLogRepository leadAuditLogRepository;
     private final Clock clock;
 
     @Autowired
@@ -58,26 +66,62 @@ public class LeadServiceImpl implements LeadService {
                            UsuarioRepository usuarioRepository,
                            @Autowired(required = false) TagRepository tagRepository,
                            @Autowired(required = false) OutboxService outboxService,
+                           @Autowired(required = false) LeadAuditLogRepository leadAuditLogRepository,
                            Clock clock) {
+        this(leadRepository, usuarioRepository, tagRepository, outboxService, leadAuditLogRepository, clock, false);
+    }
+
+    private LeadServiceImpl(LeadRepository leadRepository, UsuarioRepository usuarioRepository,
+                            TagRepository tagRepository, OutboxService outboxService,
+                            LeadAuditLogRepository leadAuditLogRepository, Clock clock,
+                            boolean requireAuditRepository) {
         this.leadRepository = leadRepository;
         this.usuarioRepository = usuarioRepository;
         this.tagRepository = tagRepository;
         this.outboxService = outboxService;
+        this.leadAuditLogRepository = requireAuditRepository
+                ? Objects.requireNonNull(leadAuditLogRepository, "leadAuditLogRepository must not be null")
+                : leadAuditLogRepository;
         this.clock = clock != null ? clock : Clock.system(ClockConfig.LIMA_ZONE);
     }
 
     public LeadServiceImpl(LeadRepository leadRepository,
                            UsuarioRepository usuarioRepository,
                            OutboxService outboxService) {
-        this(leadRepository, usuarioRepository, null, outboxService, Clock.system(ClockConfig.LIMA_ZONE));
+        this(leadRepository, usuarioRepository, null, outboxService, null, Clock.system(ClockConfig.LIMA_ZONE));
     }
 
     public LeadServiceImpl(LeadRepository leadRepository, UsuarioRepository usuarioRepository, Clock clock) {
-        this(leadRepository, usuarioRepository, null, null, clock);
+        this(leadRepository, usuarioRepository, null, null, null, clock);
+    }
+
+    public LeadServiceImpl(LeadRepository leadRepository, UsuarioRepository usuarioRepository,
+                           LeadAuditLogRepository auditRepository) {
+        this(leadRepository, usuarioRepository, null, null, auditRepository, Clock.system(ClockConfig.LIMA_ZONE), true);
+    }
+
+    public LeadServiceImpl(LeadRepository leadRepository, UsuarioRepository usuarioRepository,
+                           OutboxService outboxService, LeadAuditLogRepository auditRepository) {
+        this(leadRepository, usuarioRepository, null, outboxService, auditRepository, Clock.system(ClockConfig.LIMA_ZONE), true);
+    }
+
+    public LeadServiceImpl(LeadRepository leadRepository, UsuarioRepository usuarioRepository,
+                           OutboxService outboxService, LeadAuditLogRepository auditRepository, Clock clock) {
+        this(leadRepository, usuarioRepository, null, outboxService, auditRepository, clock, true);
+    }
+
+    public LeadServiceImpl(LeadRepository leadRepository, UsuarioRepository usuarioRepository,
+                           LeadAuditLogRepository auditRepository, Clock clock) {
+        this(leadRepository, usuarioRepository, null, null, auditRepository, clock, true);
+    }
+
+    public LeadServiceImpl(LeadRepository leadRepository, UsuarioRepository usuarioRepository,
+                           TagRepository tagRepository, OutboxService outboxService, Clock clock) {
+        this(leadRepository, usuarioRepository, tagRepository, outboxService, null, clock);
     }
 
     public LeadServiceImpl(LeadRepository leadRepository, UsuarioRepository usuarioRepository) {
-        this(leadRepository, usuarioRepository, null, null, Clock.system(ClockConfig.LIMA_ZONE));
+        this(leadRepository, usuarioRepository, null, null, null, Clock.system(ClockConfig.LIMA_ZONE));
     }
 
     @Override
@@ -249,6 +293,13 @@ public class LeadServiceImpl implements LeadService {
 
         validarDuplicados(usuarioId, leadId, request.getCorreo(), request.getTelefono());
 
+        String oldNombre = lead.getNombre();
+        String oldTelefono = lead.getTelefono();
+        String oldCorreo = lead.getCorreo();
+        String oldService = lead.getService();
+        String oldEtapa = lead.getEtapa();
+        LocalDate oldProximoSeguimiento = lead.getProximoSeguimiento();
+
         lead.setNombre(request.getNombre());
         lead.setTelefono(request.getTelefono());
         lead.setCorreo(request.getCorreo());
@@ -274,10 +325,49 @@ public class LeadServiceImpl implements LeadService {
             throw ex;
         }
 
+        List<LeadAuditLog> deltas = new ArrayList<>();
+        OffsetDateTime changedAt = Instant.now(clock).atOffset(ZoneOffset.UTC);
+        addAuditDelta(deltas, leadId, usuarioId, "name", oldNombre, leadActualizado.getNombre(), changedAt);
+        addAuditDelta(deltas, leadId, usuarioId, "phone", oldTelefono, leadActualizado.getTelefono(), changedAt);
+        addAuditDelta(deltas, leadId, usuarioId, "email", oldCorreo, leadActualizado.getCorreo(), changedAt);
+        addAuditDelta(deltas, leadId, usuarioId, "service", oldService, leadActualizado.getService(), changedAt);
+        addAuditDelta(deltas, leadId, usuarioId, "stage", oldEtapa, leadActualizado.getEtapa(), changedAt);
+        addAuditDelta(deltas, leadId, usuarioId, "nextFollowUp",
+                oldProximoSeguimiento == null ? null : oldProximoSeguimiento.toString(),
+                leadActualizado.getProximoSeguimiento() == null ? null : leadActualizado.getProximoSeguimiento().toString(), changedAt);
+        if (!deltas.isEmpty() && leadAuditLogRepository != null) {
+            leadAuditLogRepository.saveAll(deltas);
+        }
+
         if (outboxService != null) {
             outboxService.recordLeadUpdated(usuarioId, leadActualizado);
         }
         return toResponse(leadActualizado);
+    }
+
+    private void addAuditDelta(List<LeadAuditLog> deltas, Long leadId, Long usuarioId, String field,
+                               String oldValue, String newValue, OffsetDateTime changedAt) {
+        if (!Objects.equals(oldValue, newValue)) {
+            deltas.add(new LeadAuditLog(leadId, usuarioId, field, oldValue, newValue, changedAt));
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<LeadAuditResponse> listarAuditoria(Long leadId, Long usuarioId, int page) {
+        Lead lead = leadRepository.findByIdAndUsuarioId(leadId, usuarioId)
+                .orElseThrow(() -> new LeadNotFoundException("Lead no encontrado"));
+        if (leadAuditLogRepository == null) {
+            throw new IllegalStateException("LeadAuditLogRepository no configurado");
+        }
+        if (leadAuditLogRepository == null) {
+            throw new IllegalStateException("LeadAuditLogRepository no configurado");
+        }
+        PageRequest pageable = PageRequest.of(Math.max(page, 0), PAGE_SIZE,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+        Page<LeadAuditLog> result = leadAuditLogRepository.findByLeadIdAndUsuarioId(lead.getId(), usuarioId, pageable);
+        return PageResponse.from(result.map(log -> new LeadAuditResponse(log.getId(), log.getLeadId(),
+                log.getFieldName(), log.getOldValue(), log.getNewValue(), log.getCreatedAt())));
     }
 
     private void validarDuplicados(Long usuarioId, Long leadIdExcluido, String correo, String telefono) {

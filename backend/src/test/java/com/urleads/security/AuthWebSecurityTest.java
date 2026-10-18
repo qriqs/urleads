@@ -44,6 +44,9 @@ class AuthWebSecurityTest {
     private com.urleads.repository.LeadRepository leadRepository;
 
     @MockBean
+    private com.urleads.repository.LeadAuditLogRepository leadAuditLogRepository;
+
+    @MockBean
     private com.urleads.security.CurrentUserProvider currentUserProvider;
 
     @Test

@@ -6,6 +6,7 @@ import com.urleads.entity.Lead;
 import com.urleads.entity.Usuario;
 import com.urleads.exception.LeadNotFoundException;
 import com.urleads.exception.LeadValidationException;
+import com.urleads.repository.LeadAuditLogRepository;
 import com.urleads.repository.LeadRepository;
 import com.urleads.repository.UsuarioRepository;
 import com.urleads.service.OutboxService;
@@ -43,11 +44,14 @@ class LeadServiceImplOutboxTest {
     @Mock
     private OutboxService outboxService;
 
+    @Mock
+    private LeadAuditLogRepository leadAuditLogRepository;
+
     private LeadServiceImpl leadService;
 
     @BeforeEach
     void setUp() {
-        leadService = new LeadServiceImpl(leadRepository, usuarioRepository, outboxService);
+        leadService = new LeadServiceImpl(leadRepository, usuarioRepository, outboxService, leadAuditLogRepository);
     }
 
     @Test

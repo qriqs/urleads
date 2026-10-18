@@ -6,6 +6,7 @@ import com.urleads.dto.LoginRequest;
 import com.urleads.entity.Lead;
 import com.urleads.entity.Nota;
 import com.urleads.entity.Usuario;
+import com.urleads.repository.LeadAuditLogRepository;
 import com.urleads.repository.LeadRepository;
 import com.urleads.repository.NotaRepository;
 import com.urleads.repository.UsuarioRepository;
@@ -87,6 +88,9 @@ class InternalLeadSecurityWebTest {
 
     @MockBean
     private LeadRepository leadRepository;
+
+    @MockBean
+    private LeadAuditLogRepository leadAuditLogRepository;
 
     @MockBean
     private NotaRepository notaRepository;
