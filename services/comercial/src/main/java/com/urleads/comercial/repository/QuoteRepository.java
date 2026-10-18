@@ -31,4 +31,10 @@ public interface QuoteRepository extends JpaRepository<Quote, Long>, JpaSpecific
 
     @Query("SELECT q FROM Quote q WHERE q.ownerId = :ownerId AND (q.rootQuoteId = :rootId OR q.id = :rootId) ORDER BY q.revisionNumber ASC")
     java.util.List<Quote> findRevisionsByRootId(@Param("ownerId") String ownerId, @Param("rootId") Long rootId);
+
+    @Query("SELECT q.currency AS currency, q.status AS status, COUNT(q) AS count, " +
+           "COALESCE(SUM(q.subtotal), 0) AS subtotal, COALESCE(SUM(q.tax), 0) AS tax, COALESCE(SUM(q.total), 0) AS total " +
+           "FROM Quote q WHERE q.ownerId = :ownerId AND q.isLatest = true " +
+           "GROUP BY q.currency, q.status")
+    java.util.List<com.urleads.comercial.repository.projection.QuoteCurrencyStatusAggregation> aggregateMetricsByOwner(@Param("ownerId") String ownerId);
 }
