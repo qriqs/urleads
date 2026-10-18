@@ -1,12 +1,16 @@
 package com.urleads.service;
 
+import com.urleads.dto.AppointmentOutcomeRequest;
+import com.urleads.dto.AppointmentOutcomeResponse;
 import com.urleads.dto.AppointmentResponse;
 import com.urleads.dto.CreateAppointmentRequest;
 import com.urleads.dto.UpdateAppointmentRequest;
 import com.urleads.entity.AgendaCita;
+import com.urleads.entity.AgendaCitaMinuta;
 import com.urleads.entity.Usuario;
 import com.urleads.exception.InvalidLeadAssociationException;
 import com.urleads.exception.ResourceNotFoundException;
+import com.urleads.repository.AgendaCitaMinutaRepository;
 import com.urleads.repository.AgendaCitaRepository;
 import com.urleads.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +34,7 @@ class AppointmentServiceTest {
     private AgendaCitaRepository agendaCitaRepository;
     private UsuarioRepository usuarioRepository;
     private LeadValidationService leadValidationService;
+    private AgendaCitaMinutaRepository agendaCitaMinutaRepository;
     private AppointmentService appointmentService;
 
     private Usuario usuario;
@@ -39,8 +44,9 @@ class AppointmentServiceTest {
         agendaCitaRepository = mock(AgendaCitaRepository.class);
         usuarioRepository = mock(UsuarioRepository.class);
         leadValidationService = mock(LeadValidationService.class);
+        agendaCitaMinutaRepository = mock(AgendaCitaMinutaRepository.class);
 
-        appointmentService = new AppointmentService(agendaCitaRepository, usuarioRepository, leadValidationService);
+        appointmentService = new AppointmentService(agendaCitaRepository, usuarioRepository, leadValidationService, agendaCitaMinutaRepository);
 
         usuario = new Usuario(42L, "alex", "secret");
         when(usuarioRepository.findById(42L)).thenReturn(Optional.of(usuario));
@@ -266,5 +272,174 @@ class AppointmentServiceTest {
         List<AppointmentResponse> overlaps = appointmentService.verificarSolapamientos(42L, inicio, fin, null);
         assertThat(overlaps).isEmpty();
         assertThat(appointmentService.tieneSolapamiento(42L, inicio, fin, null)).isFalse();
+    }
+
+    @Test
+    @DisplayName("Registrar resultado de cita: persiste minuta y actualiza estado a REALIZADA")
+    void registrarResultadoCita_validRequest_persistsMinutaAndUpdatesStatus() {
+        AgendaCita cita = AgendaCita.builder()
+                .id(10L)
+                .usuario(usuario)
+                .titulo("Demostración con cliente")
+                .inicio(Instant.parse("2026-10-25T15:00:00Z"))
+                .fin(Instant.parse("2026-10-25T16:00:00Z"))
+                .estado("PROGRAMADA")
+                .build();
+
+        when(agendaCitaRepository.findByIdAndUsuarioId(10L, 42L)).thenReturn(Optional.of(cita));
+        when(agendaCitaMinutaRepository.findByCitaIdAndUsuarioId(10L, 42L)).thenReturn(Optional.empty());
+        when(agendaCitaMinutaRepository.save(any(AgendaCitaMinuta.class))).thenAnswer(invocation -> {
+            AgendaCitaMinuta m = invocation.getArgument(0);
+            m.setId(100L);
+            return m;
+        });
+
+        AppointmentOutcomeRequest request = AppointmentOutcomeRequest.builder()
+                .resumen("Se presentaron las características del plan enterprise.")
+                .acuerdos("Enviar cotización ajustada antes del viernes.")
+                .proximasAcciones("Preparar cotización de 15 licencias.")
+                .resultado("REALIZADA")
+                .asistencia("ASISTIERON_TODOS")
+                .build();
+
+        AppointmentOutcomeResponse response = appointmentService.registrarResultadoCita(10L, 42L, request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(100L);
+        assertThat(response.getCitaId()).isEqualTo(10L);
+        assertThat(response.getUsuarioId()).isEqualTo(42L);
+        assertThat(response.getResumen()).isEqualTo("Se presentaron las características del plan enterprise.");
+        assertThat(response.getMinuta()).isEqualTo("Se presentaron las características del plan enterprise.");
+        assertThat(response.getAcuerdos()).isEqualTo("Enviar cotización ajustada antes del viernes.");
+        assertThat(response.getProximasAcciones()).isEqualTo("Preparar cotización de 15 licencias.");
+        assertThat(response.getResultado()).isEqualTo("REALIZADA");
+        assertThat(response.getAsistencia()).isEqualTo("ASISTIERON_TODOS");
+
+        // Verifica que la cita transitó a REALIZADA
+        assertThat(cita.getEstado()).isEqualTo("REALIZADA");
+        verify(agendaCitaRepository).save(cita);
+        verify(agendaCitaMinutaRepository).save(any(AgendaCitaMinuta.class));
+    }
+
+    @Test
+    @DisplayName("Registrar resultado de cita: actualización idempotente sobre minuta existente")
+    void registrarResultadoCita_idempotentUpdate_updatesExistingMinuta() {
+        AgendaCita cita = AgendaCita.builder()
+                .id(10L)
+                .usuario(usuario)
+                .titulo("Cita previa")
+                .estado("REALIZADA")
+                .build();
+
+        AgendaCitaMinuta minutaExistente = AgendaCitaMinuta.builder()
+                .id(100L)
+                .cita(cita)
+                .usuario(usuario)
+                .resumen("Minuta anterior")
+                .acuerdos("Acuerdo previo")
+                .resultado("REALIZADA")
+                .build();
+
+        when(agendaCitaRepository.findByIdAndUsuarioId(10L, 42L)).thenReturn(Optional.of(cita));
+        when(agendaCitaMinutaRepository.findByCitaIdAndUsuarioId(10L, 42L)).thenReturn(Optional.of(minutaExistente));
+        when(agendaCitaMinutaRepository.save(any(AgendaCitaMinuta.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AppointmentOutcomeRequest updateRequest = AppointmentOutcomeRequest.builder()
+                .resumen("Minuta corregida con nuevos detalles.")
+                .acuerdos("Acuerdo ampliado.")
+                .build();
+
+        AppointmentOutcomeResponse response = appointmentService.registrarResultadoCita(10L, 42L, updateRequest);
+
+        assertThat(response.getId()).isEqualTo(100L);
+        assertThat(response.getResumen()).isEqualTo("Minuta corregida con nuevos detalles.");
+        assertThat(response.getAcuerdos()).isEqualTo("Acuerdo ampliado.");
+        verify(agendaCitaMinutaRepository).save(minutaExistente);
+    }
+
+    @Test
+    @DisplayName("Registrar resultado de cita: contenido vacío lanza IllegalArgumentException")
+    void registrarResultadoCita_emptyContent_throwsIllegalArgument() {
+        AppointmentOutcomeRequest emptyRequest = AppointmentOutcomeRequest.builder()
+                .resumen("   ")
+                .acuerdos(null)
+                .proximasAcciones("")
+                .build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                appointmentService.registrarResultadoCita(10L, 42L, emptyRequest));
+
+        assertThat(ex.getMessage()).contains("Debe proporcionar al menos un resumen, acuerdo o próxima acción");
+    }
+
+    @Test
+    @DisplayName("Registrar resultado de cita: cita no encontrada o de otro usuario lanza ResourceNotFoundException")
+    void registrarResultadoCita_foreignOrNotFound_throwsResourceNotFound() {
+        when(agendaCitaRepository.findByIdAndUsuarioId(999L, 42L)).thenReturn(Optional.empty());
+
+        AppointmentOutcomeRequest request = AppointmentOutcomeRequest.builder()
+                .resumen("Minuta de cita ajena")
+                .build();
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                appointmentService.registrarResultadoCita(999L, 42L, request));
+    }
+
+    @Test
+    @DisplayName("Aislamiento de CRM: registrar resultado de cita nunca interactúa con servicios ni notas de CRM")
+    void registrarResultadoCita_strictIsolation_noCrmInteraction() {
+        AgendaCita cita = AgendaCita.builder()
+                .id(10L)
+                .leadId(105L) // vinculada a lead
+                .usuario(usuario)
+                .titulo("Cita con lead")
+                .estado("PROGRAMADA")
+                .build();
+
+        when(agendaCitaRepository.findByIdAndUsuarioId(10L, 42L)).thenReturn(Optional.of(cita));
+        when(agendaCitaMinutaRepository.findByCitaIdAndUsuarioId(10L, 42L)).thenReturn(Optional.empty());
+        when(agendaCitaMinutaRepository.save(any(AgendaCitaMinuta.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AppointmentOutcomeRequest request = AppointmentOutcomeRequest.builder()
+                .resumen("Acuerdo alcanzado.")
+                .build();
+
+        appointmentService.registrarResultadoCita(10L, 42L, request);
+
+        // Verifica que LeadValidationService nunca fue invocado para registrar notas en CRM
+        verifyNoInteractions(leadValidationService);
+    }
+
+    @Test
+    @DisplayName("Consultar resultado de cita: retorna minuta existente")
+    void obtenerResultadoCita_found_returnsOutcome() {
+        AgendaCita cita = AgendaCita.builder().id(10L).usuario(usuario).estado("REALIZADA").build();
+        AgendaCitaMinuta minuta = AgendaCitaMinuta.builder()
+                .id(100L)
+                .cita(cita)
+                .usuario(usuario)
+                .resumen("Minuta registrada")
+                .acuerdos("Acuerdo 1")
+                .build();
+
+        when(agendaCitaRepository.findByIdAndUsuarioId(10L, 42L)).thenReturn(Optional.of(cita));
+        when(agendaCitaMinutaRepository.findByCitaIdAndUsuarioId(10L, 42L)).thenReturn(Optional.of(minuta));
+
+        AppointmentOutcomeResponse response = appointmentService.obtenerResultadoCita(10L, 42L);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(100L);
+        assertThat(response.getResumen()).isEqualTo("Minuta registrada");
+    }
+
+    @Test
+    @DisplayName("Consultar resultado de cita: si no existe minuta lanza ResourceNotFoundException")
+    void obtenerResultadoCita_notFound_throwsResourceNotFound() {
+        AgendaCita cita = AgendaCita.builder().id(10L).usuario(usuario).build();
+        when(agendaCitaRepository.findByIdAndUsuarioId(10L, 42L)).thenReturn(Optional.of(cita));
+        when(agendaCitaMinutaRepository.findByCitaIdAndUsuarioId(10L, 42L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                appointmentService.obtenerResultadoCita(10L, 42L));
     }
 }

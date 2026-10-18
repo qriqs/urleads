@@ -93,4 +93,19 @@ public class AppointmentController {
         appointmentService.eliminarCita(id, usuarioId);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/outcome")
+    public ResponseEntity<AppointmentOutcomeResponse> recordAppointmentOutcome(
+            @PathVariable Long id,
+            @Valid @RequestBody AppointmentOutcomeRequest request
+    ) {
+        Long usuarioId = currentUserProvider.getCurrentUserId();
+        return ResponseEntity.ok(appointmentService.registrarResultadoCita(id, usuarioId, request));
+    }
+
+    @GetMapping("/{id}/outcome")
+    public ResponseEntity<AppointmentOutcomeResponse> getAppointmentOutcome(@PathVariable Long id) {
+        Long usuarioId = currentUserProvider.getCurrentUserId();
+        return ResponseEntity.ok(appointmentService.obtenerResultadoCita(id, usuarioId));
+    }
 }

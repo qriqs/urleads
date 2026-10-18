@@ -293,4 +293,96 @@ class AppointmentControllerTest {
                         .header("Authorization", validToken))
                 .andExpect(status().isNoContent());
     }
+
+    @Test
+    @DisplayName("POST /api/v1/appointments/{id}/outcome registra minuta y resultado retornando 200 OK")
+    void recordOutcome_authenticated_returns200WithOutcome() throws Exception {
+        AppointmentOutcomeRequest request = AppointmentOutcomeRequest.builder()
+                .resumen("Demostración completada con éxito.")
+                .acuerdos("Enviar cotización ajustada.")
+                .proximasAcciones("Coordinar firma de contrato.")
+                .resultado("REALIZADA")
+                .asistencia("ASISTIERON_TODOS")
+                .build();
+
+        AppointmentOutcomeResponse outcomeResponse = AppointmentOutcomeResponse.builder()
+                .id(50L)
+                .citaId(1L)
+                .usuarioId(42L)
+                .resumen("Demostración completada con éxito.")
+                .minuta("Demostración completada con éxito.")
+                .acuerdos("Enviar cotización ajustada.")
+                .proximasAcciones("Coordinar firma de contrato.")
+                .resultado("REALIZADA")
+                .asistencia("ASISTIERON_TODOS")
+                .estadoCita("REALIZADA")
+                .creadoEn(Instant.parse("2026-10-25T16:00:00Z"))
+                .actualizadoEn(Instant.parse("2026-10-25T16:00:00Z"))
+                .build();
+
+        when(appointmentService.registrarResultadoCita(eq(1L), eq(42L), any(AppointmentOutcomeRequest.class)))
+                .thenReturn(outcomeResponse);
+
+        mockMvc.perform(post("/api/v1/appointments/1/outcome")
+                        .header("Authorization", validToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(50L))
+                .andExpect(jsonPath("$.citaId").value(1L))
+                .andExpect(jsonPath("$.usuarioId").value(42L))
+                .andExpect(jsonPath("$.resumen").value("Demostración completada con éxito."))
+                .andExpect(jsonPath("$.minuta").value("Demostración completada con éxito."))
+                .andExpect(jsonPath("$.acuerdos").value("Enviar cotización ajustada."))
+                .andExpect(jsonPath("$.proximasAcciones").value("Coordinar firma de contrato."))
+                .andExpect(jsonPath("$.resultado").value("REALIZADA"))
+                .andExpect(jsonPath("$.estadoCita").value("REALIZADA"));
+
+        // Confirmar que no hubo interacción con notas de CRM
+        org.mockito.Mockito.verifyNoInteractions(notaRepository);
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/appointments/{id}/outcome sin autenticación retorna 401 Unauthorized")
+    void recordOutcome_unauthenticated_returns401() throws Exception {
+        AppointmentOutcomeRequest request = AppointmentOutcomeRequest.builder()
+                .resumen("Sin token")
+                .build();
+
+        mockMvc.perform(post("/api/v1/appointments/1/outcome")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/appointments/{id}/outcome retorna 200 OK con minuta existente")
+    void getOutcome_authenticated_returns200() throws Exception {
+        AppointmentOutcomeResponse outcomeResponse = AppointmentOutcomeResponse.builder()
+                .id(50L)
+                .citaId(1L)
+                .usuarioId(42L)
+                .resumen("Minuta guardada.")
+                .resultado("REALIZADA")
+                .build();
+
+        when(appointmentService.obtenerResultadoCita(1L, 42L)).thenReturn(outcomeResponse);
+
+        mockMvc.perform(get("/api/v1/appointments/1/outcome")
+                        .header("Authorization", validToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(50L))
+                .andExpect(jsonPath("$.resumen").value("Minuta guardada."));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/appointments/{id}/outcome cuando no existe retorna 404 Not Found")
+    void getOutcome_notFound_returns404() throws Exception {
+        when(appointmentService.obtenerResultadoCita(99L, 42L))
+                .thenThrow(new ResourceNotFoundException("No se ha registrado resultado o minuta para la cita ID: 99"));
+
+        mockMvc.perform(get("/api/v1/appointments/99/outcome")
+                        .header("Authorization", validToken))
+                .andExpect(status().isNotFound());
+    }
 }

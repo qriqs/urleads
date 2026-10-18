@@ -1,11 +1,15 @@
 package com.urleads.service;
 
+import com.urleads.dto.AppointmentOutcomeRequest;
+import com.urleads.dto.AppointmentOutcomeResponse;
 import com.urleads.dto.AppointmentResponse;
 import com.urleads.dto.CreateAppointmentRequest;
 import com.urleads.dto.UpdateAppointmentRequest;
 import com.urleads.entity.AgendaCita;
+import com.urleads.entity.AgendaCitaMinuta;
 import com.urleads.entity.Usuario;
 import com.urleads.exception.ResourceNotFoundException;
+import com.urleads.repository.AgendaCitaMinutaRepository;
 import com.urleads.repository.AgendaCitaRepository;
 import com.urleads.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,16 +34,27 @@ public class AppointmentService {
     private final AgendaCitaRepository agendaCitaRepository;
     private final UsuarioRepository usuarioRepository;
     private final LeadValidationService leadValidationService;
+    private final AgendaCitaMinutaRepository agendaCitaMinutaRepository;
+
+    public AppointmentService(
+            AgendaCitaRepository agendaCitaRepository,
+            UsuarioRepository usuarioRepository,
+            LeadValidationService leadValidationService
+    ) {
+        this(agendaCitaRepository, usuarioRepository, leadValidationService, null);
+    }
 
     @Autowired
     public AppointmentService(
             @Autowired(required = false) AgendaCitaRepository agendaCitaRepository,
             @Autowired(required = false) UsuarioRepository usuarioRepository,
-            @Autowired(required = false) LeadValidationService leadValidationService
+            @Autowired(required = false) LeadValidationService leadValidationService,
+            @Autowired(required = false) AgendaCitaMinutaRepository agendaCitaMinutaRepository
     ) {
         this.agendaCitaRepository = agendaCitaRepository;
         this.usuarioRepository = usuarioRepository;
         this.leadValidationService = leadValidationService;
+        this.agendaCitaMinutaRepository = agendaCitaMinutaRepository;
     }
 
     /**
@@ -292,5 +307,95 @@ public class AppointmentService {
     @Transactional(readOnly = true)
     public boolean tieneSolapamiento(Long usuarioId, Instant inicio, Instant fin, Long excludeId) {
         return !verificarSolapamientos(usuarioId, inicio, fin, excludeId).isEmpty();
+    }
+
+    /**
+     * Registra o actualiza el resultado estructurado, acuerdos y minuta al finalizar una cita.
+     * Almacenamiento exclusivamente local en Agenda; sin llamadas ni inyección en el historial de CRM.
+     */
+    @Transactional
+    public AppointmentOutcomeResponse registrarResultadoCita(Long citaId, Long usuarioId, AppointmentOutcomeRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("El cuerpo de la solicitud no puede ser nulo");
+        }
+        if (agendaCitaRepository == null || agendaCitaMinutaRepository == null) {
+            throw new ResourceNotFoundException("Servicio de persistencia de citas o minutas no disponible");
+        }
+
+        String resumen = (request.getResumen() != null && !request.getResumen().isBlank())
+                ? request.getResumen().trim()
+                : null;
+        String acuerdos = (request.getAcuerdos() != null && !request.getAcuerdos().isBlank())
+                ? request.getAcuerdos().trim()
+                : null;
+        String proximasAcciones = (request.getProximasAcciones() != null && !request.getProximasAcciones().isBlank())
+                ? request.getProximasAcciones().trim()
+                : null;
+
+        if (resumen == null && acuerdos == null && proximasAcciones == null) {
+            throw new IllegalArgumentException("Debe proporcionar al menos un resumen, acuerdo o próxima acción para registrar el resultado");
+        }
+
+        if (resumen == null) {
+            resumen = "Resultado de cita registrado";
+        }
+
+        // 1. Obtener cita y verificar titularidad estricta del usuario autenticado
+        AgendaCita cita = agendaCitaRepository.findByIdAndUsuarioId(citaId, usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada con ID: " + citaId));
+
+        // 2. Determinar y actualizar estado de la cita si corresponde
+        String resultadoNormalizado = (request.getResultado() != null && !request.getResultado().isBlank())
+                ? request.getResultado().trim()
+                : "REALIZADA";
+
+        boolean actualizarEstado = request.getActualizarEstadoCita() == null || Boolean.TRUE.equals(request.getActualizarEstadoCita());
+        if (actualizarEstado) {
+            if (ESTADOS_VALIDOS.contains(resultadoNormalizado.toUpperCase())) {
+                cita.setEstado(resultadoNormalizado.toUpperCase());
+            } else if ("PROGRAMADA".equals(cita.getEstado())) {
+                cita.setEstado("REALIZADA");
+            }
+            cita.setActualizadoEn(Instant.now());
+            agendaCitaRepository.save(cita);
+        }
+
+        // 3. Persistir minuta/resultado en Agenda (operación idempotente)
+        AgendaCitaMinuta minuta = agendaCitaMinutaRepository.findByCitaIdAndUsuarioId(citaId, usuarioId)
+                .orElseGet(() -> AgendaCitaMinuta.builder()
+                        .cita(cita)
+                        .usuario(cita.getUsuario())
+                        .creadoEn(Instant.now())
+                        .build());
+
+        minuta.setResumen(resumen);
+        minuta.setAcuerdos(acuerdos);
+        minuta.setProximasAcciones(proximasAcciones);
+        minuta.setResultado(resultadoNormalizado);
+        if (request.getAsistencia() != null && !request.getAsistencia().isBlank()) {
+            minuta.setAsistencia(request.getAsistencia().trim());
+        }
+        minuta.setActualizadoEn(Instant.now());
+
+        AgendaCitaMinuta guardada = agendaCitaMinutaRepository.save(minuta);
+        return AppointmentOutcomeResponse.fromEntity(guardada);
+    }
+
+    /**
+     * Consulta el resultado y minuta estructurada de una cita del usuario autenticado.
+     */
+    @Transactional(readOnly = true)
+    public AppointmentOutcomeResponse obtenerResultadoCita(Long citaId, Long usuarioId) {
+        if (agendaCitaRepository == null || agendaCitaMinutaRepository == null) {
+            throw new ResourceNotFoundException("Servicio de persistencia no disponible");
+        }
+
+        agendaCitaRepository.findByIdAndUsuarioId(citaId, usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada con ID: " + citaId));
+
+        AgendaCitaMinuta minuta = agendaCitaMinutaRepository.findByCitaIdAndUsuarioId(citaId, usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("No se ha registrado resultado o minuta para la cita ID: " + citaId));
+
+        return AppointmentOutcomeResponse.fromEntity(minuta);
     }
 }
