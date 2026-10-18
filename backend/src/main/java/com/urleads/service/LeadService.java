@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.urleads.dto.CreateLeadRequest;
 import com.urleads.dto.InternalLeadResponse;
+import com.urleads.dto.LeadAuditResponse;
 import com.urleads.dto.LeadResponse;
 import com.urleads.dto.PageResponse;
 import com.urleads.dto.UpdateLeadRequest;
@@ -28,4 +29,6 @@ public interface LeadService {
     LeadResponse actualizar(Long leadId, Long usuarioId, UpdateLeadRequest request);
 
     void eliminar(Long leadId, Long usuarioId);
+
+    PageResponse<LeadAuditResponse> listarAuditoria(Long leadId, Long usuarioId, int page);
 }

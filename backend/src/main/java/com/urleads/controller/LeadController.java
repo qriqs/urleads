@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.urleads.dto.CreateLeadRequest;
+import com.urleads.dto.LeadAuditResponse;
 import com.urleads.dto.LeadResponse;
 import com.urleads.dto.PageResponse;
 import com.urleads.dto.UpdateLeadRequest;
@@ -51,6 +52,17 @@ public class LeadController {
         return leadService.obtener(
                 id,
                 currentUserProvider.getCurrentUserId());
+    }
+
+    @GetMapping("/{id}/audit")
+    public PageResponse<LeadAuditResponse> listarAuditoria(
+            @PathVariable Long id,
+            @RequestParam(required = false, defaultValue = "0") int page) {
+
+        return leadService.listarAuditoria(
+                id,
+                currentUserProvider.getCurrentUserId(),
+                page);
     }
 
     @PostMapping
