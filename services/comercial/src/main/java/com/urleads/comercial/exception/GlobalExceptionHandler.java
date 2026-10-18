@@ -1,0 +1,67 @@
+package com.urleads.comercial.exception;
+
+import com.urleads.comercial.dto.ApiErrorResponse;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleValidationErrors(MethodArgumentNotValidException ex) {
+        List<ApiErrorResponse.FieldErrorItem> fieldErrors = new ArrayList<>();
+        String code = "VALIDATION_ERROR";
+        String message = "Error de validación en la solicitud.";
+
+        for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
+            fieldErrors.add(new ApiErrorResponse.FieldErrorItem(fe.getField(), fe.getDefaultMessage()));
+            if ("unitPrice".equals(fe.getField())) {
+                code = "INVALID_PRICE";
+                message = "El precio unitario debe ser un valor decimal positivo.";
+            } else if ("currency".equals(fe.getField()) && !"INVALID_PRICE".equals(code)) {
+                code = "INVALID_CURRENCY";
+                message = "La moneda debe ser PEN o USD (ISO 4217).";
+            }
+        }
+
+        ApiErrorResponse response = new ApiErrorResponse(HttpStatus.BAD_REQUEST.value(), code, message, fieldErrors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleResourceNotFound(ResourceNotFoundException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            HttpStatus.NOT_FOUND.value(),
+            "NOT_FOUND",
+            ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(DuplicateCodeException.class)
+    public ResponseEntity<ApiErrorResponse> handleDuplicateCode(DuplicateCodeException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            HttpStatus.CONFLICT.value(),
+            "DUPLICATE_CODE",
+            ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            "BAD_REQUEST",
+            ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+}
