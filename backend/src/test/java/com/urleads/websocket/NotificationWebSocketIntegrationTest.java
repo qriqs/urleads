@@ -74,6 +74,9 @@ class NotificationWebSocketIntegrationTest {
     private AgendaCitaRepository agendaCitaRepository;
 
     @MockBean
+    private RecordatorioRepository recordatorioRepository;
+
+    @MockBean
     private CurrentUserProvider currentUserProvider;
 
     @Test

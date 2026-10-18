@@ -107,6 +107,9 @@ class NotificationEndToEndFlowTest {
     private AgendaCitaRepository agendaCitaRepository;
 
     @MockBean
+    private RecordatorioRepository recordatorioRepository;
+
+    @MockBean
     private CurrentUserProvider currentUserProvider;
 
     // Almacenamiento en memoria simulando persistencia relacional
