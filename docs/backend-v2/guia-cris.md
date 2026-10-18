@@ -116,3 +116,131 @@ cd backend
    Incluye prueba explícita de **restauración de copia de seguridad (backup restore)**
    en una base PostgreSQL aislada (`_test`), demostrando que reiniciar un contenedor
    no sustituye un procedimiento de recuperación ante desastres.
+
+---
+
+## 5. Implementación y verificación de C01 (Preparación y auditoría)
+
+Esta sección documenta los hallazgos técnicos, cambios aplicados, estado de
+validación y comandos reproducibles para la tarea C01.
+
+### 5.1. Auditoría y unificación de etapas de leads
+
+- **Etapas canónicas:** Se auditó el modelo y la base de datos confirmando que
+  las únicas etapas permitidas son `NUEVO`, `EN_SEGUIMIENTO` y `CERRADO`.
+- **Restricción de esquema existente:** La migración Flyway
+  `V1__initial_schema.sql` restringe mediante la regla
+  `chk_lead_cerrado_sin_seguimiento` que los leads en etapa `CERRADO` tengan
+  `proximo_seguimiento IS NULL`. No se requirió una nueva migración de base
+  de datos porque el esquema ya delimita las etapas canónicas; no se afirma
+  que se hayan auditado registros de desarrollo o producción reales fuera del
+  esquema.
+- **Consultas JPQL en `LeadRepository`:** Se corrigieron los predicados en
+  `findSeguimientosHoy` y `findSeguimientosAtrasados`, reemplazando la exclusión
+  obsoleta `NOT IN ('GANADO', 'PERDIDO')` por `!= 'CERRADO'`, garantizando la
+  exclusión correcta de leads cerrados y preservando condiciones de propietario,
+  comparaciones de fecha y ordenamiento.
+- **Fixtures y pruebas unitarias:** En `DashboardServiceTest`, se normalizaron
+  los fixtures que utilizaban `"CONTACTADO"` y `"EN_PROCESO"` hacia etapas
+  canónicas (`NUEVO`, `EN_SEGUIMIENTO`, `CERRADO`).
+- **Pruebas negativas de etapas legadas:** En `LeadApiIT`, se preservó el caso
+  negativo de `GANADO` y se añadió cobertura explícita para `PERDIDO`,
+  verificando que ambas etapas legadas son rechazadas con HTTP 400.
+- **Sincronización de nombres de prueba:** Se renombró `AuthControllerTest.java`
+  a `AuthControllerIT.java` para alinearse con su clase `AuthControllerIT` y su
+  pertenencia a la suite Failsafe (`**/*IT.java`), y `AuthWebValidationTest.java`
+  a `AuthWebSecurityTest.java` para reflejar su clase `AuthWebSecurityTest`.
+
+### 5.2. Configuración de Eureka Client, perfiles y estado de validación
+
+- **Dependencia y BOM:** Se incorporó el BOM Spring Cloud `2023.0.6` junto con
+  `spring-cloud-starter-netflix-eureka-client` en `backend/pom.xml`.
+  *Nota sobre ciclo de vida:* La línea Spring Cloud 2023.0.x se encuentra en EOL,
+  pero representa la versión oficialmente compatible con Spring Boot 3.3.13.
+- **Identificador de servicio:** `spring.application.name=crm-service`
+  configurado en `application.properties`.
+- **Puerto configurable:** `server.port=${PORT:8080}` con soporte para la
+  variable de entorno `PORT`.
+- **Desactivación por defecto y perfil local:** En `application.properties` y
+  `application-local.properties`, se define `eureka.client.enabled=false`. El
+  servicio arranca de manera autónoma sin contactar ningún servidor discovery.
+- **Perfil integrado (`integrated`):** En `application-integrated.properties`,
+  se activan el registro y la consulta (`eureka.client.enabled=true`,
+  `eureka.client.register-with-eureka=true`, `eureka.client.fetch-registry=true`)
+  con URL por defecto `http://discovery:8761/eureka/` y soporte de sobreescritura
+  para desarrollo local mediante `${EUREKA_SERVER_URL:http://discovery:8761/eureka/}`.
+- **Aislamiento en pruebas automatizadas:** Surefire y Failsafe inyectan
+  `eureka.client.enabled=false` a nivel de variables de sistema, evitando
+  intentos de conexión durante las suites de test.
+- **Validación sin servidor en vivo:** La clase `EurekaConfigurationTest`
+  valida la carga de propiedades y el enlace hacia `EurekaClientConfigBean` en
+  todos los perfiles sin emitir tráfico de red. La verificación con registro en
+  vivo contra el servidor Eureka se realizará en C14/C15, por lo que no ha sido
+  ejecutada en esta fase.
+- **Estado real de validación de la tarea:**
+  - *Pruebas automatizadas:* Verificación ejecutada independientemente con
+    `./mvnw --batch-mode --no-transfer-progress verify -Pdb-integration` en
+    `backend/` con Java 21 sobre PostgreSQL disposable aislado (`urleads_test`),
+    obteniendo 62 pruebas de Surefire y 81 de Failsafe exitosas sin fallos,
+    errores ni omisiones.
+  - *Smoke test local en runtime:* Ejecutado y validado en el puerto libre
+    `8089` confirmando HTTP 200 en `/api/health` (`{"status":"UP"}`), HTTP 401
+    en `/api/leads` privado sin autenticación, y arranque correcto contra base
+    de datos real sin llamadas a Eureka.
+  - *Verificación pendiente en puerto 8080:* La validación de ejecución en el
+    puerto 8080 permanece pendiente debido a la presencia de un proceso
+    preexistente (PID 95948) que ocupa dicho puerto y que fue preservado sin
+    terminar por directivas de seguridad. Por consiguiente, la tarea C01 no se
+    declara completamente cerrada ni validada en 8080 hasta gestionar dicho
+    proceso.
+
+### 5.3. Comandos reproducibles de verificación
+
+Todos los comandos parten del directorio raíz del repositorio
+(`/Users/cristopherarias/Documents/Dev/urleads`):
+
+```bash
+# 1. Configuración de entorno Java 21 (desde la raíz del repositorio)
+export JAVA_HOME="/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home"
+export PATH="$JAVA_HOME/bin:$PATH"
+
+# 2. Pruebas unitarias y de configuración de Eureka (Surefire)
+cd backend
+./mvnw test -Dtest=LeadServiceImplTest,DashboardServiceTest,SecurityCurrentUserProviderTest,EurekaConfigurationTest
+cd ..
+
+# 3. Verificación completa con base de datos real (Failsafe)
+# Requiere PostgreSQL aislado (TEST_DB_*) según infra/README.md
+# Configura TEST_DB_PASSWORD en tu entorno privado (sin exponer credenciales en la terminal)
+export TEST_DB_URL="jdbc:postgresql://127.0.0.1:5433/urleads_test"
+export TEST_DB_USERNAME="urleads_test_user"
+# export TEST_DB_PASSWORD="${TEST_DB_PASSWORD}"
+./scripts/build.sh -Pdb-integration
+
+# 4. Arranque local aislado (smoke test sobre puerto libre)
+# Requiere configurar DB_PASSWORD previamente a través de tu entorno privado (ver infra/README.md)
+PORT=8089 \
+SPRING_PROFILES_ACTIVE=local \
+DB_URL="jdbc:postgresql://127.0.0.1:5432/urleads" \
+DB_USERNAME="urleads_app" \
+DB_PASSWORD="${DB_PASSWORD}" \
+java -jar backend/target/urleads-backend-0.0.1-SNAPSHOT.jar
+
+# 5. Modo integrado con URL Compose por defecto (http://discovery:8761/eureka/)
+# Nota: La verificación con registro en vivo contra el servidor Eureka se realizará en C14/C15.
+PORT=8089 \
+SPRING_PROFILES_ACTIVE=integrated \
+DB_URL="jdbc:postgresql://127.0.0.1:5432/urleads" \
+DB_USERNAME="urleads_app" \
+DB_PASSWORD="${DB_PASSWORD}" \
+java -jar backend/target/urleads-backend-0.0.1-SNAPSHOT.jar
+
+# 6. Modo integrado con sobreescritura host-local de URL Eureka
+PORT=8089 \
+SPRING_PROFILES_ACTIVE=integrated \
+EUREKA_SERVER_URL="http://localhost:8761/eureka/" \
+DB_URL="jdbc:postgresql://127.0.0.1:5432/urleads" \
+DB_USERNAME="urleads_app" \
+DB_PASSWORD="${DB_PASSWORD}" \
+java -jar backend/target/urleads-backend-0.0.1-SNAPSHOT.jar
+```
