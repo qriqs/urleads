@@ -1,6 +1,7 @@
 package com.urleads.database;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -10,8 +11,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import com.urleads.entity.Lead;
 import com.urleads.entity.Usuario;
@@ -32,6 +37,9 @@ class LeadRepositoryIT {
 
     @Autowired
     private UsuarioRepository usuarioRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Test
     @DisplayName("Insert: guarda un lead con fechas autogeneradas y recupera por ID")
@@ -170,5 +178,629 @@ class LeadRepositoryIT {
 
         Optional<Lead> deleted = leadRepository.findById(saved.getId());
         assertThat(deleted).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Dashboard: countLeadsPorEtapa agrupa por etapas canónicas y respeta aislamiento de propietario")
+    void shouldCountLeadsPorEtapaCanonical() {
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("dashUserA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("dashUserB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        // Usuario A: 2 NUEVO, 1 EN_SEGUIMIENTO, 1 CERRADO
+        Lead l1 = new Lead();
+        l1.setUsuario(usuarioA);
+        l1.setNombre("Lead N1");
+        l1.setTelefono("111");
+        l1.setEtapa("NUEVO");
+        leadRepository.save(l1);
+
+        Lead l2 = new Lead();
+        l2.setUsuario(usuarioA);
+        l2.setNombre("Lead N2");
+        l2.setTelefono("222");
+        l2.setEtapa("NUEVO");
+        leadRepository.save(l2);
+
+        Lead l3 = new Lead();
+        l3.setUsuario(usuarioA);
+        l3.setNombre("Lead S1");
+        l3.setTelefono("333");
+        l3.setEtapa("EN_SEGUIMIENTO");
+        leadRepository.save(l3);
+
+        Lead l4 = new Lead();
+        l4.setUsuario(usuarioA);
+        l4.setNombre("Lead C1");
+        l4.setTelefono("444");
+        l4.setEtapa("CERRADO");
+        leadRepository.save(l4);
+
+        // Usuario B: 1 NUEVO (no debe contarse para usuario A)
+        Lead lB = new Lead();
+        lB.setUsuario(usuarioB);
+        lB.setNombre("Lead B");
+        lB.setTelefono("555");
+        lB.setEtapa("NUEVO");
+        leadRepository.save(lB);
+
+        List<Object[]> agrupados = leadRepository.countLeadsPorEtapa(usuarioA.getId());
+        java.util.Map<String, Long> conteos = new java.util.HashMap<>();
+        for (Object[] fila : agrupados) {
+            conteos.put((String) fila[0], (Long) fila[1]);
+        }
+
+        assertThat(conteos)
+                .containsEntry("NUEVO", 2L)
+                .containsEntry("EN_SEGUIMIENTO", 1L)
+                .containsEntry("CERRADO", 1L)
+                .doesNotContainKey("GANADO")
+                .doesNotContainKey("PERDIDO");
+    }
+
+    @Test
+    @DisplayName("Dashboard: findSeguimientosHoy excluye CERRADO y respeta orden por nombre y aislamiento")
+    void shouldFindSeguimientosHoyExcludingCerrado() {
+        LocalDate hoy = LocalDate.now();
+
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("hoyUserA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("hoyUserB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        Lead l1 = new Lead();
+        l1.setUsuario(usuarioA);
+        l1.setNombre("Zeta Lead Hoy");
+        l1.setTelefono("111");
+        l1.setEtapa("EN_SEGUIMIENTO");
+        l1.setProximoSeguimiento(hoy);
+        leadRepository.save(l1);
+
+        Lead l2 = new Lead();
+        l2.setUsuario(usuarioA);
+        l2.setNombre("Alfa Lead Hoy");
+        l2.setTelefono("222");
+        l2.setEtapa("NUEVO");
+        l2.setProximoSeguimiento(hoy);
+        leadRepository.save(l2);
+
+        // Lead cerrado (sin seguimiento por restriccion de BD)
+        Lead lCerrado = new Lead();
+        lCerrado.setUsuario(usuarioA);
+        lCerrado.setNombre("Cerrado");
+        lCerrado.setTelefono("333");
+        lCerrado.setEtapa("CERRADO");
+        lCerrado.setProximoSeguimiento(null);
+        leadRepository.save(lCerrado);
+
+        // Lead de hoy de otro usuario
+        Lead lOtro = new Lead();
+        lOtro.setUsuario(usuarioB);
+        lOtro.setNombre("Otro Hoy");
+        lOtro.setTelefono("444");
+        lOtro.setEtapa("EN_SEGUIMIENTO");
+        lOtro.setProximoSeguimiento(hoy);
+        leadRepository.save(lOtro);
+
+        List<Lead> hoyLeads = leadRepository.findSeguimientosHoy(usuarioA.getId(), hoy);
+        assertThat(hoyLeads).hasSize(2);
+        assertThat(hoyLeads.get(0).getNombre()).isEqualTo("Alfa Lead Hoy");
+        assertThat(hoyLeads.get(1).getNombre()).isEqualTo("Zeta Lead Hoy");
+    }
+
+    @Test
+    @DisplayName("Dashboard: findSeguimientosAtrasados excluye CERRADO y ordena por fecha ASC y nombre ASC")
+    void shouldFindSeguimientosAtrasadosExcludingCerrado() {
+        LocalDate hoy = LocalDate.now();
+
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("atrasadoUserA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("atrasadoUserB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        Lead l1 = new Lead();
+        l1.setUsuario(usuarioA);
+        l1.setNombre("Beta Mas Antiguo");
+        l1.setTelefono("111");
+        l1.setEtapa("EN_SEGUIMIENTO");
+        l1.setProximoSeguimiento(hoy.minusDays(5));
+        leadRepository.save(l1);
+
+        Lead l2 = new Lead();
+        l2.setUsuario(usuarioA);
+        l2.setNombre("Alpha Mas Antiguo");
+        l2.setTelefono("222");
+        l2.setEtapa("NUEVO");
+        l2.setProximoSeguimiento(hoy.minusDays(5));
+        leadRepository.save(l2);
+
+        Lead l3 = new Lead();
+        l3.setUsuario(usuarioA);
+        l3.setNombre("Ayer");
+        l3.setTelefono("333");
+        l3.setEtapa("NUEVO");
+        l3.setProximoSeguimiento(hoy.minusDays(1));
+        leadRepository.save(l3);
+
+        // Lead de hoy (no debe estar en atrasados)
+        Lead lHoy = new Lead();
+        lHoy.setUsuario(usuarioA);
+        lHoy.setNombre("Hoy");
+        lHoy.setTelefono("444");
+        lHoy.setEtapa("NUEVO");
+        lHoy.setProximoSeguimiento(hoy);
+        leadRepository.save(lHoy);
+
+        // Lead atrasado de otro usuario
+        Lead lOtro = new Lead();
+        lOtro.setUsuario(usuarioB);
+        lOtro.setNombre("Otro Atrasado");
+        lOtro.setTelefono("555");
+        lOtro.setEtapa("NUEVO");
+        lOtro.setProximoSeguimiento(hoy.minusDays(3));
+        leadRepository.save(lOtro);
+
+        List<Lead> atrasados = leadRepository.findSeguimientosAtrasados(usuarioA.getId(), hoy);
+        assertThat(atrasados).hasSize(3);
+        assertThat(atrasados.get(0).getNombre()).isEqualTo("Alpha Mas Antiguo");
+        assertThat(atrasados.get(1).getNombre()).isEqualTo("Beta Mas Antiguo");
+        assertThat(atrasados.get(2).getNombre()).isEqualTo("Ayer");
+    }
+
+    // =========================================================================
+    // TESTS C07: PRIORIDAD Y ORIGEN (DSW-47)
+    // =========================================================================
+
+    @Test
+    @DisplayName("C07: Persiste y recupera campos priority y origin, aplicando defaults cuando se omiten")
+    void shouldPersistAndRetrievePriorityAndOrigin() {
+        Usuario usuario = new Usuario();
+        usuario.setUsername("priorityUser");
+        usuario.setPasswordHash("hash");
+        usuario = usuarioRepository.save(usuario);
+
+        // Lead con valores explícitos
+        Lead lead1 = new Lead();
+        lead1.setUsuario(usuario);
+        lead1.setNombre("Lead Explicito");
+        lead1.setTelefono("999111222");
+        lead1.setEtapa("NUEVO");
+        lead1.setPriority("ALTA");
+        lead1.setOrigin("REFERIDO");
+        lead1 = leadRepository.save(lead1);
+
+        // Lead con valores omitidos (debe recibir defaults MEDIA y MANUAL)
+        Lead lead2 = new Lead();
+        lead2.setUsuario(usuario);
+        lead2.setNombre("Lead Omitido");
+        lead2.setTelefono("999333444");
+        lead2.setEtapa("NUEVO");
+        lead2 = leadRepository.save(lead2);
+
+        Lead rec1 = leadRepository.findById(lead1.getId()).orElseThrow();
+        assertThat(rec1.getPriority()).isEqualTo("ALTA");
+        assertThat(rec1.getOrigin()).isEqualTo("REFERIDO");
+
+        Lead rec2 = leadRepository.findById(lead2.getId()).orElseThrow();
+        assertThat(rec2.getPriority()).isEqualTo("MEDIA");
+        assertThat(rec2.getOrigin()).isEqualTo("MANUAL");
+    }
+
+    @Test
+    @DisplayName("C07: Filtros combinados de prioridad, origen y etapa con aislamiento estricto de propietario")
+    void shouldFilterByPriorityAndOriginCombined() {
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("filterUserA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("filterUserB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        LocalDate hoy = LocalDate.now();
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+
+        // Usuario A
+        Lead l1 = new Lead();
+        l1.setUsuario(usuarioA);
+        l1.setNombre("Lead A1");
+        l1.setTelefono("101");
+        l1.setEtapa("NUEVO");
+        l1.setPriority("BAJA");
+        l1.setOrigin("WEB");
+        leadRepository.save(l1);
+
+        Lead l2 = new Lead();
+        l2.setUsuario(usuarioA);
+        l2.setNombre("Lead A2");
+        l2.setTelefono("102");
+        l2.setEtapa("NUEVO");
+        l2.setPriority("MEDIA");
+        l2.setOrigin("WEB");
+        leadRepository.save(l2);
+
+        Lead l3 = new Lead();
+        l3.setUsuario(usuarioA);
+        l3.setNombre("Lead A3");
+        l3.setTelefono("103");
+        l3.setEtapa("NUEVO");
+        l3.setPriority("ALTA");
+        l3.setOrigin("WEB");
+        leadRepository.save(l3);
+
+        Lead l4 = new Lead();
+        l4.setUsuario(usuarioA);
+        l4.setNombre("Lead A4");
+        l4.setTelefono("104");
+        l4.setEtapa("NUEVO");
+        l4.setPriority("ALTA");
+        l4.setOrigin("REFERIDO");
+        leadRepository.save(l4);
+
+        Lead l5 = new Lead();
+        l5.setUsuario(usuarioA);
+        l5.setNombre("Lead A5");
+        l5.setTelefono("105");
+        l5.setEtapa("EN_SEGUIMIENTO");
+        l5.setPriority("ALTA");
+        l5.setOrigin("REFERIDO");
+        leadRepository.save(l5);
+
+        // Usuario B: mismo ALTA + REFERIDO + EN_SEGUIMIENTO (no debe aparecer para usuario A)
+        Lead lB = new Lead();
+        lB.setUsuario(usuarioB);
+        lB.setNombre("Lead B Ajeno");
+        lB.setTelefono("999");
+        lB.setEtapa("EN_SEGUIMIENTO");
+        lB.setPriority("ALTA");
+        lB.setOrigin("REFERIDO");
+        leadRepository.save(lB);
+
+        // 1. Filtrar solo prioridad ALTA para usuario A: l3, l4, l5 (3)
+        var resAlta = leadRepository.buscar(usuarioA.getId(), "", "ALTA", "", "%%", "all", hoy, pageable);
+        assertThat(resAlta.getTotalElements()).isEqualTo(3);
+        assertThat(resAlta.getContent()).extracting(Lead::getNombre).containsExactlyInAnyOrder("Lead A3", "Lead A4", "Lead A5");
+
+        // 2. Filtrar solo origen REFERIDO para usuario A: l4, l5 (2)
+        var resReferido = leadRepository.buscar(usuarioA.getId(), "", "", "REFERIDO", "%%", "all", hoy, pageable);
+        assertThat(resReferido.getTotalElements()).isEqualTo(2);
+        assertThat(resReferido.getContent()).extracting(Lead::getNombre).containsExactlyInAnyOrder("Lead A4", "Lead A5");
+
+        // 3. Filtrar combinado prioridad ALTA y origen REFERIDO para usuario A: l4, l5 (2)
+        var resAltaReferido = leadRepository.buscar(usuarioA.getId(), "", "ALTA", "REFERIDO", "%%", "all", hoy, pageable);
+        assertThat(resAltaReferido.getTotalElements()).isEqualTo(2);
+        assertThat(resAltaReferido.getContent()).extracting(Lead::getNombre).containsExactlyInAnyOrder("Lead A4", "Lead A5");
+
+        // 4. Filtrar combinado prioridad ALTA, origen REFERIDO y etapa EN_SEGUIMIENTO: solo l5 (1)
+        var resCombinadoTodo = leadRepository.buscar(usuarioA.getId(), "EN_SEGUIMIENTO", "ALTA", "REFERIDO", "%%", "all", hoy, pageable);
+        assertThat(resCombinadoTodo.getTotalElements()).isEqualTo(1);
+        assertThat(resCombinadoTodo.getContent().get(0).getNombre()).isEqualTo("Lead A5");
+
+        // 5. Verificar que usuario B solo ve su propio lead
+        var resUsuarioB = leadRepository.buscar(usuarioB.getId(), "EN_SEGUIMIENTO", "ALTA", "REFERIDO", "%%", "all", hoy, pageable);
+        assertThat(resUsuarioB.getTotalElements()).isEqualTo(1);
+        assertThat(resUsuarioB.getContent().get(0).getNombre()).isEqualTo("Lead B Ajeno");
+    }
+
+    // C06 duplicate-repository checks
+
+    @Test
+    @DisplayName("C06 Repository: existsByUsuarioIdAndCorreoNorm detecta duplicados por propietario")
+    void shouldCheckDuplicateEmailByOwner() {
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("dupEmailA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("dupEmailB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        Lead lead = new Lead();
+        lead.setUsuario(usuarioA);
+        lead.setNombre("Lead Con Correo");
+        lead.setCorreo("contacto@test.com");
+        lead.setEtapa("NUEVO");
+        leadRepository.save(lead);
+        entityManager.flush();
+
+        // Para usuario A existe "contacto@test.com"
+        assertThat(leadRepository.existsByUsuarioIdAndCorreoNorm(usuarioA.getId(), "contacto@test.com")).isTrue();
+        // Para usuario B no existe
+        assertThat(leadRepository.existsByUsuarioIdAndCorreoNorm(usuarioB.getId(), "contacto@test.com")).isFalse();
+        // Otro correo para usuario A no existe
+        assertThat(leadRepository.existsByUsuarioIdAndCorreoNorm(usuarioA.getId(), "otro@test.com")).isFalse();
+    }
+
+    @Test
+    @DisplayName("C06 Repository: existsByUsuarioIdAndTelefonoNorm detecta duplicados por propietario")
+    void shouldCheckDuplicatePhoneByOwner() {
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("dupPhoneA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("dupPhoneB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        Lead lead = new Lead();
+        lead.setUsuario(usuarioA);
+        lead.setNombre("Lead Con Tel");
+        lead.setTelefono("+51 (999) 111-222");
+        lead.setEtapa("NUEVO");
+        leadRepository.save(lead);
+        entityManager.flush();
+
+        // Para usuario A existe dígitos "51999111222"
+        assertThat(leadRepository.existsByUsuarioIdAndTelefonoNorm(usuarioA.getId(), "51999111222")).isTrue();
+        // Para usuario B no existe
+        assertThat(leadRepository.existsByUsuarioIdAndTelefonoNorm(usuarioB.getId(), "51999111222")).isFalse();
+        // Otro teléfono para usuario A no existe
+        assertThat(leadRepository.existsByUsuarioIdAndTelefonoNorm(usuarioA.getId(), "999000000")).isFalse();
+    }
+
+    @Test
+    @DisplayName("C06 Repository: IdNot excluye la propia entidad en actualización")
+    void shouldExcludeSelfOnUpdateChecks() {
+        Usuario usuario = new Usuario();
+        usuario.setUsername("selfUser");
+        usuario.setPasswordHash("hash");
+        usuario = usuarioRepository.save(usuario);
+
+        Lead l1 = new Lead();
+        l1.setUsuario(usuario);
+        l1.setNombre("Lead Uno");
+        l1.setCorreo("uno@test.com");
+        l1.setTelefono("999111222");
+        l1.setEtapa("NUEVO");
+        l1 = leadRepository.save(l1);
+
+        Lead l2 = new Lead();
+        l2.setUsuario(usuario);
+        l2.setNombre("Lead Dos");
+        l2.setCorreo("dos@test.com");
+        l2.setTelefono("888222333");
+        l2.setEtapa("NUEVO");
+        l2 = leadRepository.save(l2);
+        entityManager.flush();
+
+        // l1 contra su propio correo y teléfono -> retorna false (auto-excluido)
+        assertThat(leadRepository.existsByUsuarioIdAndCorreoNormAndIdNot(usuario.getId(), "uno@test.com", l1.getId())).isFalse();
+        assertThat(leadRepository.existsByUsuarioIdAndTelefonoNormAndIdNot(usuario.getId(), "999111222", l1.getId())).isFalse();
+
+        // l1 intentando tomar el correo o teléfono de l2 -> retorna true (colisión con otra entidad)
+        assertThat(leadRepository.existsByUsuarioIdAndCorreoNormAndIdNot(usuario.getId(), "dos@test.com", l1.getId())).isTrue();
+        assertThat(leadRepository.existsByUsuarioIdAndTelefonoNormAndIdNot(usuario.getId(), "888222333", l1.getId())).isTrue();
+    }
+
+    @Test
+    @DisplayName("C06 Repository: Carrera concurrente es abortada por restricción de base de datos")
+    void shouldEnforceDbUniquenessOnConcurrentRaceInsert() {
+        Usuario usuario = new Usuario();
+        usuario.setUsername("raceUser");
+        usuario.setPasswordHash("hash");
+        usuario = usuarioRepository.save(usuario);
+
+        Lead l1 = new Lead();
+        l1.setUsuario(usuario);
+        l1.setNombre("Primero");
+        l1.setTelefono("999111222");
+        l1.setEtapa("NUEVO");
+        leadRepository.save(l1);
+        entityManager.flush();
+
+        Lead l2 = new Lead();
+        l2.setUsuario(usuario);
+        l2.setNombre("Segundo Concurrente");
+        l2.setTelefono("(999) 111-222");
+        l2.setEtapa("NUEVO");
+
+        assertThatThrownBy(() -> {
+            leadRepository.save(l2);
+            entityManager.flush();
+        }).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    // =========================================================================
+    // TESTS C12: ARCHIVO Y RESTAURACION LOGICA (DSW-52)
+    // =========================================================================
+
+    @Test
+    @DisplayName("C12 Repository: consultas activas y de dashboard excluyen estrictamente leads archivados")
+    void shouldExcludeArchivedLeadsFromActiveQueries() {
+        LocalDate hoy = LocalDate.now();
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("c12UserA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("c12UserB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        // Lead activo para usuario A
+        Lead leadActivo = new Lead();
+        leadActivo.setUsuario(usuarioA);
+        leadActivo.setNombre("Lead Activo");
+        leadActivo.setTelefono("999111001");
+        leadActivo.setEtapa("EN_SEGUIMIENTO");
+        leadActivo.setProximoSeguimiento(hoy);
+        leadActivo = leadRepository.save(leadActivo);
+
+        // Lead archivado para usuario A
+        Lead leadArchivado = new Lead();
+        leadArchivado.setUsuario(usuarioA);
+        leadArchivado.setNombre("Lead Archivado");
+        leadArchivado.setTelefono("999111002");
+        leadArchivado.setEtapa("EN_SEGUIMIENTO");
+        leadArchivado.setProximoSeguimiento(hoy);
+        leadArchivado.setArchivedAt(java.time.OffsetDateTime.now());
+        leadArchivado = leadRepository.save(leadArchivado);
+
+        // Lead archivado para usuario B
+        Lead leadArchivadoB = new Lead();
+        leadArchivadoB.setUsuario(usuarioB);
+        leadArchivadoB.setNombre("Lead B Archivado");
+        leadArchivadoB.setTelefono("999111003");
+        leadArchivadoB.setEtapa("EN_SEGUIMIENTO");
+        leadArchivadoB.setProximoSeguimiento(hoy);
+        leadArchivadoB.setArchivedAt(java.time.OffsetDateTime.now());
+        leadRepository.save(leadArchivadoB);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // 1. findByUsuarioId excluye archivados
+        List<Lead> activos = leadRepository.findByUsuarioId(usuarioA.getId());
+        assertThat(activos).hasSize(1);
+        assertThat(activos.get(0).getId()).isEqualTo(leadActivo.getId());
+
+        // 2. findByIdAndUsuarioId retorna empty para lead archivado
+        assertThat(leadRepository.findByIdAndUsuarioId(leadArchivado.getId(), usuarioA.getId())).isEmpty();
+
+        // 3. buscar excluye archivados
+        var resultadoBuscar = leadRepository.buscar(usuarioA.getId(), "", "", "", "%%", "all", hoy, pageable);
+        assertThat(resultadoBuscar.getTotalElements()).isEqualTo(1);
+        assertThat(resultadoBuscar.getContent().get(0).getId()).isEqualTo(leadActivo.getId());
+
+        // 4. countByUsuarioId excluye archivados
+        assertThat(leadRepository.countByUsuarioId(usuarioA.getId())).isEqualTo(1);
+
+        // 5. countLeadsPorEtapa excluye archivados
+        List<Object[]> porEtapa = leadRepository.countLeadsPorEtapa(usuarioA.getId());
+        assertThat(porEtapa).hasSize(1);
+        assertThat(porEtapa.get(0)[0]).isEqualTo("EN_SEGUIMIENTO");
+        assertThat((Long) porEtapa.get(0)[1]).isEqualTo(1L);
+
+        // 6. findSeguimientosHoy excluye archivados
+        List<Lead> hoyLeads = leadRepository.findSeguimientosHoy(usuarioA.getId(), hoy);
+        assertThat(hoyLeads).hasSize(1);
+        assertThat(hoyLeads.get(0).getId()).isEqualTo(leadActivo.getId());
+    }
+
+    @Test
+    @DisplayName("C12 Repository: listado de archivados incluye únicamente archivados del propietario")
+    void shouldListArchivedLeadsScopedToOwner() {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("c12ListArchA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("c12ListArchB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        Lead activoA = new Lead();
+        activoA.setUsuario(usuarioA);
+        activoA.setNombre("Activo A");
+        activoA.setTelefono("999222001");
+        activoA.setEtapa("NUEVO");
+        leadRepository.save(activoA);
+
+        Lead archivadoA = new Lead();
+        archivadoA.setUsuario(usuarioA);
+        archivadoA.setNombre("Archivado A");
+        archivadoA.setTelefono("999222002");
+        archivadoA.setEtapa("NUEVO");
+        archivadoA.setArchivedAt(java.time.OffsetDateTime.now());
+        archivadoA = leadRepository.save(archivadoA);
+
+        Lead archivadoB = new Lead();
+        archivadoB.setUsuario(usuarioB);
+        archivadoB.setNombre("Archivado B");
+        archivadoB.setTelefono("999222003");
+        archivadoB.setEtapa("NUEVO");
+        archivadoB.setArchivedAt(java.time.OffsetDateTime.now());
+        leadRepository.save(archivadoB);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        var pageArchivadosA = leadRepository.findArchivedByUsuarioId(usuarioA.getId(), pageable);
+        assertThat(pageArchivadosA.getTotalElements()).isEqualTo(1);
+        assertThat(pageArchivadosA.getContent().get(0).getId()).isEqualTo(archivadoA.getId());
+        assertThat(pageArchivadosA.getContent().get(0).getNombre()).isEqualTo("Archivado A");
+    }
+
+    @Test
+    @DisplayName("C12 Repository: recupera lead archivado para restauración y reactiva visibilidad al limpiar timestamp")
+    void shouldFindArchivedLeadForRestoreAndReactivate() {
+        Usuario usuarioA = new Usuario();
+        usuarioA.setUsername("c12RestUserA");
+        usuarioA.setPasswordHash("hash");
+        usuarioA = usuarioRepository.save(usuarioA);
+
+        Usuario usuarioB = new Usuario();
+        usuarioB.setUsername("c12RestUserB");
+        usuarioB.setPasswordHash("hash");
+        usuarioB = usuarioRepository.save(usuarioB);
+
+        Lead activo = new Lead();
+        activo.setUsuario(usuarioA);
+        activo.setNombre("Lead Inicial Activo");
+        activo.setTelefono("999333001");
+        activo.setEtapa("NUEVO");
+        activo = leadRepository.save(activo);
+
+        Lead archivado = new Lead();
+        archivado.setUsuario(usuarioA);
+        archivado.setNombre("Lead Para Restaurar");
+        archivado.setTelefono("999333002");
+        archivado.setEtapa("NUEVO");
+        archivado.setArchivedAt(java.time.OffsetDateTime.now());
+        archivado = leadRepository.save(archivado);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // 1. findByIdAndUsuarioIdAndArchivedAtIsNotNull encuentra el lead archivado propio
+        Optional<Lead> paraRestaurar = leadRepository.findByIdAndUsuarioIdAndArchivedAtIsNotNull(archivado.getId(), usuarioA.getId());
+        assertThat(paraRestaurar).isPresent();
+
+        // 2. Usuario B no tiene acceso al lead archivado de Usuario A
+        assertThat(leadRepository.findByIdAndUsuarioIdAndArchivedAtIsNotNull(archivado.getId(), usuarioB.getId())).isEmpty();
+
+        // 3. Lead activo no se encuentra en consulta de archivados
+        assertThat(leadRepository.findByIdAndUsuarioIdAndArchivedAtIsNotNull(activo.getId(), usuarioA.getId())).isEmpty();
+
+        // 4. Restauración: limpiar timestamp y guardar
+        Lead aRestaurar = paraRestaurar.get();
+        aRestaurar.setArchivedAt(null);
+        leadRepository.save(aRestaurar);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // 5. Tras restauración, ambos leads aparecen como activos
+        List<Lead> reloadedActivos = leadRepository.findByUsuarioId(usuarioA.getId());
+        assertThat(reloadedActivos).hasSize(2);
+        assertThat(leadRepository.findByIdAndUsuarioId(archivado.getId(), usuarioA.getId())).isPresent();
     }
 }

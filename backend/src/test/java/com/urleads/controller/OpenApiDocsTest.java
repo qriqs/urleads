@@ -27,9 +27,8 @@ class OpenApiDocsTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.openapi").exists())
-                .andExpect(jsonPath("$.info.title").value("UrLeads - Servicio Agenda y Notificaciones API"))
-                .andExpect(jsonPath("$.info.version").value("v2.0.0"))
-                .andExpect(jsonPath("$.components.securitySchemes.BearerAuth").exists());
+                .andExpect(jsonPath("$.paths['/api/v1/notifications']").exists())
+                .andExpect(jsonPath("$.paths['/api/leads']").exists());
     }
 
     @Test

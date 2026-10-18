@@ -41,10 +41,10 @@ class DatabaseMigrationIT {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    @DisplayName("La migracion inicial creo el historial de Flyway y la version 1 fue aplicada")
+    @DisplayName("La migracion inicial creo el historial de Flyway y la version 15 fue aplicada")
     void initialMigrationAppliedSuccessfully() {
         assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("8");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("15");
         assertThat(flyway.info().current().getState().isApplied()).isTrue();
 
         Integer historyCount = jdbcTemplate.queryForObject(
@@ -52,6 +52,15 @@ class DatabaseMigrationIT {
                 Integer.class
         );
         assertThat(historyCount).isNotNull().isEqualTo(1);
+        Integer historyCountV7 = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM flyway_schema_history WHERE version = '7' AND success = true", Integer.class);
+        assertThat(historyCountV7).isNotNull().isEqualTo(1);
+        Integer historyCountV9 = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM flyway_schema_history WHERE version = '9' AND success = true", Integer.class);
+        assertThat(historyCountV9).isNotNull().isEqualTo(1);
+        Integer historyCountV8 = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM flyway_schema_history WHERE version = '8'", Integer.class);
+        assertThat(historyCountV8).isEqualTo(1);
     }
 
     @Test
@@ -68,7 +77,7 @@ class DatabaseMigrationIT {
                 "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
                 String.class
         );
-        assertThat(tables).contains("flyway_schema_history", "usuario", "lead", "nota");
+        assertThat(tables).contains("flyway_schema_history", "usuario", "lead", "nota", "outbox", "tag", "lead_tag", "lead_audit_log");
 
         List<String> usuarioColumns = jdbcTemplate.queryForList(
                 "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'usuario'",
@@ -82,14 +91,37 @@ class DatabaseMigrationIT {
         );
         assertThat(leadColumns).contains(
                 "id", "usuario_id", "nombre", "telefono", "correo",
-                "etapa", "proximo_seguimiento", "creado_en", "actualizado_en", "service"
+                "etapa", "proximo_seguimiento", "creado_en", "actualizado_en", "service",
+                "priority", "origin", "telefono_norm", "correo_norm", "archived_at"
         );
+
+        List<String> tagColumns = jdbcTemplate.queryForList(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'tag'",
+                String.class);
+        assertThat(tagColumns).contains("id", "usuario_id", "nombre", "creado_en");
+        List<String> leadTagColumns = jdbcTemplate.queryForList(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'lead_tag'",
+                String.class);
+        assertThat(leadTagColumns).contains("lead_id", "tag_id");
+        List<String> auditColumns = jdbcTemplate.queryForList(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'lead_audit_log'", String.class);
+        assertThat(auditColumns).contains("id", "lead_id", "usuario_id", "field_name", "old_value", "new_value", "created_at");
 
         List<String> notaColumns = jdbcTemplate.queryForList(
                 "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'nota'",
                 String.class
         );
         assertThat(notaColumns).contains("id", "lead_id", "contenido", "creado_en");
+
+        List<String> outboxColumns = jdbcTemplate.queryForList(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'outbox'",
+                String.class
+        );
+        assertThat(outboxColumns).contains(
+                "id", "event_id", "event_type", "routing_key", "exchange",
+                "payload", "status", "retry_count", "last_error",
+                "created_at", "sent_at", "next_retry_at"
+        );
     }
 
     @Test
@@ -206,11 +238,11 @@ class DatabaseMigrationIT {
     void leadAllowsValidNames() {
         Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
 
-        Long leadIdMin = createTestLead(usuarioId, "AB", "+51900000000", null, "NUEVO", null);
+        Long leadIdMin = createTestLead(usuarioId, "AB", "+51900000001", null, "NUEVO", null);
         assertThat(leadIdMin).isNotNull();
 
         String valid120Name = "A".repeat(120);
-        Long leadIdMax = createTestLead(usuarioId, valid120Name, "+51900000000", null, "NUEVO", null);
+        Long leadIdMax = createTestLead(usuarioId, valid120Name, "+51900000002", null, "NUEVO", null);
         assertThat(leadIdMax).isNotNull();
     }
 
@@ -301,9 +333,9 @@ class DatabaseMigrationIT {
     void leadAllowsValidStages() {
         Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
 
-        Long idNuevo = createTestLead(usuarioId, "Lead 1", "+51900000000", null, "NUEVO", null);
-        Long idSeguimiento = createTestLead(usuarioId, "Lead 2", "+51900000000", null, "EN_SEGUIMIENTO", LocalDate.now());
-        Long idCerrado = createTestLead(usuarioId, "Lead 3", "+51900000000", null, "CERRADO", null);
+        Long idNuevo = createTestLead(usuarioId, "Lead 1", "+51900000001", null, "NUEVO", null);
+        Long idSeguimiento = createTestLead(usuarioId, "Lead 2", "+51900000002", null, "EN_SEGUIMIENTO", LocalDate.now());
+        Long idCerrado = createTestLead(usuarioId, "Lead 3", "+51900000003", null, "CERRADO", null);
 
         assertThat(idNuevo).isNotNull();
         assertThat(idSeguimiento).isNotNull();
@@ -472,6 +504,287 @@ class DatabaseMigrationIT {
         assertThat(userCount).isEqualTo(1);
     }
 
+    @Test
+    @Transactional
+    @DisplayName("C07: lead rechaza prioridad inválida (CHECK chk_lead_priority)")
+    void leadRejectsInvalidPriority() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "INSERT INTO lead (usuario_id, nombre, telefono, etapa, priority, origin) VALUES (?, ?, ?, ?, ?, ?)",
+                usuarioId, "Contacto", "+51900000000", "NUEVO", "URGENTE", "MANUAL"
+        )).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("C07: lead rechaza origen inválido (CHECK chk_lead_origin)")
+    void leadRejectsInvalidOrigin() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "INSERT INTO lead (usuario_id, nombre, telefono, etapa, priority, origin) VALUES (?, ?, ?, ?, ?, ?)",
+                usuarioId, "Contacto", "+51900000000", "NUEVO", "MEDIA", "PARTNER"
+        )).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("C07: lead permite valores válidos de catálogo para priority y origin")
+    void leadAllowsValidPrioritiesAndOrigins() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+
+        Long id1 = jdbcTemplate.queryForObject(
+                "INSERT INTO lead (usuario_id, nombre, telefono, etapa, priority, origin) VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+                Long.class, usuarioId, "Lead 1", "+51900000001", "NUEVO", "BAJA", "WEB"
+        );
+        Long id2 = jdbcTemplate.queryForObject(
+                "INSERT INTO lead (usuario_id, nombre, telefono, etapa, priority, origin) VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+                Long.class, usuarioId, "Lead 2", "+51900000002", "NUEVO", "MEDIA", "REFERIDO"
+        );
+        Long id3 = jdbcTemplate.queryForObject(
+                "INSERT INTO lead (usuario_id, nombre, telefono, etapa, priority, origin) VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+                Long.class, usuarioId, "Lead 3", "+51900000003", "NUEVO", "ALTA", "MANUAL"
+        );
+
+        assertThat(id1).isNotNull();
+        assertThat(id2).isNotNull();
+        assertThat(id3).isNotNull();
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("C07: inserción que omite priority y origin recibe valores por defecto MEDIA y MANUAL en la BD")
+    void leadDefaultsPriorityAndOriginOnRawInsert() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+        Long leadId = createTestLead(usuarioId, "Lead Legacy", "+51900000000", null, "NUEVO", null);
+
+        String priority = jdbcTemplate.queryForObject("SELECT priority FROM lead WHERE id = ?", String.class, leadId);
+        String origin = jdbcTemplate.queryForObject("SELECT origin FROM lead WHERE id = ?", String.class, leadId);
+
+        assertThat(priority).isEqualTo("MEDIA");
+        assertThat(origin).isEqualTo("MANUAL");
+    }
+
+    // C06 V4 normalized-contact migration regressions
+
+    @Test
+    @Transactional
+    @DisplayName("lead V4: columnas generadas normalizan teléfono y correo preservando valores crudos")
+    void leadNormalizationColumnsComputeCorrectly() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+        String rawPhone = "+1 (212) 555-0100";
+        String rawEmail = "\t\n  Test.User@Example.COM  \r\n";
+        Long leadId = createTestLead(usuarioId, "Lead Normalizado", rawPhone, rawEmail, "NUEVO", null);
+        assertThat(jdbcTemplate.queryForObject("SELECT telefono FROM lead WHERE id = ?", String.class, leadId)).isEqualTo(rawPhone);
+        assertThat(jdbcTemplate.queryForObject("SELECT correo FROM lead WHERE id = ?", String.class, leadId)).isEqualTo(rawEmail);
+        assertThat(jdbcTemplate.queryForObject("SELECT telefono_norm FROM lead WHERE id = ?", String.class, leadId)).isEqualTo("12125550100");
+        assertThat(jdbcTemplate.queryForObject("SELECT correo_norm FROM lead WHERE id = ?", String.class, leadId)).isEqualTo("test.user@example.com");
+    }
+
+    @Test
+    @Transactional
+    void leadUniqueConstraintRejectsDuplicateNormalizedEmailForSameOwner() {
+        Long owner = createTestUser("synthetic_user_" + UUID.randomUUID());
+        createTestLead(owner, "First", null, "ana@example.com", "NUEVO", null);
+        assertThatThrownBy(() -> createTestLead(owner, "Second", null, " ANA@EXAMPLE.COM ", "NUEVO", null))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    void leadUniqueConstraintRejectsDuplicateNormalizedPhoneForSameOwner() {
+        Long owner = createTestUser("synthetic_user_" + UUID.randomUUID());
+        createTestLead(owner, "First", "+51 (999) 111-222", null, "NUEVO", null);
+        assertThatThrownBy(() -> createTestLead(owner, "Second", "51.999.111.222", null, "NUEVO", null))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    void leadAllowsSameContactsForDifferentOwners() {
+        Long ownerA = createTestUser("synthetic_user_a_" + UUID.randomUUID());
+        Long ownerB = createTestUser("synthetic_user_b_" + UUID.randomUUID());
+        assertThat(createTestLead(ownerA, "Lead A", "+51999111222", "same@example.com", "NUEVO", null)).isNotNull();
+        assertThat(createTestLead(ownerB, "Lead B", "51 999 111 222", "SAME@example.com", "NUEVO", null)).isNotNull();
+    }
+
+    @Test
+    @Transactional
+    void leadAllowsMultipleMissingOrNonNumericContactValues() {
+        Long owner = createTestUser("synthetic_user_" + UUID.randomUUID());
+        assertThat(createTestLead(owner, "Lead A", "---", "a@example.com", "NUEVO", null)).isNotNull();
+        assertThat(createTestLead(owner, "Lead B", "+ - ()", "b@example.com", "NUEVO", null)).isNotNull();
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("tag: no permite nombres duplicados para el mismo propietario case-insensitively")
+    void tagEnforcesUniqueNamePerOwnerCaseInsensitive() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+        createTestTag(usuarioId, "Prospecto");
+
+        assertThatThrownBy(() -> createTestTag(usuarioId, "  prospecto  "))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+    @Test
+    @Transactional
+    @DisplayName("tag: permite el mismo nombre en propietarios distintos")
+    void tagAllowsSameNameAcrossDifferentOwners() {
+        Long usuarioA = createTestUser("synthetic_user_" + UUID.randomUUID());
+        Long usuarioB = createTestUser("synthetic_user_" + UUID.randomUUID());
+
+        Long tagA = createTestTag(usuarioA, "Prospecto");
+        Long tagB = createTestTag(usuarioB, "Prospecto");
+
+        assertThat(tagA).isNotNull();
+        assertThat(tagB).isNotNull();
+        assertThat(tagA).isNotEqualTo(tagB);
+    }
+    @Test
+    @Transactional
+    @DisplayName("tag: rechaza nombre en blanco o solo espacios")
+    void tagRejectsBlankName() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+
+        assertThatThrownBy(() -> createTestTag(usuarioId, "   "))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+    @Test
+    @Transactional
+    @DisplayName("lead_tag: disparador trg_check_lead_tag_owner impide asociacion entre propietarios distintos")
+    void leadTagTriggerPreventsCrossOwnerAssociation() {
+        Long usuarioA = createTestUser("user_a_" + UUID.randomUUID());
+        Long usuarioB = createTestUser("user_b_" + UUID.randomUUID());
+
+        Long leadA = createTestLead(usuarioA, "Lead Usuario A", "999", null, "NUEVO", null);
+        Long tagB = createTestTag(usuarioB, "Tag Usuario B");
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "INSERT INTO lead_tag (lead_id, tag_id) VALUES (?, ?)",
+                leadA, tagB
+        )).isInstanceOf(org.springframework.dao.DataAccessException.class)
+          .hasMessageContaining("Cross-owner tag association not allowed");
+    }
+    @Test
+    @Transactional
+    @DisplayName("lead_tag: permite asociacion valida entre lead y tag del mismo propietario")
+    void leadTagAllowsSameOwnerAssociation() {
+        Long usuario = createTestUser("user_same_" + UUID.randomUUID());
+        Long lead = createTestLead(usuario, "Lead Valido", "999", null, "NUEVO", null);
+        Long tag = createTestTag(usuario, "Tag Valido");
+
+        int inserted = jdbcTemplate.update(
+                "INSERT INTO lead_tag (lead_id, tag_id) VALUES (?, ?)",
+                lead, tag
+        );
+        assertThat(inserted).isEqualTo(1);
+    }
+    @Test
+    @Transactional
+    @DisplayName("lead_tag: eliminacion en cascada de lead elimina sus notas y enlaces lead_tag pero conserva las etiquetas")
+    void deletingLeadDeletesNotesAndLeadTagRowsPreservingTags() {
+        Long usuario = createTestUser("user_del_lead_" + UUID.randomUUID());
+        Long lead = createTestLead(usuario, "Lead Completo", "999", null, "NUEVO", null);
+        Long tag = createTestTag(usuario, "Etiqueta Conservada");
+
+        jdbcTemplate.update("INSERT INTO nota (lead_id, contenido) VALUES (?, ?)", lead, "Nota de prueba");
+        jdbcTemplate.update("INSERT INTO lead_tag (lead_id, tag_id) VALUES (?, ?)", lead, tag);
+
+        // Eliminar lead
+        int deleted = jdbcTemplate.update("DELETE FROM lead WHERE id = ?", lead);
+        assertThat(deleted).isEqualTo(1);
+
+        // Notas y filas en lead_tag deben haberse limpiado
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM nota WHERE lead_id = ?", Integer.class, lead)).isZero();
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM lead_tag WHERE lead_id = ?", Integer.class, lead)).isZero();
+
+        // La etiqueta original debe permanecer intacta
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM tag WHERE id = ?", Integer.class, tag)).isEqualTo(1);
+    }
+    @Test
+    @Transactional
+    @DisplayName("lead_tag: eliminacion de etiqueta elimina enlaces lead_tag pero conserva el lead y sus notas")
+    void deletingTagDeletesLeadTagRowsPreservingLeadAndNotes() {
+        Long usuario = createTestUser("user_del_tag_" + UUID.randomUUID());
+        Long lead = createTestLead(usuario, "Lead Conservado", "999", null, "NUEVO", null);
+        Long tag = createTestTag(usuario, "Etiqueta a Borrar");
+
+        jdbcTemplate.update("INSERT INTO nota (lead_id, contenido) VALUES (?, ?)", lead, "Nota importante");
+        jdbcTemplate.update("INSERT INTO lead_tag (lead_id, tag_id) VALUES (?, ?)", lead, tag);
+
+        // Eliminar etiqueta
+        int deleted = jdbcTemplate.update("DELETE FROM tag WHERE id = ?", tag);
+        assertThat(deleted).isEqualTo(1);
+
+        // El enlace lead_tag se eliminó en cascada
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM lead_tag WHERE tag_id = ?", Integer.class, tag)).isZero();
+
+        // El lead y su nota continuan existiendo
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM lead WHERE id = ?", Integer.class, lead)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM nota WHERE lead_id = ?", Integer.class, lead)).isEqualTo(1);
+    }
+
+    // =========================================================================
+    // TESTS C12: ARCHIVO LOGICO (V9)
+    // =========================================================================
+
+    @Test
+    @DisplayName("C12: columna archived_at existe con tipo TIMESTAMP WITH TIME ZONE, es nullable y posee indice")
+    void leadArchivedAtColumnPropertiesAndIndex() {
+        String dataType = jdbcTemplate.queryForObject(
+                "SELECT data_type FROM information_schema.columns " +
+                "WHERE table_schema = 'public' AND table_name = 'lead' AND column_name = 'archived_at'",
+                String.class
+        );
+        assertThat(dataType).isEqualToIgnoringCase("timestamp with time zone");
+
+        String isNullable = jdbcTemplate.queryForObject(
+                "SELECT is_nullable FROM information_schema.columns " +
+                "WHERE table_schema = 'public' AND table_name = 'lead' AND column_name = 'archived_at'",
+                String.class
+        );
+        assertThat(isNullable).isEqualToIgnoringCase("YES");
+
+        Integer indexCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM pg_indexes " +
+                "WHERE schemaname = 'public' AND tablename = 'lead' AND indexname = 'idx_lead_usuario_archived_at'",
+                Integer.class
+        );
+        assertThat(indexCount).isNotNull().isEqualTo(1);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("C12: insercion que omite archived_at asigna NULL por defecto (activo) y permite timestamp UTC explicito")
+    void leadArchivedAtDefaultsToNullForLegacyRows() {
+        Long usuarioId = createTestUser("synthetic_user_" + UUID.randomUUID());
+
+        // Inserción legacy sin archived_at
+        Long leadActivoId = createTestLead(usuarioId, "Lead Activo Default", "+51900000001", null, "NUEVO", null);
+        java.sql.Timestamp archivedAtActivo = jdbcTemplate.queryForObject(
+                "SELECT archived_at FROM lead WHERE id = ?",
+                java.sql.Timestamp.class,
+                leadActivoId
+        );
+        assertThat(archivedAtActivo).isNull();
+
+        // Inserción con archived_at explícito
+        Long leadArchivadoId = jdbcTemplate.queryForObject(
+                "INSERT INTO lead (usuario_id, nombre, telefono, etapa, archived_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) RETURNING id",
+                Long.class,
+                usuarioId, "Lead Archivado Explicito", "+51900000002", "NUEVO"
+        );
+        java.sql.Timestamp archivedAtArchivado = jdbcTemplate.queryForObject(
+                "SELECT archived_at FROM lead WHERE id = ?",
+                java.sql.Timestamp.class,
+                leadArchivadoId
+        );
+        assertThat(archivedAtArchivado).isNotNull();
+    }
+
+    private Long createTestTag(Long usuarioId, String nombre) {
+        return jdbcTemplate.queryForObject("INSERT INTO tag (usuario_id, nombre) VALUES (?, ?) RETURNING id", Long.class, usuarioId, nombre);
+    }
+
     private Long createTestUser(String username) {
         return jdbcTemplate.queryForObject(
                 "INSERT INTO usuario (username, password_hash) VALUES (?, ?) RETURNING id",
@@ -493,4 +806,5 @@ class DatabaseMigrationIT {
                 proximoSeguimiento != null ? java.sql.Date.valueOf(proximoSeguimiento) : null
         );
     }
+
 }
