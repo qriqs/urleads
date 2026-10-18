@@ -10,15 +10,18 @@ import com.urleads.comercial.dto.QuoteUpdateRequest;
 import com.urleads.comercial.entity.CatalogItem;
 import com.urleads.comercial.entity.Quote;
 import com.urleads.comercial.entity.QuoteItem;
+import com.urleads.comercial.entity.QuoteOutcomeReason;
 import com.urleads.comercial.entity.QuoteStatus;
 import com.urleads.comercial.exception.ResourceNotFoundException;
 import com.urleads.comercial.repository.CatalogItemRepository;
+import com.urleads.comercial.repository.QuoteItemRepository;
 import com.urleads.comercial.repository.QuoteRepository;
+import com.urleads.comercial.repository.QuoteSpecification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import com.urleads.comercial.repository.QuoteItemRepository;
+import org.springframework.data.jpa.domain.Specification;
 import com.urleads.comercial.client.CrmLeadService;
 import com.urleads.comercial.config.RabbitMqConfig;
 import com.urleads.comercial.entity.OutboxEvent;
@@ -28,6 +31,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Service
 @Transactional
@@ -72,9 +80,100 @@ public class QuoteService {
 
     @Transactional(readOnly = true)
     public PageResponse<QuoteResponse> list(String ownerId, Long leadId, QuoteStatus status, String currency, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
-        Page<Quote> quotePage = quoteRepository.findByOwnerIdWithFilters(ownerId, leadId, status, currency, pageable);
+        return list(ownerId, leadId, status, currency, null, null, null, null, page, size);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<QuoteResponse> list(
+        String ownerId,
+        Long leadId,
+        QuoteStatus status,
+        String currency,
+        QuoteOutcomeReason outcomeReason,
+        String dateFromStr,
+        String dateToStr,
+        String searchTerm,
+        int page,
+        int size
+    ) {
+        if (page < 0) {
+            throw new IllegalArgumentException("El número de página no puede ser negativo.");
+        }
+        if (size <= 0) {
+            throw new IllegalArgumentException("El tamaño de página debe ser mayor a 0.");
+        }
+
+        Instant fromInstant = parseDateFrom(dateFromStr);
+        Instant toInstant = parseDateTo(dateToStr);
+
+        if (fromInstant != null && toInstant != null && fromInstant.isAfter(toInstant)) {
+            throw new IllegalArgumentException("El rango de fechas es inválido: 'dateFrom' no puede ser posterior a 'dateTo'.");
+        }
+
+        Sort sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Specification<Quote> spec = QuoteSpecification.withFilters(
+            ownerId,
+            leadId,
+            status,
+            currency,
+            outcomeReason,
+            fromInstant,
+            toInstant,
+            searchTerm
+        );
+
+        Page<Quote> quotePage = quoteRepository.findAll(spec, pageable);
         return PageResponse.from(quotePage, QuoteResponse::fromEntity);
+    }
+
+    private Instant parseDateFrom(String input) {
+        if (input == null || input.isBlank()) {
+            return null;
+        }
+        String trimmed = input.trim();
+        try {
+            if (trimmed.length() == 10 && trimmed.charAt(4) == '-' && trimmed.charAt(7) == '-') {
+                return LocalDate.parse(trimmed).atStartOfDay(ZoneOffset.UTC).toInstant();
+            }
+            return Instant.parse(trimmed);
+        } catch (Exception e1) {
+            try {
+                return OffsetDateTime.parse(trimmed).toInstant();
+            } catch (Exception e2) {
+                try {
+                    return LocalDateTime.parse(trimmed).atZone(ZoneOffset.UTC).toInstant();
+                } catch (Exception e3) {
+                    throw new IllegalArgumentException("Formato inválido para parámetro 'dateFrom': '" + input +
+                        "'. Utilice formato ISO-8601 (por ejemplo, '2026-10-18' o '2026-10-18T00:00:00Z').");
+                }
+            }
+        }
+    }
+
+    private Instant parseDateTo(String input) {
+        if (input == null || input.isBlank()) {
+            return null;
+        }
+        String trimmed = input.trim();
+        try {
+            if (trimmed.length() == 10 && trimmed.charAt(4) == '-' && trimmed.charAt(7) == '-') {
+                return LocalDate.parse(trimmed).atTime(LocalTime.MAX).atZone(ZoneOffset.UTC).toInstant();
+            }
+            return Instant.parse(trimmed);
+        } catch (Exception e1) {
+            try {
+                return OffsetDateTime.parse(trimmed).toInstant();
+            } catch (Exception e2) {
+                try {
+                    return LocalDateTime.parse(trimmed).atZone(ZoneOffset.UTC).toInstant();
+                } catch (Exception e3) {
+                    throw new IllegalArgumentException("Formato inválido para parámetro 'dateTo': '" + input +
+                        "'. Utilice formato ISO-8601 (por ejemplo, '2026-10-18' o '2026-10-18T23:59:59Z').");
+                }
+            }
+        }
     }
 
     @Transactional(readOnly = true)

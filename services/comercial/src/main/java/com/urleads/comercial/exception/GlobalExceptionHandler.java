@@ -65,6 +65,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleTypeMismatch(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex) {
+        String paramName = ex.getName();
+        String message = "El valor proporcionado para el parámetro '" + paramName + "' no es válido.";
+        ApiErrorResponse response = new ApiErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            "BAD_REQUEST",
+            message
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException ex) {
         ApiErrorResponse response = new ApiErrorResponse(
