@@ -414,3 +414,126 @@ cd ..
 (`*IT`), el servicio SOAP (C13), el endpoint de producción de leads (C03) y la
 verificación de registro en vivo con Eureka (C14/C15) corresponden a entregables
 posteriores y no fueron ejecutados en esta tarea.
+
+---
+
+<a id="7-implementacion-y-verificacion-de-c03-consulta-interna-de-leads"></a>
+## 7. Implementation and verification of C03 (Internal lead lookup)
+
+This section documents the technical implementation, security boundaries,
+application service reuse, validation matrix, and candid operational limits
+for task C03 (DSW-43) in the CRM service.
+
+### 7.1. Design decisions, endpoint architecture, and privacy
+
+1. **Operative internal endpoint:**
+   - Exposed under `GET /internal/v1/leads/{id}` on CRM (port 8080).
+   - Constructor-injected REST controller `InternalLeadController` handles
+     the HTTP request without accepting client-provided owner parameters.
+   - Evaluated under the dedicated `@Order(1)` security filter chain matching
+     `/internal/**`.
+   - Requires RS256 Bearer JWT with issuer `urleads-crm`, audience `crm-api`,
+     and scope `crm.leads.read`.
+   - Prerequisite: `urleads.jwt.enabled=true`. If JWT is disabled, the filter
+     chain fails closed, returning HTTP 401.
+
+2. **Strict owner scoping at query time:**
+   - Identity is resolved strictly from the verified JWT `sub` claim via
+     `CurrentUserProvider.getCurrentUserId()`. Client query parameters such as
+     `?ownerId=` or `?userId=` are never accepted or parsed.
+   - Lookup invokes `LeadRepository.findByIdAndUsuarioId(leadId, usuarioId)`.
+     Unscoped database lookups followed by in-memory checks are strictly avoided.
+   - Leads belonging to another owner return identical HTTP 404 responses
+     (`{"status":404,"code":"NOT_FOUND","message":"Lead no encontrado"}`) as
+     nonexistent leads, preventing enumeration and information leakage.
+
+3. **Minimal non-PII response payload:**
+   - Dedicated immutable record `InternalLeadResponse` with exactly three
+     public JSON properties: `id` (`Long`), `stage` (`String`), and
+     `nextFollowUp` (`LocalDate`).
+   - Fabricated or sensitive customer fields (name, phone, email, service,
+     notes, creation/update timestamps, internal owner references) are never
+     exposed.
+   - If the lead has no scheduled follow-up (such as in stage `CERRADO` or
+     `NUEVO` without follow-up), `nextFollowUp` is explicitly serialized as
+     `null`.
+   - `LocalDate` values serialize strictly as ISO-8601 `YYYY-MM-DD` strings
+     without time components or timezone offsets.
+
+4. **Stateless request execution and content negotiation:**
+   - Internal requests are stateless (`STATELESS`, `NullSecurityContextRepository`)
+     with CSRF protection disabled only for `/internal/**`.
+   - No HTTP session is created and no `Set-Cookie` header is returned. Web
+     sessions provide no authorization or fallback.
+   - Requests with `Accept: application/json` receive JSON. Requests specifying
+     `Accept: text/html` return `406 Not Acceptable`; the controller never serves
+     the SPA `index.html`. Non-numeric IDs return `400 Bad Request` without 500 errors.
+
+5. **Reusable application service for SOAP C13:**
+   - The lookup logic resides in `LeadService.obtenerInterno(Long leadId, Long usuarioId)`.
+   - Annotated with `@Transactional(readOnly = true)`, it maps directly from the
+     entity to `InternalLeadResponse` without constructing full legacy DTOs.
+   - Future SOAP task C13 directly reuses this application service method,
+     avoiding HTTP self-calls against the CRM service.
+
+### 7.2. Dependency and runtime limitations
+
+1. **Archive exclusion boundary (C12 dependency):**
+   - The current data model and Flyway schema contain no archive column or flag.
+   - Linear task DSW-52 (C12) owns the archive schema migration, archive/restore
+     endpoints, active-list filtering, and archived-lead 404 integration test.
+   - Closed leads (`CERRADO`) are valid owned leads returning HTTP 200 with
+     `nextFollowUp: null`, not archived leads.
+   - Archived-lead 404 exclusion is documented as a future C12 integration
+     dependency and is not marked as implemented or passed in C03.
+
+2. **Runtime port 8080 verification limitation:**
+   - Default CRM server port remains `8080`.
+   - In the target environment, pre-existing PID 95948 occupied port 8080 at
+     preparation time and must remain preserved.
+   - Verification was executed via complete MockMvc application context tests
+     without disturbing external processes. Live port 8080 runtime verification
+     remains pending until integrated environments are deployed.
+
+### 7.3. Acceptance and verification matrix
+
+| ID | Scenario | Automated Test | Outcome |
+|:---:|---|---|:---:|
+| **R1** | Valid signed token, subject 42, owned lead 105 | `InternalLeadSecurityWebTest#r1_r2_TokenValido_Retorna200DtoExactoSinPii` | HTTP 200 JSON with exact properties `id`, `stage`, `nextFollowUp`; `id` is a JSON number. |
+| **R2** | Non-PII assertion against fabricated data | `InternalLeadSecurityWebTest#r1_r2_TokenValido_Retorna200DtoExactoSinPii` | Root JSON fields strictly limited to `Set.of("id", "stage", "nextFollowUp")`. Zero PII leak. |
+| **R3** | Canonical stages and null follow-up | `InternalLeadSecurityWebTest#r3_LeadCerrado_RetornaNextFollowUpNull`, `#r3_LeadNuevoSinSeguimiento_RetornaNextFollowUpNull` | HTTP 200 with explicit JSON `null` for `nextFollowUp` on `CERRADO` and `NUEVO`. |
+| **R4** | Existing follow-up date formatting | `InternalLeadSecurityWebTest#r4_FormatoFecha_StrictIsoYyyyMmDd` | Matches `YYYY-MM-DD` regex without time or timezone offset. |
+| **R5** | Missing lead and other owner's lead | `InternalLeadSecurityWebTest#r5_LeadInexistenteYOtroPropietario_Retornan404Identico` | Identical HTTP 404 `NOT_FOUND` response; owner-scoped repository lookup verified. |
+| **R6** | Missing, malformed, untrusted, or wrong audience token | `InternalLeadSecurityWebTest#r6_TokenInvalidoOIncorrecto_Retorna401SinInvocarRepositorio` | HTTP 401 Unauthorized; repository is never invoked. |
+| **R7** | Valid token without required scope | `InternalLeadSecurityWebTest#r7_ScopeInsuficiente_Retorna403SinInvocarRepositorio` | HTTP 403 Forbidden; repository is never invoked. |
+| **R8** | Multi-audience token containing `crm-api` | `InternalLeadSecurityWebTest#r8_AudienciaMultipleConCrmApi_Retorna200` | HTTP 200 OK; multi-audience support preserved. |
+| **R9** | Wrong issuer, expired (>30s), invalid/overflow subject | `InternalLeadSecurityWebTest#r9_EmisorExpiracionSujetoInvalido_Retornan401` | HTTP 401 Unauthorized before repository query; within 30s skew accepted. |
+| **R10** | Session-only or session plus invalid Bearer | `InternalLeadSecurityWebTest#r10_SesionWebSinTokenOConTokenInvalido_Retorna401` | HTTP 401 Unauthorized; no session fallback. |
+| **R11** | JWT subject differs from session/query tampering | `InternalLeadSecurityWebTest#r11_SoloJwtSubDeterminaPropietarioEnConsulta` | Query is scoped strictly to JWT `sub` (88), returning 404 despite session/query claiming 42. |
+| **R12** | JWT disabled | `JwtDisabledSecurityTest#a17_JwtDesactivado_RutasInternasFallanCerradasCon401` | Fails closed with HTTP 401 Unauthorized. |
+| **R13** | Internal Bearer request is stateless | `InternalLeadSecurityWebTest#r13_InvocacionInternaStateless_SinCsrfSinSesion` | No CSRF needed, no `Set-Cookie`, no HTTP session created. |
+| **R14** | Content negotiation and Accept header | `InternalLeadSecurityWebTest#r14_AcceptApplicationJson_RetornaJson`, `#r14_AcceptTextHtml_NoSirveSpaHtml` | Returns JSON for `application/json`; returns 406 for `text/html`. Never serves SPA HTML. |
+| **R15** | Non-numeric path variable | `InternalLeadSecurityWebTest#rutaInvalida_IdNoNumerico_Retorna400BadRequestSin500` | Returns HTTP 400 Bad Request; no 500 error or stack trace. |
+| **REG1** | Unit tests for `LeadService.obtenerInterno` | `LeadServiceImplTest` (4 new tests, 15 total) | All pass; verifies owner scoping, DTO mapping, and exception handling. |
+| **REG2** | Full non-IT regression suite | Maven verify command | 131 tests executed with 0 failures, 0 errors, 0 skipped. |
+| **DEP1** | Archived-lead 404 check | Deferred to task C12 (DSW-52) | Documented limitation; no archive state exists in current schema. |
+| **RUN1** | Live port 8080 smoke test | Deferred due to pre-existing process | Documented limitation; PID 95948 preserved on host. |
+
+### 7.4. Runnable validation commands
+
+Execute the following commands from the `backend/` directory using Java 21:
+
+```bash
+# Set Java 21 environment
+export JAVA_HOME="/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home"
+export PATH="$JAVA_HOME/bin:$PATH"
+
+# 1. Focused test suite for C03 and security regression (60 tests, 0 failures)
+./mvnw --batch-mode --no-transfer-progress test \
+  -Durleads.test.temp-dir=/private/var/folders/yy/mqdfwy8j0l9gz_rpfjxdcwf00000gn/T/opencode/manager-worker-dsw43-qcrx0vnx \
+  -Dtest=InternalLeadSecurityWebTest,LeadServiceImplTest,CrmJwtSecurityWebTest,SecurityCurrentUserProviderTest,JwtDisabledSecurityTest,AuthWebSecurityTest
+
+# 2. Full non-IT regression suite and JAR packaging (131 tests, 0 failures)
+./mvnw --batch-mode --no-transfer-progress verify \
+  -Durleads.test.temp-dir=/private/var/folders/yy/mqdfwy8j0l9gz_rpfjxdcwf00000gn/T/opencode/manager-worker-dsw43-qcrx0vnx
+```

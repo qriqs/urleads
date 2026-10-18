@@ -193,6 +193,41 @@ Se usará una forma estable, por ejemplo:
 - 409: conflicto de estado cuando aplique.
 - 500: error interno sin detalles sensibles.
 
+## Endpoints internos (Backend V2)
+
+This section describes internal inter-service endpoints exposed by the CRM service.
+
+### Internal lead lookup (`GET /internal/v1/leads/{id}`)
+
+Operative internal endpoint for inter-service communication (CRM -> Comercial / Agenda), implemented in Backend V2 (Task C03):
+
+- **Method and path:** `GET /internal/v1/leads/{id}`
+- **Authentication and security:** Requires HTTP header `Authorization: Bearer <token>`. The token must be an RS256-signed JWT issued by `urleads-crm`, containing audience `crm-api` and scope `crm.leads.read`. The subject (`sub`) must be a positive decimal string resolving to the authenticated owner ID. Prerequisite: `urleads.jwt.enabled=true`.
+- **Stateless execution:** Stateless request processing (`STATELESS`, `NullSecurityContextRepository`) with CSRF disabled exclusively for `/internal/**`. Session authentication is ignored with no fallback.
+- **Success response (200 OK):** Returns a minimal non-PII payload containing only the lead ID, current canonical stage, and next follow-up date:
+```json
+{
+  "id": 105,
+  "stage": "EN_SEGUIMIENTO",
+  "nextFollowUp": "2026-10-25"
+}
+```
+If the lead has no scheduled follow-up (such as in stage `CERRADO` or `NUEVO` without follow-up), `nextFollowUp` is returned as `null`:
+```json
+{
+  "id": 106,
+  "stage": "CERRADO",
+  "nextFollowUp": null
+}
+```
+- **Error responses:**
+  - `401 Unauthorized`: Missing or malformed token, invalid signature, untrusted key, expired beyond 30-second skew tolerance, wrong issuer, missing or invalid `aud`, or invalid subject.
+  - `403 Forbidden`: Valid token lacking the required `crm.leads.read` scope.
+  - `404 Not Found`: Lead does not exist or belongs to another owner (`{"status":404,"code":"NOT_FOUND","message":"Lead no encontrado"}`). Does not leak resource existence across owners.
+- **Content negotiation:** Returns `application/json`. Requests specifying `Accept: text/html` receive `406 Not Acceptable`; SPA HTML is never served.
+- **Application service reuse:** Core lookup logic is encapsulated in `LeadService.obtenerInterno(Long leadId, Long usuarioId)`, reusable directly by future internal integrations (such as SOAP C13) without HTTP self-calls.
+- **Known boundaries:** Exclusion of archived leads is a future dependency owned by task C12 (DSW-52); no archive state is evaluated in C03. Live port 8080 verification is constrained by existing local environment processes.
+
 ## Método PUT
 
 `PUT /api/leads/{id}` reemplaza todos los campos editables. El cliente envía

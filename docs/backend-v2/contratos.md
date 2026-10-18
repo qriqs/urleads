@@ -131,6 +131,14 @@ de cotizar o agendar actividades.
 - **403 Forbidden:** Token válido pero sin scope `crm.leads.read`.
 - **404 Not Found:** El lead no existe, pertenece a otro usuario o está archivado.
 
+> **Nota de implementación (C03):** Endpoint implementado en CRM (`backend/`) mediante
+> `InternalLeadController`, `LeadService.obtenerInterno` y el DTO inmutable `InternalLeadResponse`.
+> La consulta se encuentra acotada por propietario (`findByIdAndUsuarioId`) derivado del `sub` del
+> JWT verificado, retornando exclusivamente `id`, `stage` y `nextFollowUp` (o `null`).
+> *Dependencia de archivo:* La exclusión de leads archivados es un requisito de integración
+> dependiente de la tarea C12 (DSW-52), ya que el modelo actual no contiene campos de archivo.
+> Consulta detalles en [guia-cris.md](guia-cris.md#7-implementacion-y-verificacion-de-c03-consulta-interna-de-leads).
+
 ---
 
 <a id="paginacion-y-errores-estandar"></a>
