@@ -3,9 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
-import { Play, Sparkles, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Navbar } from "../components/Navbar";
 import { DashboardPreview } from "../components/DashboardPreview";
@@ -14,7 +13,6 @@ import { useAuth } from "../context/AuthContext";
 
 export default function LandingPage() {
   const { isAuthenticated } = useAuth();
-  const [showVideoModal, setShowVideoModal] = useState(false);
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden relative selection:bg-accent/20 selection:text-foreground">
@@ -73,7 +71,7 @@ export default function LandingPage() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-5 flex items-center gap-3"
+          className="mt-5 flex items-center justify-center"
         >
           {/* Primary button */}
           <Link to={isAuthenticated ? "/app" : "/login"}>
@@ -83,58 +81,11 @@ export default function LandingPage() {
               Go to CRM
             </Button>
           </Link>
-
-          {/* Play button */}
-          <Button
-            variant="ghost"
-            onClick={() => setShowVideoModal(true)}
-            aria-label="Play product video"
-            className="h-11 w-11 rounded-full border-0 bg-background shadow-[0_2px_12px_rgba(0,0,0,0.08)] hover:bg-background/80 flex items-center justify-center p-0 transition-all duration-200 active:scale-95"
-          >
-            <Play className="h-4 w-4 fill-foreground text-foreground translate-x-0.5" />
-          </Button>
         </motion.div>
 
         {/* 5. Dashboard Preview (custom coded, NOT an image) */}
         <DashboardPreview />
       </main>
-
-      {/* Video Modal if clicked */}
-      {showVideoModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in"
-          onClick={() => setShowVideoModal(false)}
-        >
-          <div
-            className="relative w-full max-w-4xl bg-background rounded-2xl overflow-hidden shadow-2xl border border-border"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-accent" />
-                <span className="font-semibold text-sm text-foreground">Nexora Product Tour</span>
-              </div>
-              <button
-                onClick={() => setShowVideoModal(false)}
-                className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                aria-label="Close modal"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="relative aspect-video bg-black">
-              <video
-                autoPlay
-                controls
-                className="w-full h-full object-cover"
-                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260319_015952_e1deeb12-8fb7-4071-a42a-60779fc64ab6.mp4"
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

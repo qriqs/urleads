@@ -25,9 +25,9 @@ export default function App() {
           <Route path="/app" element={<AuroraDashboard />}>
             <Route path="leads" element={<LeadsList />} />
             <Route path="leads/:id" element={<LeadDetail />} />
-            <Route path="reportes" element={<div className="p-8 text-white"><h2 className="text-2xl font-semibold mb-4">Reportes</h2><p>Módulo de reportes en construcción...</p></div>} />
-            <Route path="tareas" element={<div className="p-8 text-white"><h2 className="text-2xl font-semibold mb-4">Tareas</h2><p>Módulo de tareas en construcción...</p></div>} />
-            <Route path="ajustes" element={<div className="p-8 text-white"><h2 className="text-2xl font-semibold mb-4">Ajustes</h2><p>Módulo de ajustes en construcción...</p></div>} />
+            <Route path="reportes" element={<div className="p-8 text-foreground"><h2 className="text-2xl font-semibold mb-2">Reportes</h2><p className="text-muted-foreground text-sm">Módulo de reportes en construcción...</p></div>} />
+            <Route path="tareas" element={<div className="p-8 text-foreground"><h2 className="text-2xl font-semibold mb-2">Tareas</h2><p className="text-muted-foreground text-sm">Módulo de tareas en construcción...</p></div>} />
+            <Route path="ajustes" element={<div className="p-8 text-foreground"><h2 className="text-2xl font-semibold mb-2">Ajustes</h2><p className="text-muted-foreground text-sm">Módulo de ajustes en construcción...</p></div>} />
           </Route>
           <Route path="/preview" element={<MainLayout />}>
             <Route index element={<Dashboard />} />

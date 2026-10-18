@@ -62,12 +62,12 @@ body {
    ═══════════════════════════════════════════════════════════════════════ */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
 }
 
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
 
 *::-webkit-scrollbar-track {
@@ -76,28 +76,23 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  box-shadow: inset 0 0 6px rgba(255, 255, 255, 0.25), 0 2px 8px rgba(0, 0, 0, 0.3);
-  transition: background 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.45);
+  background: rgba(0, 0, 0, 0.3);
   border: 2px solid transparent;
   background-clip: padding-box;
-  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.4), 0 0 12px rgba(255, 255, 255, 0.35);
 }
 
 *::-webkit-scrollbar-thumb:active {
-  background: rgba(255, 255, 255, 0.65);
+  background: rgba(0, 0, 0, 0.45);
   border: 2px solid transparent;
   background-clip: padding-box;
-  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.6), 0 0 14px rgba(0, 201, 136, 0.4);
 }
 
 *::-webkit-scrollbar-corner {
@@ -105,22 +100,23 @@ body {
 }
 
 
-/* ── Liquid Glass System (Ruixen UI Inspired) ── */
+/* ── Liquid Glass System (Clean White & Frosted Glass) ── */
 .liquid-glass-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  color: hsl(var(--foreground));
 }
 
 .liquid-glass-modal {
-  background: rgba(255, 255, 255, 0.14) !important;
-  backdrop-filter: blur(28px) saturate(125%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(125%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.26) !important;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
-  color: #ffffff !important;
+  background: #ffffff !important;
+  backdrop-filter: blur(24px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(140%) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 /* ── Spacious Lead Creation & Edit Modal ── */
@@ -132,6 +128,10 @@ body {
   display: flex !important;
   flex-direction: column !important;
   gap: 28px !important;
+  background: #ffffff !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.18) !important;
 }
 
 @media (max-width: 640px) {
@@ -148,7 +148,7 @@ body {
   align-items: flex-start !important;
   justify-content: space-between !important;
   padding-bottom: 22px !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
   gap: 16px !important;
 }
 
@@ -160,47 +160,45 @@ body {
   border-radius: 9999px !important;
   font-size: 13px !important;
   font-weight: 500 !important;
-  background: rgba(255, 255, 255, 0.16) !important;
-  border: 1px solid rgba(255, 255, 255, 0.28) !important;
-  color: #ffffff !important;
+  background: hsl(var(--secondary)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
   margin-bottom: 10px !important;
-  backdrop-filter: blur(14px) !important;
 }
 
 .lead-modal-dialog .lead-modal-title {
-  font-size: 30px !important;
+  font-size: 28px !important;
   font-weight: 700 !important;
-  color: #ffffff !important;
+  color: hsl(var(--foreground)) !important;
   letter-spacing: -0.025em !important;
   line-height: 1.2 !important;
 }
 
 .lead-modal-dialog .lead-modal-subtitle {
-  font-size: 15px !important;
-  color: rgba(255, 255, 255, 0.72) !important;
+  font-size: 14px !important;
+  color: hsl(var(--muted-foreground)) !important;
   margin-top: 6px !important;
   line-height: 1.45 !important;
 }
 
 .lead-modal-dialog .lead-modal-close {
-  width: 44px !important;
-  height: 44px !important;
+  width: 40px !important;
+  height: 40px !important;
   border-radius: 9999px !important;
-  background: rgba(255, 255, 255, 0.12) !important;
-  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  background: hsl(var(--secondary)) !important;
+  border: 1px solid hsl(var(--border)) !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  color: rgba(255, 255, 255, 0.8) !important;
+  color: hsl(var(--muted-foreground)) !important;
   cursor: pointer !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
   flex-shrink: 0 !important;
 }
 
 .lead-modal-dialog .lead-modal-close:hover {
-  background: rgba(255, 255, 255, 0.24) !important;
-  border-color: rgba(255, 255, 255, 0.4) !important;
-  color: #ffffff !important;
+  background: hsl(var(--secondary) / 0.8) !important;
+  color: hsl(var(--foreground)) !important;
   transform: rotate(90deg) scale(1.05) !important;
 }
 
@@ -233,31 +231,34 @@ body {
 }
 
 .lead-modal-dialog label {
-  font-size: 14px !important;
+  font-size: 13px !important;
   font-weight: 600 !important;
-  color: rgba(255, 255, 255, 0.95) !important;
+  color: hsl(var(--foreground)) !important;
   letter-spacing: 0.01em !important;
   display: block !important;
 }
 
 .lead-modal-dialog .liquid-glass-input {
-  height: 52px !important;
-  padding: 0 20px !important;
-  font-size: 15px !important;
-  border-radius: 16px !important;
+  height: 48px !important;
+  padding: 0 16px !important;
+  font-size: 14px !important;
+  border-radius: 12px !important;
   width: 100% !important;
+  background: #ffffff !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 .lead-modal-dialog .lead-helper-text {
   font-size: 12px !important;
-  color: rgba(255, 255, 255, 0.55) !important;
+  color: hsl(var(--muted-foreground)) !important;
   font-style: italic !important;
   margin-top: 2px !important;
 }
 
 .lead-modal-dialog .lead-error-text {
   font-size: 12px !important;
-  color: #f87171 !important;
+  color: #ef4444 !important;
   font-weight: 500 !important;
   margin-top: 3px !important;
 }
@@ -267,20 +268,20 @@ body {
   align-items: center !important;
   justify-content: flex-end !important;
   gap: 16px !important;
-  padding-top: 24px !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.18) !important;
+  padding-top: 20px !important;
+  border-top: 1px solid hsl(var(--border)) !important;
   margin-top: 6px !important;
 }
 
 .lead-modal-dialog .lead-btn-cancel {
-  height: 50px !important;
-  padding: 0 28px !important;
-  font-size: 15px !important;
+  height: 44px !important;
+  padding: 0 24px !important;
+  font-size: 14px !important;
   font-weight: 500 !important;
   border-radius: 9999px !important;
-  background: rgba(255, 255, 255, 0.11) !important;
-  border: 1px solid rgba(255, 255, 255, 0.24) !important;
-  color: rgba(255, 255, 255, 0.85) !important;
+  background: hsl(var(--secondary)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
   cursor: pointer !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
   display: inline-flex !important;
@@ -289,15 +290,14 @@ body {
 }
 
 .lead-modal-dialog .lead-btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.22) !important;
-  border-color: rgba(255, 255, 255, 0.4) !important;
-  color: #ffffff !important;
+  background: hsl(var(--secondary) / 0.8) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 .lead-modal-dialog .lead-btn-submit {
-  height: 50px !important;
-  padding: 0 32px !important;
-  font-size: 15px !important;
+  height: 44px !important;
+  padding: 0 28px !important;
+  font-size: 14px !important;
   font-weight: 600 !important;
 }
 
@@ -335,14 +335,14 @@ body {
 .lead-delete-dialog .delete-title {
   font-size: 22px !important;
   font-weight: 700 !important;
-  color: #ffffff !important;
+  color: hsl(var(--foreground)) !important;
   letter-spacing: -0.015em !important;
 }
 
 .lead-delete-dialog .delete-desc {
   font-size: 15px !important;
   line-height: 1.55 !important;
-  color: rgba(255, 255, 255, 0.72) !important;
+  color: hsl(var(--muted-foreground)) !important;
   margin-top: 8px !important;
 }
 
@@ -352,15 +352,15 @@ body {
   justify-content: flex-end !important;
   gap: 14px !important;
   padding-top: 20px !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-top: 1px solid hsl(var(--border)) !important;
 }
 
 .lead-delete-dialog .delete-btn-confirm {
   height: 48px !important;
   padding: 0 24px !important;
   border-radius: 9999px !important;
-  background: rgba(239, 68, 68, 0.3) !important;
-  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+  background: #ef4444 !important;
+  border: 1px solid #dc2626 !important;
   color: #ffffff !important;
   font-size: 14px !important;
   font-weight: 600 !important;
@@ -372,17 +372,16 @@ body {
 }
 
 .lead-delete-dialog .delete-btn-confirm:hover {
-  background: rgba(239, 68, 68, 0.45) !important;
-  border-color: rgba(239, 68, 68, 0.7) !important;
+  background: #dc2626 !important;
 }
 
 .lead-delete-dialog .delete-btn-cancel {
   height: 48px !important;
   padding: 0 24px !important;
   border-radius: 9999px !important;
-  background: rgba(255, 255, 255, 0.11) !important;
-  border: 1px solid rgba(255, 255, 255, 0.22) !important;
-  color: rgba(255, 255, 255, 0.85) !important;
+  background: hsl(var(--secondary)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
   font-size: 14px !important;
   font-weight: 500 !important;
   cursor: pointer !important;
@@ -390,18 +389,17 @@ body {
 }
 
 .lead-delete-dialog .delete-btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-  color: #ffffff !important;
+  background: hsl(var(--secondary) / 0.8) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 /* Date picker icon in glass mode */
 input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
   cursor: pointer;
-  opacity: 0.75;
+  opacity: 0.65;
 }
 input[type="date"]::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
+  opacity: 0.95;
 }
 
 /* Glass Select & DatePicker helpers */
@@ -410,12 +408,11 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   flex-direction: column !important;
   gap: 4px !important;
   padding: 8px !important;
-  background: rgba(255, 255, 255, 0.16) !important;
-  backdrop-filter: blur(28px) saturate(130%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.28) !important;
-  border-radius: 20px !important;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  background: #ffffff !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  color: hsl(var(--foreground)) !important;
   z-index: 70 !important;
   will-change: transform, opacity !important;
   transform: translate3d(0, 0, 0) !important;
@@ -426,12 +423,11 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   display: flex !important;
   flex-direction: column !important;
   padding: 16px !important;
-  background: rgba(255, 255, 255, 0.16) !important;
-  backdrop-filter: blur(28px) saturate(130%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.28) !important;
-  border-radius: 22px !important;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  background: #ffffff !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  color: hsl(var(--foreground)) !important;
   z-index: 70 !important;
   will-change: transform, opacity !important;
   transform: translate3d(0, 0, 0) !important;
@@ -471,76 +467,66 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
 
 .liquid-glass-input {
-  background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
-  color: #ffffff;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #ffffff !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  color: hsl(var(--foreground)) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .liquid-glass-input:focus {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2), inset 0 1px 2px rgba(0, 0, 0, 0.08);
-  outline: none;
+  background: #ffffff !important;
+  border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15) !important;
+  outline: none !important;
 }
 
 .liquid-glass-pill {
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: hsl(var(--secondary) / 0.7) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
 }
 
 .liquid-glass-btn-primary {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(6, 182, 212, 0.35) 100%);
-  border: 1px solid rgba(52, 211, 153, 0.5);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.45);
-  color: #ffffff;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: hsl(var(--primary)) !important;
+  border: 1px solid hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .liquid-glass-btn-primary:hover {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.5) 0%, rgba(6, 182, 212, 0.5) 100%);
-  border-color: rgba(52, 211, 153, 0.7);
-  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  background: hsl(var(--primary) / 0.9) !important;
   transform: translateY(-1px);
 }
 
 .liquid-glass-btn-secondary {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  color: rgba(255, 255, 255, 0.85);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: hsl(var(--secondary)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .liquid-glass-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
-  color: #ffffff;
+  background: hsl(var(--secondary) / 0.8) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 .liquid-glass-btn-danger {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  color: #fca5a5;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: rgba(239, 68, 68, 0.1) !important;
+  border: 1px solid rgba(239, 68, 68, 0.25) !important;
+  color: #dc2626 !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .liquid-glass-btn-danger:hover {
-  background: rgba(239, 68, 68, 0.28);
-  border-color: rgba(239, 68, 68, 0.55);
-  color: #ffffff;
-  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25) !important;
 }
 
 /* Ensure empty state is always strictly centered horizontally and vertically with guaranteed separation */
@@ -553,6 +539,10 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   min-height: 440px !important;
   gap: 28px !important;
   padding: 48px 24px !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 20px !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 .leads-empty-state * {
@@ -565,14 +555,12 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   align-items: center !important;
   justify-content: center !important;
   gap: 8px !important;
-  background: rgba(255, 255, 255, 0.175) !important;
-  backdrop-filter: blur(16px) saturate(115%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(115%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  color: #ffffff !important;
+  background: hsl(var(--primary)) !important;
+  border: 1px solid hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
   border-radius: 9999px !important;
   font-weight: 500 !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
   position: relative !important;
   overflow: hidden !important;
   cursor: pointer !important;
@@ -580,28 +568,15 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .aurora-chip-btn:hover {
-  background: rgba(255, 255, 255, 0.28) !important;
-  border-color: rgba(255, 255, 255, 0.45) !important;
+  background: hsl(var(--primary) / 0.9) !important;
+  border-color: hsl(var(--primary) / 0.9) !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
 }
 
 .aurora-chip-btn:active {
-  transform: translateY(0px) scale(0.97) !important;
-  background: rgba(255, 255, 255, 0.22) !important;
-}
-
-.aurora-chip-btn::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 38%;
-  pointer-events: none;
-  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.22) 50%, transparent 100%);
-  transform: translate3d(-150%, 0, 0) skewX(-18deg);
-  animation: sheen 3.5s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+  transform: translateY(0px) scale(0.98) !important;
+  background: hsl(var(--primary) / 0.85) !important;
 }
 
 /* Sileo Toaster Viewport Elevation */
@@ -616,25 +591,23 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   padding-left: 44px !important;
   padding-right: 36px !important;
   border-radius: 9999px !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background: hsl(var(--secondary) / 0.5) !important;
+  border: 1px solid hsl(var(--border)) !important;
   font-size: 0.875rem !important;
-  color: #ffffff !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+  color: hsl(var(--foreground)) !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
   box-sizing: border-box !important;
 }
 
 .lead-search-input::placeholder {
-  color: rgba(255, 255, 255, 0.45) !important;
+  color: hsl(var(--muted-foreground)) !important;
 }
 
 .lead-search-input:focus {
   outline: none !important;
-  border-color: rgba(0, 201, 136, 0.5) !important;
-  box-shadow: 0 0 0 2px rgba(0, 201, 136, 0.3) !important;
-  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.15) !important;
+  background: #ffffff !important;
 }
 
 .lead-btn-new {
