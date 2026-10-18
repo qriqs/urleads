@@ -1,9 +1,13 @@
-# Plan de ejecución Backend V2 (45 tareas)
+# Plan de ejecución Backend V2 (45 tareas planificadas)
 
 Este documento es el punto de entrada oficial para el desarrollo del Backend V2
 de UrLeads. Sustituye la propuesta preliminar de 12 tareas por un plan de
-ejecución estructurado de **45 tareas cerradas (15 por integrante)** en tres
-microservicios desacoplados: CRM, Comercial y Agenda/Notificaciones.
+ejecución estructurado de **45 tareas planificadas, ninguna implementada por esta
+preparación**. El horizonte del equipo de dos días representa una ventana de
+planificación inicial, no una promesa de completar 45 tareas complejas en dos días.
+La prioridad del equipo se concentra en **15 tareas principales y 6 de verificación
+técnica e integración**, dejando **24 tareas de ampliación** en backlog para
+incorporación progresiva.
 
 El catálogo inicial de ideas de ampliación se preserva íntegro en
 [docs/ideas-ampliacion.md](ideas-ampliacion.md).
@@ -12,10 +16,11 @@ El catálogo inicial de ideas de ampliación se preserva íntegro en
 
 ## 1. Arquitectura y distribución de servicios
 
-El trabajo se divide en tres microservicios autónomos en Spring Boot con Java 21,
-cada uno desarrollado por un integrante en su propia rama y carpeta:
+El desarrollo se organiza en tres microservicios autónomos en Spring Boot con
+Java 21, cada uno con su propio proyecto, base de datos PostgreSQL aislada y
+rama de trabajo:
 
-| Servicio | Responsable | Directorio | Rama Git | Puerto | Guía y tareas |
+| Servicio | Responsable | Directorio | Rama Git | Puerto | Guía de trabajo |
 |---|---|---|---|:---:|---|
 | **CRM** | Cris | `backend/` | `feat/crm` | `8080` | [Guía de Cris](backend-v2/guia-cris.md) (C01–C15) |
 | **Comercial** | Sebas | `services/comercial/` | `feat/comercial` | `8081` | [Guía de Sebas](backend-v2/guia-sebas.md) (S01–S15) |
@@ -27,16 +32,47 @@ cada uno desarrollado por un integrante en su propia rama y carpeta:
 
 ---
 
-## 2. Estructura de las 45 tareas en Linear
+## 2. Decisiones tecnológicas seleccionadas
+
+Las tecnologías seleccionadas para el desarrollo de los tres microservicios son:
+
+1. **Cliente HTTP inter-servicio:** **OpenFeign** con Resilience4j (Circuit Breaker
+   y timeouts) para el consumo de CRM desde Comercial.
+2. **Mensajería asíncrona:** **RabbitMQ con Spring AMQP (`spring-rabbit`)**, usando
+   topic exchange durable `urleads.events.v1`, evento canónico `quotation.accepted.v1`,
+   cola `agenda.quotation-accepted.v1`, patrón Transactional Outbox y Dead Letter
+   Queue (`urleads.dead.v1` / `agenda.quotation-accepted.dlq`).
+   - *Nota:* Mosquitto y MQTT quedan expresamente excluidos al no existir
+     productores o dispositivos IoT que requieran ese protocolo.
+3. **Seguridad e identidad:** **Spring Security con tokens JWT firmados en RS256**.
+   CRM es el emisor (`iss: "urleads-crm"`); Comercial y Agenda validan con la clave
+   pública. La UI web legacy conserva sesión y CSRF. Emisión vía `POST /api/auth/access-token`.
+4. **Transporte en tiempo real:** **WebSocket estándar (RFC 6455)** en `/ws/notifications`.
+   Autenticación mediante primer frame JSON. Socket.IO queda excluido como protocolo
+   propietario incompatible; solo se consideraría si existiera una exigencia
+   académica explícita.
+5. **Documentación y pruebas:** **OpenAPI 3 / Swagger UI** y colecciones **Postman**
+   versionadas por servicio.
+6. **Integración externa y SOAP (C13):** Servicio SOAP/XML mínimo con WSDL/XSD y
+   pruebas SoapUI. Permanece como tarea de ampliación (stretch) sujeta a confirmación
+   curricular; la importación de Excel (C10) no sustituye un requisito de SOAP.
+7. **Descubrimiento y Gateway:** Eureka y Spring Cloud Gateway son componentes
+   opcionales de infraestructura que no forman parte de las 45 tareas base.
+
+---
+
+## 3. Estructura de las 45 tareas en Linear
 
 Cada integrante tiene asignadas exactamente 15 tareas organizadas en tres bloques:
 - **01–05: PRINCIPAL (Alta prioridad, estado `Todo`):** Núcleo funcional básico y mocks de contrato.
 - **06–13: AMPLIACIÓN (Prioridad media, estado `Backlog`):** Funcionalidades de valor extendido.
 - **14–15: INTEGRACIÓN (Alta prioridad, estado `Todo`):** Pruebas de resiliencia e integración real.
 
+*(Nota: Los estados de las tablas son la fotografía inicial; consulta Linear para el avance en vivo).*
+
 ### Servicio CRM (Cris) — `backend/` (`feat/crm`)
 
-| Código | Tarea | Bloque | Estado | Issue Linear |
+| Código | Tarea | Bloque | Estado inicial | Issue Linear |
 |:---:|---|:---:|:---:|:---:|
 | **C01** | Preparar CRM independiente y auditar etapas | Principal | `Todo` | [DSW-41](https://linear.app/enmanuelprojects/issue/DSW-41) |
 | **C02** | Identidad estándar y validación de tokens JWT | Principal | `Todo` | [DSW-42](https://linear.app/enmanuelprojects/issue/DSW-42) |
@@ -56,7 +92,7 @@ Cada integrante tiene asignadas exactamente 15 tareas organizadas en tres bloque
 
 ### Servicio Comercial (Sebas) — `services/comercial/` (`feat/comercial`)
 
-| Código | Tarea | Bloque | Estado | Issue Linear |
+| Código | Tarea | Bloque | Estado inicial | Issue Linear |
 |:---:|---|:---:|:---:|:---:|
 | **S01** | Configuración base de Comercial y migraciones independientes | Principal | `Todo` | [DSW-56](https://linear.app/enmanuelprojects/issue/DSW-56) |
 | **S02** | CRUD de catálogo de productos y servicios con moneda | Principal | `Todo` | [DSW-57](https://linear.app/enmanuelprojects/issue/DSW-57) |
@@ -76,7 +112,7 @@ Cada integrante tiene asignadas exactamente 15 tareas organizadas en tres bloque
 
 ### Servicio Agenda y Notificaciones (Alex) — `services/agenda/` (`feat/agenda-notificaciones`)
 
-| Código | Tarea | Bloque | Estado | Issue Linear |
+| Código | Tarea | Bloque | Estado inicial | Issue Linear |
 |:---:|---|:---:|:---:|:---:|
 | **A01** | Configuración base de Agenda y migraciones independientes | Principal | `Todo` | [DSW-71](https://linear.app/enmanuelprojects/issue/DSW-71) |
 | **A02** | API REST de notificaciones persistentes y paginadas | Principal | `Todo` | [DSW-72](https://linear.app/enmanuelprojects/issue/DSW-72) |
@@ -93,21 +129,3 @@ Cada integrante tiene asignadas exactamente 15 tareas organizadas en tres bloque
 | **A13** | Preferencias de notificación y horario laboral por usuario | Ampliación | `Backlog` | [DSW-83](https://linear.app/enmanuelprojects/issue/DSW-83) |
 | **A14** | Swagger UI, Postman y verificación aislada de WebSocket | Integración | `Todo` | [DSW-84](https://linear.app/enmanuelprojects/issue/DSW-84) |
 | **A15** | Integración real con CRM, Comercial y recuperación tras fallos | Integración | `Todo` | [DSW-85](https://linear.app/enmanuelprojects/issue/DSW-85) |
-
----
-
-## 3. Principios de trabajo asíncrono y fiabilidad
-
-1. **Avanzar sin esperar (Mocks y fixtures):** Cada desarrollador puede avanzar en
-   sus tareas principales de forma autónoma. Sebas utiliza WireMock para simular
-   la respuesta de CRM en Feign (S04), y Alex utiliza fixtures sintéticos para
-   probar el consumidor RabbitMQ (A03) sin requerir que los otros servicios estén
-   desplegados en vivo.
-2. **Scoping estricto por usuario:** Toda entidad y operación está aislada por el
-   `sub` del token JWT autenticado. No se aceptan parámetros de propietario
-   arbitrarios desde el cliente.
-3. **Persistencia antes de ACK:** Los eventos asíncronos recibidos por RabbitMQ se
-   persisten en base de datos antes de confirmar el mensaje al broker.
-4. **Respaldo REST para WebSocket:** La entrega en tiempo real por WebSocket es
-   un canal de conveniencia en vivo; toda notificación es persistida en base de
-   datos y consultable en `GET /api/v1/notifications`.
