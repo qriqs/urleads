@@ -537,3 +537,55 @@ export PATH="$JAVA_HOME/bin:$PATH"
 ./mvnw --batch-mode --no-transfer-progress verify \
   -Durleads.test.temp-dir=/private/var/folders/yy/mqdfwy8j0l9gz_rpfjxdcwf00000gn/T/opencode/manager-worker-dsw43-qcrx0vnx
 ```
+
+---
+
+## 8. Implementación y verificación de C04 (Transactional Outbox y eventos CRM)
+
+### 8.1. Arquitectura de outbox, sobre canónico y desacoplamiento con RabbitMQ
+
+1. **Patrón Transactional Outbox:**
+   - La inserción en la tabla `outbox` se realiza en la misma transacción de base de datos (`@Transactional`) que la mutación del lead (`crear`, `actualizar`, `eliminar`) en `LeadServiceImpl`.
+   - Si la transacción del lead falla o se revierte por validación o error de negocio, ningún evento queda en la tabla `outbox` (atomicidad estricta).
+   - Las operaciones HTTP de leads (`POST /api/leads`, `PUT /api/leads/{id}`, `DELETE /api/leads/{id}`) nunca publican sincrónicamente ni dependen de la disponibilidad del broker RabbitMQ.
+
+2. **Sobre estándar y privacidad (No-PII):**
+   - Intercambio canónico: topic exchange durable `urleads.events.v1`.
+   - Routing keys exactas: `lead.created.v1`, `lead.updated.v1`, `lead.deleted.v1`.
+   - Sobre de evento: `eventId` (UUID), `eventType`, `version: 1`, `occurredAt` (UTC ISO-8601), `ownerId` (cadena decimal obtenida del propietario autenticado).
+   - Data para creación/actualización: `{ "leadId": 105, "stage": "EN_SEGUIMIENTO", "nextFollowUp": "2026-10-28" }`. Si la fecha es nula, se serializa como `null` JSON explícito.
+   - Data para eliminación: `{ "leadId": 105 }`.
+   - Se excluye estrictamente cualquier dato personal o privado (nombres, correos, teléfonos, notas, servicios).
+
+3. **Publicador asíncrono y fiabilidad:**
+   - `OutboxPublisher` ejecuta de manera asíncrona periódica (`@Scheduled(fixedDelayString = "${urleads.outbox.publisher.interval-ms:5000}")`) seleccionando registros pendientes con `FOR UPDATE SKIP LOCKED` para evitar colisiones entre instancias concurrentes.
+   - Publicación persistente (`MessageDeliveryMode.PERSISTENT`) con confirmaciones de publicador (*publisher confirms*, `spring.rabbitmq.publisher-confirm-type=correlated`).
+   - Tras confirmación positiva (ack), el registro pasa a `status = 'DELIVERED'` con marca de tiempo `sent_at`.
+   - En caso de nack, expiración de tiempo de espera, error de conexión o devolución por mensaje no enrutable (`basic.return`), el registro permanece en `PENDING` (o `FAILED` si supera `maxRetries`), registrando `last_error` y programando reintento con backoff exponencial, reutilizando idéntico `eventId` y `payload` para garantizar semántica at-least-once.
+
+### 8.2. Esquema Flyway (V3__create_outbox_table.sql)
+
+Migración versionada `V3__create_outbox_table.sql` con constraints de unicidad para `event_id`, estados permitidos (`PENDING`, `DELIVERED`, `FAILED`), y optimización mediante índices compuestos para búsqueda por estado y tiempo de reintento.
+
+### 8.3. Matriz de aceptación y resultados C04
+
+| ID | Escenario | Resultado esperado | Evidencia |
+|---|---|---|---|
+| **R1** | Creación, actualización y eliminación exitosa de lead | Evento outbox persistido atómicamente en la misma transacción | `LeadServiceImplOutboxTest`, `OutboxServiceImplTest` |
+| **R1b** | Validación fallida o lead no encontrado | Operación aborta; no se encola ningún evento outbox | `LeadServiceImplOutboxTest` |
+| **R2** | Estructura del evento y privacidad | Sobre canónico exacto, ownerId string, fecha UTC, data mínima sin PII | `LeadEventSerializationTest` |
+| **R3** | RabbitMQ no disponible durante operación de lead | Operación HTTP persiste localmente sin bloqueo por el broker | `LeadServiceImplOutboxTest` |
+| **R3b** | Publisher confirm positivo | Mensaje persistente enviado y outbox marcado DELIVERED | `OutboxPublisherTest` |
+| **R4** | Confirmación negativa, retorno no enrutable, timeout o caída | Evento retenido para reintento con idéntico eventId y payload; reintentos acotados | `OutboxPublisherTest` |
+| **REG1** | Regresión de endpoints y servicios existentes | Suite completa de 152 pruebas unitarias/slice en verde | `mvn verify` exitoso (0 fallas) |
+
+### 8.4. Comandos reproducibles de verificación
+
+```bash
+# 1. Pruebas focalizadas de C04 y regresión de LeadServiceImpl (36 pruebas, 0 fallas)
+./mvnw --batch-mode --no-transfer-progress test \
+  -Dtest=LeadEventSerializationTest,OutboxServiceImplTest,LeadServiceImplOutboxTest,OutboxPublisherTest,LeadServiceImplTest
+
+# 2. Verificación completa del backend y empaquetado JAR (152 pruebas, 0 fallas)
+./mvnw --batch-mode --no-transfer-progress verify
+```
