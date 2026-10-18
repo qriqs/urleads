@@ -78,6 +78,8 @@ credenciales de acceso inter-servicio protegidas por la sesión web existente:
 | GET | `/api/leads/{id}/notes` | Listar entradas internas de bitácora cronológicamente. |
 | POST | `/api/leads/{id}/notes` | Registrar entrada interna; responde 201. |
 | GET | `/api/dashboard` | Resumen y pendientes del usuario. |
+| POST | `/api/leads/import/preview` | Vista previa de importación desde archivo Excel (.xlsx) con diagnóstico fila por fila; responde 200. |
+| POST | `/api/leads/import/confirm` | Confirmación transaccional e idempotente de importación desde Excel; responde 200. |
 
 La lista acepta `search`, `stage`, `followUp`, `priority`, `origin` y `page`; el tamaño de página
 será limitado por el servidor. Los valores de `followUp` serán `today`,
@@ -259,6 +261,122 @@ Ejemplo de cuerpo para `PUT /api/leads/{id}/tags`:
   "tagIds": [1, 2]
 }
 ```
+
+## Importación de leads desde Excel (Backend V2 C10 / DSW-50)
+
+Endpoints acotados para la carga masiva y validada de leads mediante archivos `.xlsx` bajo plantilla fija de 8 columnas, con diagnóstico detallado fila por fila y confirmación transaccional e idempotente (Tarea C10 / DSW-50):
+
+| Método | Ruta | Contenido | Resultado |
+|---|---|---|---|
+| POST | `/api/leads/import/preview` | `multipart/form-data` (`file`) | Diagnóstico fila por fila y emisión de `previewId` criptográfico (200 OK). No realiza escrituras en base de datos. |
+| POST | `/api/leads/import/confirm` | `multipart/form-data` (`file`, `previewId`) | Confirmación atómica e idempotente (200 OK); reintentos exactos retornan el recibo durable. |
+
+### Contrato de petición y plantilla fija
+
+- **Formato admitido:** Exclusivamente libros en formato `.xlsx` (OpenXML). Se rechaza cualquier otra extensión o archivos corruptos/no-ZIP mediante verificación estricta de bytes mágicos (`PK\003\004`).
+- **Límites de carga y envoltura HTTP:**
+  - El contenedor de servlet acota la petición multipart a nivel de infraestructura mediante `spring.servlet.multipart.max-file-size=5MB` y `spring.servlet.multipart.max-request-size=6MB` (para albergar holgadamente las partes multipart y parámetros sin buffer desmedido).
+  - A nivel de aplicación, se valida de forma exacta el límite de **5 MiB** (5,242,880 bytes) y un tope de **500 filas de datos** (excluyendo cabecera). Archivos que superen estos límites se rechazan con `400 Bad Request` (`VALIDATION_ERROR`).
+- **Estructura de la hoja:** Se procesa exclusivamente la primera hoja del libro.
+- **Cabeceras obligatorias (orden y nombres exactos en fila 1):**
+  1. `nombre`: Obligatorio, longitud 2..120 caracteres.
+  2. `telefono`: Opcional, pero se requiere al menos teléfono o correo. Longitud máxima 50. Normalizado a dígitos ASCII.
+  3. `correo`: Opcional, pero se requiere al menos teléfono o correo. Longitud máxima 120. Formato de correo electrónico estándar. Normalizado a minúsculas canónicas (`Locale.ROOT`).
+  4. `service`: Opcional, longitud máxima 255 caracteres.
+  5. `etapa`: Obligatorio. Valores permitidos: `NUEVO`, `EN_SEGUIMIENTO`, `CERRADO`.
+  6. `priority`: Opcional. Si se omite o viene en blanco, aplica valor por defecto `MEDIA`. Si se indica, solo se permite `BAJA`, `MEDIA` o `ALTA` (insensible a mayúsculas/minúsculas).
+  7. `origin`: Opcional. Si se omite o viene en blanco, aplica valor por defecto `MANUAL`. Si se indica, solo se permite `WEB`, `REFERIDO` o `MANUAL` (insensible a mayúsculas/minúsculas).
+  8. `proximoSeguimiento`: Opcional. Formato ISO `YYYY-MM-DD` o celda nativa de fecha de Excel. Si la etapa es `CERRADO`, el valor se limpia automáticamente a `null`.
+- **Política de filas en blanco:** Filas 100% vacías (todas las celdas nulas o con solo espacios) son ignoradas de manera segura y no consumen límite de filas ni aparecen en el diagnóstico. Filas parcialmente pobladas son evaluadas como filas de datos y sujetas a validación de campos obligatorios.
+- **Protección contra fórmulas:** Las fórmulas en celdas de datos no son evaluadas y se rechazan sistemáticamente como entrada inválida (`No se permiten fórmulas en las celdas`).
+- **Seguridad del parser:** Procesamiento streaming basado en SAX (`XSSFReader` y `XMLHelper.newXMLReader()`) con DOCTYPE deshabilitado (`disallow-doctype-decl`), entidades externas bloqueadas (defensa XXE) y límites de ratio de inflación activos (`ZipSecureFile` contra Zip Bombs). La configuración de seguridad del parser opera bajo fallo cerrado (falla con error seguro si no se pueden establecer las directivas de protección).
+- **Configuración criptográfica:** La generación y descifrado de tokens de vista previa requiere configurar la variable de entorno `URLEADS_IMPORT_TOKEN_SECRET` (o propiedad `urleads.import.token-secret`) con un secreto de al menos 32 caracteres. El sistema opera bajo fallo cerrado y rechaza operaciones de importación si dicha configuración está ausente o es débil. No existen claves fijas en código.
+
+### Detección de duplicados y aislamiento de propietario
+
+- **Duplicados intra-archivo:** Si múltiples filas del mismo archivo presentan el mismo correo o teléfono normalizado, la primera ocurrencia es válida y las siguientes se marcan como `DUPLICATE` indicando la fila conflictiva previa.
+- **Duplicados en base de datos:** Se validan contra leads existentes pertenecientes exclusivamente al usuario autenticado (`usuario_id`). Si el mismo teléfono o correo existe para el usuario, la fila se marca como `DUPLICATE`.
+- **Aislamiento estricto:** La existencia de contactos idénticos en leads de otros usuarios no genera conflictos ni revela su existencia (`existsByUsuarioId...`).
+
+### Semántica de Preview (`POST /api/leads/import/preview`)
+
+Genera un diagnóstico detallado fila por fila sin realizar ninguna mutación en la base de datos (0 escrituras):
+- Si todas las filas son válidas y hay al menos una fila de datos, `canConfirm` es `true` y se emite un `previewId` totalmente opaco cifrado de forma autenticada con AES-256-GCM (IV de 12 bytes y etiqueta de autenticación de 128 bits). No expone usuario, marcas de tiempo ni resúmenes en texto plano al ser inspeccionado.
+- Si el archivo contiene una o más filas con error o duplicadas, `canConfirm` es `false`. Un archivo con cualquier error no es apto para confirmación.
+
+Ejemplo de respuesta exitosa de preview:
+```json
+{
+  "previewId": "eyJhbGciOiJIUzI1NiJ9...",
+  "totalRows": 2,
+  "validRows": 2,
+  "invalidRows": 0,
+  "canConfirm": true,
+  "rows": [
+    {
+      "rowNumber": 2,
+      "status": "VALID",
+      "values": {
+        "name": "Juan Pérez",
+        "phone": "987654321",
+        "email": "juan@example.com",
+        "service": "Consultoría",
+        "stage": "NUEVO",
+        "priority": "MEDIA",
+        "origin": "MANUAL",
+        "nextFollowUp": "2026-11-15"
+      },
+      "errors": []
+    },
+    {
+      "rowNumber": 3,
+      "status": "VALID",
+      "values": {
+        "name": "María López",
+        "phone": "912345678",
+        "email": "maria@example.com",
+        "service": "Auditoría",
+        "stage": "EN_SEGUIMIENTO",
+        "priority": "ALTA",
+        "origin": "WEB",
+        "nextFollowUp": "2026-12-01"
+      },
+      "errors": []
+    }
+  ]
+}
+```
+
+### Semántica de Confirmación (`POST /api/leads/import/confirm`)
+
+Inserta atómicamente la totalidad de los leads de un archivo previamente verificado:
+- **Parámetros requeridos:** Multipart `file` (el mismo archivo .xlsx) y parámetro `previewId`.
+- **Orden de verificación y ciclo de vida del recibo:**
+  1. Autentica y descifra el token AES-GCM, comprobando que pertenezca al usuario en sesión y que el resumen SHA-256 del archivo coincida exactamente con el vinculado al token.
+  2. Si existe un recibo previo confirmado en `lead_import_receipt` para este token y propietario, retorna inmediatamente el resultado almacenado (idempotencia durable). El reintento exacto es válido **indefinidamente** (incluso tras 24 horas y tras reiniciar el servicio), sin recrear leads ni eventos outbox.
+  3. Si es un primer uso (token aún no confirmado), se verifica que no hayan transcurrido más de 24 horas desde la vista previa. Pasadas las 24h, tokens no confirmados expiran y son rechazados.
+- **Transaccionalidad (Todo o nada):** Si cualquier fila falla en validación o restricción de base de datos, se aborta la transacción completa y se crean cero leads.
+- **Idempotencia durable:** Tras una confirmación exitosa, se persiste un recibo en `lead_import_receipt` con restricción de unicidad en `preview_id`.
+- **Aislamiento en reintentos:** Intentos de reuso de un `previewId` ajeno retornan `404 Not Found` sin revelar la existencia del recibo.
+
+Ejemplo de respuesta de confirmación exitosa:
+```json
+{
+  "previewId": "eyJhbGciOiJIUzI1NiJ9...",
+  "importedCount": 2,
+  "leadIds": [101, 102]
+}
+```
+
+### Seguridad y códigos de error
+
+- **Autenticación requerida:** Sesión web activa (cookie `JSESSIONID`) y cabecera CSRF obligatoria (`X-XSRF-TOKEN`).
+- **Códigos HTTP:**
+  - `200 OK`: Vista previa generada exitosamente o confirmación exitosa/recibo idempotente devuelto.
+  - `400 Bad Request`: Formato no válido, tamaño > 5 MiB, filas > 500, cabeceras incorrectas, token de vista previa inválido/expirado, archivo no coincidente con la vista previa, o confirmación de archivo con filas inválidas (`code: VALIDATION_ERROR`).
+  - `401 Unauthorized`: Solicitud sin sesión activa.
+  - `403 Forbidden`: Token CSRF ausente o inválido.
+  - `404 Not Found`: Vista previa inexistente o perteneciente a otro propietario (`code: NOT_FOUND`).
 
 ## Monitoreo y salud
 
