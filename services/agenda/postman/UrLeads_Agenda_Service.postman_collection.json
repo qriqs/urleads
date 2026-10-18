@@ -1,0 +1,600 @@
+{
+  "info": {
+    "_postman_id": "a9b8c7d6-e5f4-4321-abcd-ef0123456789",
+    "name": "UrLeads - Servicio Agenda y Notificaciones (Alex)",
+    "description": "Colección completa de pruebas REST y WebSocket (RFC 6455) para el microservicio de Agenda y Notificaciones de UrLeads Backend V2.\n\n### Autenticación:\nLas peticiones REST requieren la cabecera `Authorization: Bearer {{jwt_token}}`.\nEl token debe poseer el claim `sub` con el ID decimal del usuario (ej. '42') y el scope `agenda.access`.\n\n### Conexión WebSocket (/ws/notifications):\n1. Iniciar conexión WebSocket a `ws://{{host}}:{{port}}/ws/notifications`.\n2. La conexión inicia en estado pendiente sin transmitir datos.\n3. Dentro de un límite de 5 segundos, enviar el primer frame JSON:\n```json\n{\n  \"type\": \"authenticate\",\n  \"accessToken\": \"{{jwt_token}}\"\n}\n```\n4. Si el token es válido, el servidor responde:\n```json\n{\n  \"type\": \"authenticated\"\n}\n```\n5. Si transcurren más de 5s o el token es inválido, el socket se cierra con código 1008 (Policy Violation).\n6. Al aceptarse una cotización, el servidor emite en vivo:\n```json\n{\n  \"type\": \"notification.created\",\n  \"data\": {\n    \"id\": 501,\n    \"sourceEventId\": \"uuid\",\n    \"createdAt\": \"2026-10-17T23:30:00Z\",\n    \"read\": false\n  }\n}\n```",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8082",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "eyJhbGciOiJIUzUxMiJ9...",
+      "type": "string"
+    },
+    {
+      "key": "appointmentId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "taskId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "notificationId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Documentación OpenAPI & Swagger",
+      "item": [
+        {
+          "name": "Swagger UI HTML",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/swagger-ui.html",
+              "host": ["{{baseUrl}}"],
+              "path": ["swagger-ui.html"]
+            },
+            "description": "Acceso interactivo a la interfaz visual de Swagger UI."
+          }
+        },
+        {
+          "name": "OpenAPI 3 JSON Spec",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v3/api-docs",
+              "host": ["{{baseUrl}}"],
+              "path": ["v3", "api-docs"]
+            },
+            "description": "Especificación JSON formal OpenAPI 3.0 del microservicio Agenda."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notificaciones (/api/v1/notifications)",
+      "item": [
+        {
+          "name": "Listar notificaciones paginadas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications?page=0&size=20&unreadOnly=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "notifications"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "unreadOnly", "value": "false" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Marcar notificación como leída",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/{{notificationId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "notifications", "{{notificationId}}", "read"]
+            }
+          }
+        },
+        {
+          "name": "Marcar todas las notificaciones como leídas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/mark-all-read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "notifications", "mark-all-read"]
+            }
+          }
+        },
+        {
+          "name": "Posponer notificación (Snooze 15m, 1h, 1d)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preset\": \"15m\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/{{notificationId}}/snooze",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "notifications", "{{notificationId}}", "snooze"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tareas (/api/v1/tasks)",
+      "item": [
+        {
+          "name": "Crear tarea vinculada a lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Llamar al cliente para seguimiento comercial\",\n  \"descripcion\": \"Revisar objeciones sobre precios y plazos de entrega\",\n  \"leadId\": 105,\n  \"fechaLimite\": \"2026-10-25\",\n  \"horaLimite\": \"15:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "Listar tareas con filtros y paginación",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks?page=0&size=20&completada=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "tasks"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "completada", "value": "false" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener tarea por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "tasks", "{{taskId}}"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar tarea",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Llamada de seguimiento completada y reprogramada\",\n  \"descripcion\": \"Se acordó enviar propuesta revisada\",\n  \"leadId\": 105,\n  \"fechaLimite\": \"2026-10-28\",\n  \"horaLimite\": \"11:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "tasks", "{{taskId}}"]
+            }
+          }
+        },
+        {
+          "name": "Marcar tarea como completada / pendiente",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"completada\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/{{taskId}}/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "tasks", "{{taskId}}", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Eliminar tarea",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "tasks", "{{taskId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Citas (/api/v1/appointments)",
+      "item": [
+        {
+          "name": "Crear cita con zona horaria America/Lima",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Reunión de demostración técnica\",\n  \"descripcion\": \"Presentación de módulos CRM, Comercial y Agenda\",\n  \"leadId\": 105,\n  \"inicio\": \"2026-10-25T10:00:00-05:00\",\n  \"fin\": \"2026-10-25T11:00:00-05:00\",\n  \"zonaHoraria\": \"America/Lima\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "appointments"]
+            }
+          }
+        },
+        {
+          "name": "Listar citas con filtros",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments?page=0&size=20&estado=PROGRAMADA",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "appointments"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "estado", "value": "PROGRAMADA" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener cita por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "appointments", "{{appointmentId}}"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar horario y detalles de cita",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Reunión de demostración reprogramada\",\n  \"descripcion\": \"Presentación ajustada para directores comerciales\",\n  \"leadId\": 105,\n  \"inicio\": \"2026-10-25T15:00:00-05:00\",\n  \"fin\": \"2026-10-25T16:00:00-05:00\",\n  \"zonaHoraria\": \"America/Lima\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "appointments", "{{appointmentId}}"]
+            }
+          }
+        },
+        {
+          "name": "Cambiar estado de cita (PROGRAMADA, REALIZADA, CANCELADA)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"REALIZADA\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "appointments", "{{appointmentId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Eliminar cita",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "appointments", "{{appointmentId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Minutas y Resultados de Cita",
+      "item": [
+        {
+          "name": "Registrar resultado y minuta de cita",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resumen\": \"Demostración realizada satisfactoriamente. Cliente conforme con la propuesta técnica.\",\n  \"acuerdos\": \"Enviar cotización formal con descuento por volumen antes del viernes.\",\n  \"proximasAcciones\": \"Coordinar con área comercial emisión de cotización Q-2026-001.\",\n  \"resultado\": \"REALIZADA\",\n  \"asistencia\": \"ASISTIERON_TODOS\",\n  \"actualizarEstadoCita\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}/outcome",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "appointments", "{{appointmentId}}", "outcome"]
+            }
+          }
+        },
+        {
+          "name": "Consultar minuta de cita",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}/outcome",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "appointments", "{{appointmentId}}", "outcome"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Consultas Agregadas de Agenda (/api/v1/agenda)",
+      "item": [
+        {
+          "name": "Feed unificado cronológico (máximo 31 días)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/agenda?desde=2026-10-25&hasta=2026-10-31&page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "agenda"],
+              "query": [
+                { "key": "desde", "value": "2026-10-25" },
+                { "key": "hasta", "value": "2026-10-31" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resumen diario de pendientes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/agenda/daily-pending?fecha=2026-10-25&zonaHoraria=America/Lima",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "agenda", "daily-pending"],
+              "query": [
+                { "key": "fecha", "value": "2026-10-25" },
+                { "key": "zonaHoraria", "value": "America/Lima" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Preferencias de Usuario (/api/v1/preferences)",
+      "item": [
+        {
+          "name": "Consultar preferencias del usuario",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preferences",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "preferences"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar preferencias (zona, horario, canales)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zonaHoraria\": \"America/Lima\",\n  \"inicioJornada\": \"09:00\",\n  \"finJornada\": \"18:00\",\n  \"diasLaborales\": \"1,2,3,4,5\",\n  \"canalesHabilitados\": [\"WEBSOCKET\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preferences",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "preferences"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -176,11 +176,8 @@ class NotificationWebSocketHandlerTest {
 
         timeoutHandler.afterConnectionEstablished(session);
 
-        // Esperar 1.2 segundos a que expire el timeout
-        Thread.sleep(1200);
-
         ArgumentCaptor<CloseStatus> statusCaptor = ArgumentCaptor.forClass(CloseStatus.class);
-        verify(session).close(statusCaptor.capture());
+        verify(session, org.mockito.Mockito.timeout(3000)).close(statusCaptor.capture());
         assertThat(statusCaptor.getValue().getCode()).isEqualTo(1008);
 
         timeoutHandler.destroy();

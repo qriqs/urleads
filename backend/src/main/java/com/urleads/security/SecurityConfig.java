@@ -74,7 +74,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(requestHandler)
-                .ignoringRequestMatchers("/api/health", "/api/v1/**", "/internal/**", "/ws/**")
+                .ignoringRequestMatchers("/api/health", "/api/v1/**", "/internal/**", "/ws/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs")
             )
             .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class);
 
@@ -93,6 +93,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/health", "/api/v1/health", "/api/auth/csrf").permitAll()
                 .requestMatchers("/api/auth/login").permitAll()
                 .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .requestMatchers("/internal/**").authenticated()
                 .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/robots.txt", "/{*path}").permitAll()

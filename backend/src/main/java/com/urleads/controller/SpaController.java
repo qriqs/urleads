@@ -12,9 +12,35 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.net.URLConnection;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.web.HttpRequestHandler;
+import org.springframework.web.servlet.HandlerExecutionChain;
+import org.springframework.web.servlet.HandlerMapping;
+
 @Controller
 @RequestMapping(path = "/")
 public class SpaController {
+
+    private final HandlerMapping resourceHandlerMapping;
+
+    public SpaController(@Autowired(required = false) @Qualifier("resourceHandlerMapping") HandlerMapping resourceHandlerMapping) {
+        this.resourceHandlerMapping = resourceHandlerMapping;
+    }
+
+    @GetMapping({"/swagger-ui", "/swagger-ui/{*asset}"})
+    public void swaggerUi(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        if (resourceHandlerMapping != null) {
+            HandlerExecutionChain chain = resourceHandlerMapping.getHandler(request);
+            if (chain != null && chain.getHandler() instanceof HttpRequestHandler httpRequestHandler) {
+                httpRequestHandler.handleRequest(request, response);
+                return;
+            }
+        }
+        response.sendError(HttpServletResponse.SC_NOT_FOUND);
+    }
 
     @GetMapping(value = {"", "/", "/index.html"}, produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<Resource> index() {
