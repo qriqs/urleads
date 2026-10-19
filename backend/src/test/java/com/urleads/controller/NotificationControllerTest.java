@@ -23,6 +23,12 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -67,6 +73,23 @@ class NotificationControllerTest {
     void withoutAuth_ReturnsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/notifications"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Petición con sesión web activa (JSESSIONID) accede exitosamente a /api/v1/notifications sin requerir Bearer")
+    void withWebSession_ReturnsOk() throws Exception {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(1L);
+
+        when(notificationService.obtenerNotificaciones(eq(1L), isNull(), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+        MockHttpSession session = new MockHttpSession();
+        SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
+        securityContext.setAuthentication(new UsernamePasswordAuthenticationToken("admin", "password", List.of()));
+        session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
+
+        mockMvc.perform(get("/api/v1/notifications?page=0&size=20").session(session))
+                .andExpect(status().isOk());
     }
 
     @Test

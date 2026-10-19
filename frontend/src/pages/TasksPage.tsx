@@ -18,6 +18,13 @@ import {
 } from "lucide-react";
 import { sileo } from "sileo";
 import { getLeadsApi, Lead } from "../services/leads";
+import {
+  getTasksApi,
+  createTaskApi,
+  toggleTaskCompleteApi,
+  deleteTaskApi,
+  AgendaTask,
+} from "../services/agenda";
 
 export interface CrmTask {
   id: string;
@@ -111,21 +118,45 @@ export default function TasksPage() {
     }
   }, [tasks]);
 
-  // Load leads for dropdown
-  const loadLeads = useCallback(async () => {
+  // Load tasks from backend
+  const loadBackendTasks = useCallback(async (leads: Lead[]) => {
     try {
-      const res = await getLeadsApi({ page: 0 });
-      if (res && res.content) {
-        setLeadsList(res.content);
+      const res = await getTasksApi({ page: 0, size: 50 });
+      if (res && res.content && res.content.length > 0) {
+        const leadMap = new Map<number, string>(leads.map((l) => [l.id, l.name]));
+        const mapped: CrmTask[] = res.content.map((t: AgendaTask) => ({
+          id: String(t.id),
+          title: t.titulo,
+          leadId: t.leadId ?? undefined,
+          leadName: t.leadId ? leadMap.get(t.leadId) : undefined,
+          dueDate: t.fechaLimite ? t.fechaLimite.split("T")[0] : new Date().toISOString().split("T")[0],
+          priority: "MEDIA",
+          type: "LLAMADA",
+          completed: t.completada,
+          createdAt: t.creadoEn || new Date().toISOString(),
+        }));
+        setTasks(mapped);
       }
     } catch {
-      // Ignored
+      // Keep existing tasks if backend unavailable
     }
   }, []);
 
+  // Load leads and initial tasks
+  const loadData = useCallback(async () => {
+    try {
+      const res = await getLeadsApi({ page: 0 });
+      const leads = res && res.content ? res.content : [];
+      setLeadsList(leads);
+      await loadBackendTasks(leads);
+    } catch {
+      // Ignored
+    }
+  }, [loadBackendTasks]);
+
   useEffect(() => {
-    loadLeads();
-  }, [loadLeads]);
+    loadData();
+  }, [loadData]);
 
   // Filtered tasks
   const filteredTasks = useMemo(() => {
@@ -152,7 +183,16 @@ export default function TasksPage() {
   );
 
   // Toggle complete
-  const handleToggleTask = (taskId: string) => {
+  const handleToggleTask = async (taskId: string) => {
+    const numId = Number(taskId);
+    if (!isNaN(numId) && numId > 0) {
+      try {
+        await toggleTaskCompleteApi(numId);
+      } catch {
+        // Fallback local update
+      }
+    }
+
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
@@ -171,8 +211,17 @@ export default function TasksPage() {
   };
 
   // Delete task
-  const handleDeleteTask = (taskId: string, e: React.MouseEvent) => {
+  const handleDeleteTask = async (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    const numId = Number(taskId);
+    if (!isNaN(numId) && numId > 0) {
+      try {
+        await deleteTaskApi(numId);
+      } catch {
+        // Fallback local deletion
+      }
+    }
+
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
     sileo.info({
       title: "Tarea eliminada",
@@ -181,7 +230,7 @@ export default function TasksPage() {
   };
 
   // Create Task Submit
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors: Record<string, string> = {};
     if (!formData.title.trim()) {
@@ -198,19 +247,42 @@ export default function TasksPage() {
 
     const selectedLead = leadsList.find((l) => String(l.id) === formData.leadId);
 
-    const newTask: CrmTask = {
-      id: `task-${Date.now()}`,
-      title: formData.title.trim(),
-      leadId: selectedLead ? selectedLead.id : undefined,
-      leadName: selectedLead ? selectedLead.name : undefined,
-      dueDate: formData.dueDate,
-      priority: formData.priority,
-      type: formData.type,
-      completed: false,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const created = await createTaskApi({
+        titulo: formData.title.trim(),
+        leadId: selectedLead ? selectedLead.id : undefined,
+        fechaLimite: formData.dueDate ? `${formData.dueDate}T18:00:00Z` : undefined,
+      });
 
-    setTasks((prev) => [newTask, ...prev]);
+      const newTask: CrmTask = {
+        id: String(created.id),
+        title: created.titulo,
+        leadId: created.leadId ?? undefined,
+        leadName: selectedLead ? selectedLead.name : undefined,
+        dueDate: formData.dueDate,
+        priority: formData.priority,
+        type: formData.type,
+        completed: created.completada,
+        createdAt: created.creadoEn || new Date().toISOString(),
+      };
+
+      setTasks((prev) => [newTask, ...prev]);
+    } catch {
+      const newTask: CrmTask = {
+        id: `task-${Date.now()}`,
+        title: formData.title.trim(),
+        leadId: selectedLead ? selectedLead.id : undefined,
+        leadName: selectedLead ? selectedLead.name : undefined,
+        dueDate: formData.dueDate,
+        priority: formData.priority,
+        type: formData.type,
+        completed: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      setTasks((prev) => [newTask, ...prev]);
+    }
+
     setIsModalOpen(false);
     setFormData({
       title: "",
