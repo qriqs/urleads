@@ -43,6 +43,11 @@ import { createNoteApi } from "../services/notes";
 import { sileo } from "sileo";
 import { UrLeadsLogo } from "../components/UrLeadsLogo";
 import { RuixenSearchCommand } from "../components/ruixen/RuixenSearchCommand";
+import { QuickActionsBar } from "../components/dashboard/QuickActionsBar";
+import { PipelineAndStagesCards } from "../components/dashboard/PipelineAndStagesCards";
+import { RecentLeadsTable } from "../components/dashboard/RecentLeadsTable";
+import { NotificationsModal } from "../components/dashboard/NotificationsModal";
+import { useNotifications } from "../context/NotificationsContext";
 import "./AuroraDashboard.css";
 
 interface RecentLeadItem {
@@ -792,265 +797,31 @@ export default function AuroraDashboard() {
               </div>
             </div>
 
-            {/* Action Buttons Row: Smooth Horizontal Scrollable on Mobile (.no-scrollbar) */}
-            <div className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar pb-1">
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(true)}
-                className="h-10 px-5 rounded-full bg-accent text-accent-foreground font-semibold text-xs sm:text-sm flex items-center gap-2 shadow-xs hover:opacity-90 active:scale-95 transition-all cursor-pointer shrink-0"
-              >
-                <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-                <span>Nuevo Lead</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsCallModalOpen(true)}
-                className="h-10 px-4.5 rounded-full bg-background border border-border text-foreground font-medium text-xs sm:text-sm flex items-center gap-2 shadow-2xs hover:bg-secondary active:scale-95 transition-all cursor-pointer shrink-0"
-              >
-                <Phone className="h-3.5 w-3.5 text-sky-500" />
-                <span>Llamada</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsEmailModalOpen(true)}
-                className="h-10 px-4.5 rounded-full bg-background border border-border text-foreground font-medium text-xs sm:text-sm flex items-center gap-2 shadow-2xs hover:bg-secondary active:scale-95 transition-all cursor-pointer shrink-0"
-              >
-                <Mail className="h-3.5 w-3.5 text-indigo-500" />
-                <span>Email</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsMeetingModalOpen(true)}
-                className="h-10 px-4.5 rounded-full bg-background border border-border text-foreground font-medium text-xs sm:text-sm flex items-center gap-2 shadow-2xs hover:bg-secondary active:scale-95 transition-all cursor-pointer shrink-0"
-              >
-                <Calendar className="h-3.5 w-3.5 text-emerald-500" />
-                <span>Cita</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsNoteModalOpen(true)}
-                className="h-10 px-4.5 rounded-full bg-background border border-border text-foreground font-medium text-xs sm:text-sm flex items-center gap-2 shadow-2xs hover:bg-secondary active:scale-95 transition-all cursor-pointer shrink-0"
-              >
-                <FileText className="h-3.5 w-3.5 text-amber-500" />
-                <span>Nota</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsTaskModalOpen(true)}
-                className="h-10 px-4.5 rounded-full bg-background border border-border text-foreground font-medium text-xs sm:text-sm flex items-center gap-2 shadow-2xs hover:bg-secondary active:scale-95 transition-all cursor-pointer shrink-0"
-              >
-                <CheckSquare className="h-3.5 w-3.5 text-purple-500" />
-                <span>Tarea</span>
-              </button>
-            </div>
+            {/* Action Buttons Row */}
+            <QuickActionsBar
+              onOpenNewLead={() => setIsCreateModalOpen(true)}
+              onOpenCall={() => setIsCallModalOpen(true)}
+              onOpenEmail={() => setIsEmailModalOpen(true)}
+              onOpenMeeting={() => setIsMeetingModalOpen(true)}
+              onOpenNote={() => setIsNoteModalOpen(true)}
+              onOpenTask={() => setIsTaskModalOpen(true)}
+            />
 
-            {/* Two Equal-Width Cards: Responsive Grid (1 col on mobile, 2 cols on lg) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Pipeline Card: Clickable with live currency calculation */}
-              <div
-                onClick={() => setIsPipelineModalOpen(true)}
-                className="bg-background/95 backdrop-blur-md rounded-3xl border border-border p-5 sm:p-7 flex flex-col justify-between shadow-2xs hover:shadow-xs hover:border-accent/40 transition-all cursor-pointer group"
-                title="Haz clic para ver el desglose detallado del pipeline"
-              >
-                <div>
-                  <div className="flex items-center justify-between text-muted-foreground mb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="h-5 w-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center">
-                        <Check className="h-3 w-3 stroke-[3]" />
-                      </div>
-                      <span className="font-semibold text-foreground text-sm sm:text-base group-hover:text-accent transition-colors">
-                        Pipeline Comercial
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 rounded-full bg-secondary text-xs font-medium text-muted-foreground">
-                        Activo
-                      </span>
-                      <span className="px-2.5 py-1 rounded-full bg-accent/10 text-accent text-xs font-semibold group-hover:bg-accent group-hover:text-accent-foreground transition-all">
-                        Desglose ↗
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-2">
-                    <span className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground font-body">
-                      {formatMoney(rawPipelineValue)}
-                    </span>
-                    <span className="text-base sm:text-lg text-muted-foreground font-semibold">
-                      .00
-                    </span>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="flex items-center gap-3 mt-3 text-xs sm:text-sm">
-                    <span className="text-muted-foreground">Últimos 30 Días</span>
-                    <span className="text-emerald-600 font-semibold">
-                      +{formatMoney(Math.max(12, Math.round(totalLeadsCount * 1.5)) * 1000)}
-                    </span>
-                    <span className="text-rose-500 font-semibold">
-                      -{formatMoney(Math.round(totalLeadsCount * 0.4) * 1000)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* SVG Area Chart */}
-                <div className="mt-5 w-full h-24 sm:h-28 relative overflow-hidden">
-                  <svg
-                    viewBox="0 0 360 80"
-                    preserveAspectRatio="none"
-                    className="w-full h-full"
-                  >
-                    <defs>
-                      <linearGradient
-                        id="realDashboardBalanceGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity="0.18" />
-                        <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    <path
-                      d="M 0 58 C 45 62, 85 42, 125 45 C 165 48, 195 24, 235 28 C 275 32, 310 10, 360 14 L 360 80 L 0 80 Z"
-                      fill="url(#realDashboardBalanceGradient)"
-                    />
-                    <path
-                      d="M 0 58 C 45 62, 85 42, 125 45 C 165 48, 195 24, 235 28 C 275 32, 310 10, 360 14"
-                      fill="none"
-                      stroke="hsl(var(--accent))"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Stages Card */}
-              <div className="bg-background/95 backdrop-blur-md rounded-3xl border border-border p-5 sm:p-7 flex flex-col shadow-2xs hover:shadow-xs transition-shadow">
-                {/* Header */}
-                <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                  <span className="font-semibold text-foreground text-sm sm:text-base">
-                    Distribución por Etapa
-                  </span>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <button
-                      type="button"
-                      onClick={() => setIsCreateModalOpen(true)}
-                      className="h-8 w-8 rounded-full flex items-center justify-center hover:text-foreground hover:bg-secondary cursor-pointer transition-colors"
-                      title="Registrar prospecto"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate("/app/leads")}
-                      className="h-8 w-8 rounded-full flex items-center justify-center hover:text-foreground hover:bg-secondary cursor-pointer transition-colors"
-                      title="Ver prospectos"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* 3 Rows (Bubbly capsules) */}
-                <div className="flex-1 flex flex-col justify-around py-3 gap-2.5">
-                  <Link
-                    to="/app/leads?stage=NUEVO"
-                    className="flex items-center justify-between p-3.5 rounded-2xl bg-secondary/35 hover:bg-secondary/70 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-3 w-3 rounded-full bg-sky-400 group-hover:scale-110 transition-transform" />
-                      <span className="text-foreground font-medium text-xs sm:text-sm">Nuevos (Por calificar)</span>
-                    </div>
-                    <span className="font-bold text-foreground text-xs sm:text-sm font-body">
-                      {newCount} Leads
-                    </span>
-                  </Link>
-
-                  <Link
-                    to="/app/leads?stage=EN_SEGUIMIENTO"
-                    className="flex items-center justify-between p-3.5 rounded-2xl bg-secondary/35 hover:bg-secondary/70 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-3 w-3 rounded-full bg-amber-400 group-hover:scale-110 transition-transform" />
-                      <span className="text-foreground font-medium text-xs sm:text-sm">En Seguimiento</span>
-                    </div>
-                    <span className="font-bold text-foreground text-xs sm:text-sm font-body">
-                      {inProgressCount} Leads
-                    </span>
-                  </Link>
-
-                  <Link
-                    to="/app/leads?stage=CERRADO"
-                    className="flex items-center justify-between p-3.5 rounded-2xl bg-secondary/35 hover:bg-secondary/70 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-3 w-3 rounded-full bg-emerald-500 group-hover:scale-110 transition-transform" />
-                      <span className="text-foreground font-medium text-xs sm:text-sm">Cerrados (Concretados)</span>
-                    </div>
-                    <span className="font-bold text-foreground text-xs sm:text-sm font-body">
-                      {closedCount} Leads
-                    </span>
-                  </Link>
-                </div>
-              </div>
-            </div>
+            {/* Two Equal-Width Cards: Pipeline & Stages */}
+            <PipelineAndStagesCards
+              rawPipelineValue={rawPipelineValue}
+              totalLeadsCount={totalLeadsCount}
+              newCount={newCount}
+              inProgressCount={inProgressCount}
+              closedCount={closedCount}
+              formatMoney={formatMoney}
+              onOpenPipelineModal={() => setIsPipelineModalOpen(true)}
+              onOpenCreateModal={() => setIsCreateModalOpen(true)}
+              onNavigateLeads={() => navigate("/app/leads")}
+            />
 
             {/* Leads Recientes Table */}
-            <div className="bg-background/95 backdrop-blur-md rounded-3xl border border-border p-5 sm:p-7 shadow-2xs hover:shadow-xs transition-shadow">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm sm:text-base font-semibold text-foreground">
-                  Leads Recientes
-                </h3>
-                <Link
-                  to="/app/leads"
-                  className="px-3.5 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 text-xs font-semibold text-foreground transition-colors"
-                >
-                  Ver todos
-                </Link>
-              </div>
-
-              <div className="overflow-x-auto no-scrollbar">
-                <table className="w-full text-left min-w-[500px]">
-                  <thead>
-                    <tr className="border-b border-border/60 text-xs text-muted-foreground uppercase font-semibold">
-                      <th className="pb-3 font-semibold">Fecha</th>
-                      <th className="pb-3 font-semibold">Prospecto</th>
-                      <th className="pb-3 font-semibold text-right">Servicio / Empresa</th>
-                      <th className="pb-3 font-semibold text-right">Etapa</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40 text-xs sm:text-sm">
-                    {recentLeadsDisplay.map((lead) => (
-                      <tr
-                        key={lead.id}
-                        onClick={() => navigate(`/app/leads/${lead.id}`)}
-                        className="hover:bg-secondary/50 cursor-pointer transition-colors"
-                      >
-                        <td className="py-3.5 text-muted-foreground text-xs sm:text-sm">
-                          {lead.date}
-                        </td>
-                        <td className="py-3.5 font-semibold text-foreground text-xs sm:text-sm">
-                          {lead.name}
-                        </td>
-                        <td className="py-3.5 text-right text-muted-foreground text-xs sm:text-sm">
-                          {lead.service}
-                        </td>
-                        <td className="py-3.5 text-right">
-                          <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${lead.stageBadgeClass}`}
-                          >
-                            {lead.stageLabel}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <RecentLeadsTable leads={recentLeadsDisplay} />
           </main>
         ) : (
           <main className="flex-1 bg-secondary/30 p-3 sm:p-6 lg:p-8 overflow-y-auto pb-24 md:pb-8">
@@ -1169,107 +940,11 @@ export default function AuroraDashboard() {
         </div>
       )}
 
-      {/* ── Modal: Notificaciones Comerciales ── */}
-      {isNotificationModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div
-            className="w-full max-w-md bg-background border border-border rounded-3xl shadow-xl overflow-hidden p-6 space-y-4 max-h-[85vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <div className="flex items-center gap-2">
-                <Bell className="h-4 w-4 text-accent" />
-                <h3 className="text-base font-bold text-foreground">Notificaciones</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHasDismissedNotifications(true);
-                    sileo.info({ title: "Notificaciones", description: "Marcadas como leídas." });
-                  }}
-                  className="text-xs text-muted-foreground hover:text-foreground font-semibold cursor-pointer"
-                >
-                  Marcar leídas
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsNotificationModalOpen(false)}
-                  className="h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2.5">
-              {(metrics?.seguimientos?.hoy ?? 0) > 0 && (
-                <div
-                  onClick={() => {
-                    setIsNotificationModalOpen(false);
-                    navigate("/app/leads?followUp=today");
-                  }}
-                  className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 cursor-pointer hover:bg-amber-500/15 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-700">Seguimientos para hoy</span>
-                    <span className="text-[10px] text-amber-600 font-semibold">Hoy</span>
-                  </div>
-                  <p className="text-xs text-foreground mt-1">
-                    Tienes {metrics?.seguimientos?.hoy} prospecto(s) programados para contactar hoy.
-                  </p>
-                </div>
-              )}
-
-              {(metrics?.seguimientos?.atrasados ?? 0) > 0 && (
-                <div
-                  onClick={() => {
-                    setIsNotificationModalOpen(false);
-                    navigate("/app/leads?followUp=overdue");
-                  }}
-                  className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 cursor-pointer hover:bg-rose-500/15 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-rose-700">Seguimientos atrasados</span>
-                    <span className="text-[10px] text-rose-600 font-semibold">Atención</span>
-                  </div>
-                  <p className="text-xs text-foreground mt-1">
-                    Existen {metrics?.seguimientos?.atrasados} seguimiento(s) con fecha vencida que requieren acción.
-                  </p>
-                </div>
-              )}
-
-              {recentLeads.length > 0 && (
-                <div
-                  onClick={() => {
-                    setIsNotificationModalOpen(false);
-                    navigate(`/app/leads/${recentLeads[0].id}`);
-                  }}
-                  className="p-3.5 rounded-2xl bg-secondary/40 border border-border cursor-pointer hover:bg-secondary/70 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-foreground">Lead Reciente</span>
-                    <span className="text-[10px] text-muted-foreground font-semibold">Nuevo</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {recentLeads[0].name} ({recentLeads[0].service || "Servicio"}) se encuentra registrado en etapa {recentLeads[0].stage}.
-                  </p>
-                </div>
-              )}
-
-              <div className="p-3.5 rounded-2xl bg-secondary/30 border border-border">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">Pipeline Operativo</span>
-                  <span className="text-[10px] text-emerald-600 font-semibold">En línea</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Tu base comercial está sincronizada y operando en <strong className="text-foreground">{currency === "USD" ? "Dólares ($)" : "Soles (S/.)"}</strong>.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Modal: Notificaciones Comerciales en Vivo (WebSocket RFC 6455) ── */}
+      <NotificationsModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => setIsNotificationModalOpen(false)}
+      />
 
       {/* ── Modal: Desglose Interactivo del Pipeline Comercial ── */}
       {isPipelineModalOpen && (

@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-urleads}
       POSTGRES_USER: ${POSTGRES_USER:-urleads_app}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD debe estar definido en el entorno}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sql}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,6 +16,31 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  eureka:
+    image: steeltoeoss/eureka-server:latest
+    restart: unless-stopped
+    ports:
+      - "8761:8761"
+    environment:
+      EUREKA_CLIENT_REGISTERWITHEUREKA: "false"
+      EUREKA_CLIENT_FETCHREGISTRY: "false"
 
 volumes:
   postgres_data:

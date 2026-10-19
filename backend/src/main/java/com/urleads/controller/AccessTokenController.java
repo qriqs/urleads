@@ -6,6 +6,7 @@ import com.urleads.dto.ErrorResponse;
 import com.urleads.entity.Usuario;
 import com.urleads.repository.UsuarioRepository;
 import com.urleads.security.JwtIssuanceService;
+import com.urleads.security.JwtService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -37,12 +38,15 @@ public class AccessTokenController {
 
     private final UsuarioRepository usuarioRepository;
     private final Optional<JwtIssuanceService> jwtIssuanceServiceOptional;
+    private final JwtService jwtService;
 
     public AccessTokenController(
             UsuarioRepository usuarioRepository,
-            @Autowired(required = false) JwtIssuanceService jwtIssuanceService) {
+            @Autowired(required = false) JwtIssuanceService jwtIssuanceService,
+            @Autowired(required = false) JwtService jwtService) {
         this.usuarioRepository = usuarioRepository;
         this.jwtIssuanceServiceOptional = Optional.ofNullable(jwtIssuanceService);
+        this.jwtService = jwtService;
     }
 
     @Operation(
@@ -65,13 +69,6 @@ public class AccessTokenController {
                     .body(new ErrorResponse("Sin sesión activa"));
         }
 
-        if (jwtIssuanceServiceOptional.isEmpty() || !jwtIssuanceServiceOptional.get().isConfigured()) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                    .header(HttpHeaders.PRAGMA, "no-cache")
-                    .body(new ErrorResponse("Servicio de emisión de tokens no configurado"));
-        }
-
         String username = authentication.getName();
         Usuario usuario = usuarioRepository.findByUsername(username).orElse(null);
         if (usuario == null) {
@@ -79,6 +76,13 @@ public class AccessTokenController {
                     .header(HttpHeaders.CACHE_CONTROL, "no-store")
                     .header(HttpHeaders.PRAGMA, "no-cache")
                     .body(new ErrorResponse("Usuario no encontrado"));
+        }
+
+        if (jwtIssuanceServiceOptional.isEmpty() || !jwtIssuanceServiceOptional.get().isConfigured()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .header(HttpHeaders.PRAGMA, "no-cache")
+                    .body(new ErrorResponse("Servicio de emisión de tokens no configurado"));
         }
 
         AccessTokenResponse tokenResponse = jwtIssuanceServiceOptional.get().issueAccessToken(usuario.getId());

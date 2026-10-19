@@ -185,14 +185,15 @@ public class SecurityConfig {
     @Order(3)
     public SecurityFilterChain agendaFilterChain(HttpSecurity http,
             @org.springframework.beans.factory.annotation.Autowired(required = false) JwtService legacyJwtService,
-            Optional<JwtDecoder> decoder) throws Exception {
+            Optional<JwtDecoder> decoder,
+            SecurityContextRepository securityContextRepo) throws Exception {
         http.securityMatcher(new org.springframework.security.web.util.matcher.OrRequestMatcher(
                         AntPathRequestMatcher.antMatcher("/api/v1/**"),
                         AntPathRequestMatcher.antMatcher("/ws/notifications"),
                         AntPathRequestMatcher.antMatcher("/ws/notifications/**")))
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .securityContext(context -> context.securityContextRepository(new NullSecurityContextRepository()))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                .securityContext(context -> context.securityContextRepository(securityContextRepo))
                 .requestCache(cache -> cache.disable())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint()))
                 .authorizeHttpRequests(auth -> auth

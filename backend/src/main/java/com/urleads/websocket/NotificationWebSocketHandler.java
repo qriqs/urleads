@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -41,6 +43,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler implement
     public static final CloseStatus POLICY_VIOLATION_1008 = new CloseStatus(1008, "Policy Violation");
 
     private final JwtService jwtService;
+    private final JwtDecoder jwtDecoder;
     private final UsuarioRepository usuarioRepository;
     private final ObjectMapper objectMapper;
     private final ScheduledExecutorService scheduler;
@@ -54,9 +57,11 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler implement
             @Autowired(required = false) JwtService jwtService,
             @Autowired(required = false) UsuarioRepository usuarioRepository,
             @Autowired(required = false) ObjectMapper objectMapper,
-            @Value("${websocket.auth.timeout-seconds:5}") long authTimeoutSeconds
+            @Value("${websocket.auth.timeout-seconds:5}") long authTimeoutSeconds,
+            @Autowired(required = false) JwtDecoder jwtDecoder
     ) {
         this.jwtService = jwtService;
+        this.jwtDecoder = jwtDecoder;
         this.usuarioRepository = usuarioRepository;
         this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
         this.authTimeoutSeconds = authTimeoutSeconds;
@@ -72,7 +77,16 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler implement
             UsuarioRepository usuarioRepository,
             ObjectMapper objectMapper
     ) {
-        this(jwtService, usuarioRepository, objectMapper, 5L);
+        this(jwtService, usuarioRepository, objectMapper, 5L, null);
+    }
+
+    public NotificationWebSocketHandler(
+            JwtService jwtService,
+            UsuarioRepository usuarioRepository,
+            ObjectMapper objectMapper,
+            long authTimeoutSeconds
+    ) {
+        this(jwtService, usuarioRepository, objectMapper, authTimeoutSeconds, null);
     }
 
     @Override
@@ -140,14 +154,29 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler implement
                 return;
             }
 
-            if (jwtService == null) {
-                log.error("JwtService no disponible para validar sesión WebSocket.");
+            if (jwtDecoder == null && jwtService == null) {
+                log.error("Servicio de autenticación no disponible para validar sesión WebSocket.");
                 sendErrorAndClose(session, POLICY_VIOLATION_1008, "Servicio de autenticación no disponible");
                 return;
             }
 
             // Validar token sin imprimirlo jamás en logs ni query string
-            String subject = jwtService.extractSubject(token);
+            String subject = null;
+            if (jwtDecoder != null) {
+                try {
+                    Jwt jwt = jwtDecoder.decode(token);
+                    subject = jwt.getSubject();
+                } catch (Exception ignored) {
+                }
+            }
+
+            if ((subject == null || subject.isBlank()) && jwtService != null) {
+                try {
+                    subject = jwtService.extractSubject(token);
+                } catch (Exception ignored) {
+                }
+            }
+
             if (subject == null || subject.isBlank()) {
                 log.warn("Sesión {} presentó token sin subject válido. Cerrando con código 1008.", session.getId());
                 sendErrorAndClose(session, POLICY_VIOLATION_1008, "Token inválido o expirado");
